@@ -1,0 +1,15 @@
+{
+  "name": "mediaforge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "worker": "node src/worker.mjs --watch",
+    "worker:once": "node src/worker.mjs --once",
+    "validate": "node src/job-schema.mjs examples/job.json"
+  }
+}
