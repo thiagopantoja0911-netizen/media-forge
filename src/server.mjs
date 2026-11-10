@@ -34,6 +34,34 @@ async function parseBody(request) {
   return JSON.parse(raw || "{}");
 }
 
+function normalizeProjectFiles(files) {
+  if (!Array.isArray(files)) return files;
+  return files.map((file) => {
+    if (file?.encoding === "base64") {
+      return { path: file.path, contentBase64: file.content };
+    }
+    return { path: file?.path, content: file?.content };
+  });
+}
+
+function normalizePayload(input) {
+  const projectFiles = normalizeProjectFiles(input.projectFiles ?? input.project_files);
+  const project = input.project ?? {
+    title: input.title,
+    durationSeconds: input.durationSeconds ?? input.duration_seconds,
+    aspectRatio: input.aspectRatio ?? input.aspect_ratio,
+    outputs: ["video"],
+    renderer: "hyperframes",
+    outputName: input.outputName ?? input.output_name
+  };
+
+  return {
+    ...input,
+    project,
+    projectFiles
+  };
+}
+
 async function saveJob(job) {
   await writeFile(join(jobsDir, job.id + ".json"), JSON.stringify(job, null, 2) + "\n");
 }
@@ -74,7 +102,8 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "POST" && url.pathname === "/v1/jobs") {
-      const payload = await parseBody(request);
+      const rawPayload = await parseBody(request);
+      const payload = normalizePayload(rawPayload);
       const validation = validateJob(payload);
       if (!validation.ok) return send(response, 400, { ok: false, errors: validation.errors });
 
