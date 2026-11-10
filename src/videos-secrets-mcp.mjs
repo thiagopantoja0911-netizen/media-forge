@@ -55,7 +55,7 @@ export const VIDEOS_SECRETS_TOOLS = [
 
 function requestToken(request) {
   const header = String(request.headers.authorization ?? "");
-  const match = header.match(/^Bearer\\s+(.+)$/i);
+  const match = header.match(/^Bearer\s+(.+)$/i);
   return match ? match[1].trim() : "";
 }
 
