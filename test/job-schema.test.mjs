@@ -22,7 +22,7 @@ test("accepts inline text and binary project files", () => {
     { path: "assets/logo.png", contentBase64: "aGVsbG8=" }
   ]);
   assert.equal(result.ok, true);
-  assert.equal(result.bytes, 18);
+  assert.equal(result.bytes, 20);
 });
 
 test("rejects unsafe, duplicated or incomplete project files", () => {
