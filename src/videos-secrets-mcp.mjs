@@ -66,25 +66,32 @@ function tokenMatches(actual, expected) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function requireBearer(request) {
+async function requireBearer(request, authenticateBearer) {
+  const token = requestToken(request);
+  if (authenticateBearer) {
+    const authenticated = await authenticateBearer(token);
+    if (authenticated) return authenticated;
+  }
+
   const expected = process.env.MEDIAFORGE_MCP_TOKEN ?? "";
   const host = process.env.MEDIAFORGE_HOST ?? "127.0.0.1";
   const loopback = ["127.0.0.1", "localhost", "::1"].includes(host);
   const required = process.env.MEDIAFORGE_REQUIRE_AUTH === "true" || !loopback;
 
-  if (!required) return;
+  if (!required) return { scopes: ["videos:read", "videos:write", "offline_access"], legacy: true };
   if (!expected) {
     const error = new Error("MEDIAFORGE_MCP_TOKEN is required when MCP authentication is enabled");
     error.code = "MCP_AUTH_NOT_CONFIGURED";
     error.status = 500;
     throw error;
   }
-  if (!tokenMatches(requestToken(request), expected)) {
+  if (!tokenMatches(token, expected)) {
     const error = new Error("MCP authentication required");
     error.code = "MCP_AUTH_REQUIRED";
     error.status = 401;
     throw error;
   }
+  return { scopes: ["videos:read", "videos:write", "offline_access"], legacy: true };
 }
 
 function protocolVersion(request, params) {
@@ -135,7 +142,8 @@ export async function handleVideosSecretsMcp({
   createJob,
   listJobs,
   getJob,
-  rendererStatus
+  rendererStatus,
+  authenticateBearer
 }) {
   if (request.method === "OPTIONS") {
     response.writeHead(204, {
@@ -154,9 +162,10 @@ export async function handleVideosSecretsMcp({
   }
 
   let body;
+  let auth;
   try {
     body = await parseBody(request);
-    requireBearer(request);
+    auth = await requireBearer(request, authenticateBearer);
   } catch (error) {
     const status = error.status ?? 400;
     const version = DEFAULT_PROTOCOL;
@@ -201,6 +210,7 @@ export async function handleVideosSecretsMcp({
     }
 
     if (name === "create_video") {
+      if (!auth.scopes.includes("videos:write")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
       const job = await createJob({
         title: args.title,
         prompt: args.prompt,
@@ -216,14 +226,17 @@ export async function handleVideosSecretsMcp({
     }
 
     if (name === "renderer_status") {
+      if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
       return writeResult(response, id, textResult(await rendererStatus()), version);
     }
 
     if (name === "list_videos") {
+      if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
       return writeResult(response, id, textResult({ jobs: await listJobs(30) }), version);
     }
 
     if (name === "get_video") {
+      if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
       const job = await getJob(String(args.id ?? ""));
       if (!job) return writeResult(response, id, textResult("Trabalho não encontrado.", true), version);
       return writeResult(response, id, textResult({ job }), version);
