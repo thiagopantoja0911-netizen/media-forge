@@ -35,11 +35,15 @@ async function loadJob(id) {
 
 const server = createServer(async (request, response) => {
   try {
-    const url = new URL(request.url, "http://" + request.headers.host);
+    const url = new URL(request.url, "http://" + (request.headers.host ?? "localhost"));
     const parts = url.pathname.split("/").filter(Boolean);
 
     if (request.method === "GET" && url.pathname === "/health") {
-      return send(response, 200, { ok: true, service: "mediaforge-orchestrator", renderer: "dry-run" });
+      return send(response, 200, {
+        ok: true,
+        service: "mediaforge-orchestrator",
+        renderer: process.env.MEDIAFORGE_RENDERER ?? "dry-run"
+      });
     }
 
     if (request.method === "POST" && url.pathname === "/v1/jobs") {
@@ -48,6 +52,7 @@ const server = createServer(async (request, response) => {
       if (!validation.ok) return send(response, 400, { ok: false, errors: validation.errors });
 
       const id = randomUUID();
+      const inputProject = payload.project;
       const job = {
         id,
         status: "queued",
@@ -55,11 +60,13 @@ const server = createServer(async (request, response) => {
         updatedAt: new Date().toISOString(),
         prompt: payload.prompt,
         project: {
-          title: payload.project.title,
-          durationSeconds: payload.project.durationSeconds ?? 15,
-          aspectRatio: payload.project.aspectRatio ?? "9:16",
-          outputs: payload.project.outputs ?? ["video"],
-          renderer: payload.project.renderer ?? "hyperframes"
+          title: inputProject.title,
+          durationSeconds: inputProject.durationSeconds ?? 15,
+          aspectRatio: inputProject.aspectRatio ?? "9:16",
+          outputs: inputProject.outputs ?? ["video"],
+          renderer: inputProject.renderer ?? "hyperframes",
+          sourceDir: inputProject.sourceDir ?? null,
+          outputName: inputProject.outputName ?? null
         },
         voice: payload.voice ?? null,
         assets: payload.assets ?? [],
