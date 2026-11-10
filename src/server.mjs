@@ -9,6 +9,8 @@ import {
   isSafeRelativePath
 } from "./job-schema.mjs";
 import { handleVideosSecretsMcp } from "./videos-secrets-mcp.mjs";
+import { authenticateBearer, handleOAuth } from "./oauth.mjs";
+import { handlePanel } from "./panel.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? "127.0.0.1";
 const port = Number(process.env.MEDIAFORGE_PORT ?? 8787);
@@ -35,6 +37,17 @@ async function parseBody(request) {
     }
   }
   return JSON.parse(raw || "{}");
+}
+
+async function readRawBody(request) {
+  let raw = "";
+  for await (const chunk of request) {
+    raw += chunk;
+    if (Buffer.byteLength(raw, "utf8") > MAX_PROJECT_BYTES + 2_000_000) {
+      throw new Error("request body too large");
+    }
+  }
+  return raw;
 }
 
 function normalizeProjectFiles(files) {
@@ -211,6 +224,40 @@ const server = createServer(async (request, response) => {
           }
         },
         rendererStatus
+      });
+    }
+
+    if (url.pathname === "/.well-known/oauth-protected-resource"
+      || url.pathname === "/.well-known/oauth-protected-resource/mcp") {
+      return handleOAuth({ request, response, route: "resource", readRawBody, isAdminSession });
+    }
+
+    if (url.pathname === "/.well-known/oauth-authorization-server") {
+      return handleOAuth({ request, response, route: "server", readRawBody, isAdminSession });
+    }
+
+    if (url.pathname === "/oauth/register"
+      || url.pathname === "/oauth/authorize"
+      || url.pathname === "/oauth/token") {
+      return handleOAuth({
+        request,
+        response,
+        route: url.pathname.split("/").filter(Boolean)[1],
+        readRawBody,
+        isAdminSession
+      });
+    }
+
+    if (url.pathname === "/" || url.pathname === "/dashboard"
+      || url.pathname.startsWith("/api/")) {
+      return handlePanel({
+        request,
+        response,
+        parseBody,
+        createJob,
+        listJobs,
+        rendererStatus,
+        authenticateBearer
       });
     }
 
