@@ -16,7 +16,11 @@ function requireSeparator() {
 }
 
 function commandForPlatform() {
-  if (process.env.HYPERFRAMES_BIN) return process.env.HYPERFRAMES_BIN;
+  const configured = process.env.HYPERFRAMES_BIN;
+  if (configured) {
+    if (process.platform === "win32" && configured.toLowerCase() === "npx") return "npx.cmd";
+    return configured;
+  }
   return process.platform === "win32" ? "npx.cmd" : "npx";
 }
 
