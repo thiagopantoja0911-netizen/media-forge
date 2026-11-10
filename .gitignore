@@ -1,0 +1,11 @@
+node_modules/
+.mediaforge/
+.env
+.env.*
+!.env.example
+dist/
+coverage/
+*.mp4
+*.mov
+*.wav
+*.mp3
