@@ -4,7 +4,7 @@ import { hashSecret, randomToken, verifyPassword, verifySecret, readState, updat
 const SCOPES = ["videos:read", "videos:write", "offline_access"];
 
 function issuer() {
-  return (process.env.MEDIAFORGE_OAUTH_ISSUER ?? "").replace(/\\/$/, "")
+  return (process.env.MEDIAFORGE_OAUTH_ISSUER ?? "").replace(/\/$/, "")
     || "http://" + (process.env.MEDIAFORGE_HOST ?? "127.0.0.1") + ":" + (process.env.MEDIAFORGE_PORT ?? "8787");
 }
 
@@ -62,7 +62,7 @@ function parseForm(raw) {
 }
 
 function validScopes(value) {
-  const scopes = [...new Set(String(value ?? "videos:read videos:write offline_access").trim().split(/\\s+/).filter(Boolean))];
+  const scopes = [...new Set(String(value ?? "videos:read videos:write offline_access").trim().split(/\s+/).filter(Boolean))];
   if (!scopes.length || scopes.some((scope) => !SCOPES.includes(scope))) {
     const error = new Error("invalid_scope");
     error.code = "invalid_scope";
@@ -72,7 +72,7 @@ function validScopes(value) {
 }
 
 function validRedirect(uri) {
-  if (typeof uri !== "string" || uri.length > 1200 || /[\\x00-\\x20\\x7f]/.test(uri)) return false;
+  if (typeof uri !== "string" || uri.length > 1200 || /[\x00-\x20\x7f]/.test(uri)) return false;
   let parsed;
   try { parsed = new URL(uri); } catch { return false; }
   if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.hash || parsed.port) return false;
