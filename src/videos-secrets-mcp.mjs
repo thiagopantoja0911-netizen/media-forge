@@ -47,7 +47,7 @@ export const VIDEOS_SECRETS_TOOLS = [
     description: "Consulta o estado e o artefato de um job.",
     inputSchema: {
       type: "object",
-      properties: { id: { type: "string", pattern: "^[a-f0-9]{32}$" } },
+      properties: { id: { type: "string", pattern: "^(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$" } },
       required: ["id"]
     }
   }
