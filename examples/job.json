@@ -1,0 +1,20 @@
+{
+  "prompt": "Crie um vídeo vertical de 15 segundos para Reels sobre uma ideia que vira movimento. Comece com um gancho visual, use tipografia cinética, narração feminina em português do Brasil, trilha discreta e CTA sutil.",
+  "project": {
+    "title": "Ideia que vira movimento",
+    "durationSeconds": 15,
+    "aspectRatio": "9:16",
+    "outputs": ["video", "audio", "project"],
+    "renderer": "hyperframes"
+  },
+  "voice": {
+    "provider": "voicestudio",
+    "language": "pt-BR",
+    "style": "feminina, clara, editorial"
+  },
+  "assets": [],
+  "metadata": {
+    "audience": "criadores e pequenos negócios",
+    "qualityPreset": "social-premium"
+  }
+}
