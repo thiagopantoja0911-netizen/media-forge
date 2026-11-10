@@ -10,64 +10,74 @@ Fluxo-alvo:
 
 ChatGPT → MediaForge Orchestrator → MediaForge Local Worker → HyperFrames / VoiceStudio / FilmCraft → arquivos locais
 
-## Componentes
+## Estado atual
 
-- Orchestrator: API local para jobs, status e histórico.
-- Job contract: formato único para prompt, roteiro, áudio, vídeo e saídas.
-- Worker: executor local com fila persistente e retries.
-- Render adapters: integrações isoladas para HyperFrames, VoiceStudio, FilmCraft e geradores de assets.
-- Quality gate: validação de duração, proporção, áudio, resolução, área segura e arquivos finais.
-
-## Estado inicial
-
-Esta primeira versão contém:
+O repositório já contém:
 
 - API HTTP local;
 - contrato de job validável;
 - fila persistente em disco;
-- endpoint de saúde;
-- worker em modo dry-run para validar o pipeline sem destruir tempo de renderização;
-- exemplo de job;
-- documentação da arquitetura.
+- worker em modo dry-run;
+- adapter inicial real para HyperFrames CLI;
+- exemplo de job e documentação da arquitetura.
 
-O dry-run gera um plano de execução. Os adaptadores reais serão conectados depois que o contrato estiver estável.
+O modo dry-run continua sendo o padrão. Ele valida o fluxo e gera um plano sem consumir tempo de renderização.
 
 ## Uso
 
-Requisitos: Node.js 20 ou superior.
+Requisitos: Node.js 22 ou superior para o CLI HyperFrames.
 
     npm run validate
     npm start
 
-Por padrão, a API escuta em http://127.0.0.1:8787.
-
-Criar um job:
-
-    curl -X POST http://127.0.0.1:8787/v1/jobs ^
-      -H "content-type: application/json" ^
-      --data-binary "@examples/job.json"
-
-Executar o worker uma vez:
+Em outro terminal:
 
     npm run worker:once
 
-Executar o worker continuamente:
+Por padrão, a API escuta em http://127.0.0.1:8787.
 
+Para ativar o renderer real:
+
+    set MEDIAFORGE_RENDERER=hyperframes
     npm run worker
 
-## Segurança operacional
+O worker espera que o job indique project.sourceDir, relativo a MEDIAFORGE_PROJECTS_DIR. O diretório do projeto precisa conter index.html e assets locais permitidos.
 
-- O serviço escuta em localhost por padrão.
-- O job não aceita caminhos absolutos nem referências externas durante a renderização.
-- Tokens e chaves ficam fora do Git.
-- Jobs e assets devem ser tratados como dados não confiáveis.
-- Projetos de terceiros serão integrados por adaptadores versionados e revisados.
+Exemplo de job:
+
+    {
+      "prompt": "Crie um vídeo vertical de 15 segundos com tipografia cinética.",
+      "project": {
+        "title": "Teste MediaForge",
+        "sourceDir": "demo-project",
+        "durationSeconds": 15,
+        "aspectRatio": "9:16",
+        "outputs": ["video"],
+        "renderer": "hyperframes"
+      }
+    }
+
+## API
+
+POST /v1/jobs cria um job e retorna o ID.
+
+GET /v1/jobs/:id retorna estado, progresso, erro e artefatos.
+
+GET /health retorna o estado do orquestrador.
 
 ## Próximas etapas
 
-1. Conectar o adapter HyperFrames ao renderer local.
+1. Criar um template HyperFrames validado para o MediaForge.
 2. Conectar geração de voz e narração.
 3. Adicionar geração/seleção de assets visuais.
 4. Adicionar montagem FilmCraft e presets profissionais.
 5. Criar um MCP/plugin do MediaForge para o ChatGPT.
 6. Adicionar preview, cache, retry, métricas e exportação multi-formato.
+
+## Segurança operacional
+
+- O serviço escuta em localhost por padrão.
+- O job só aceita diretórios relativos para impedir escape do workspace.
+- Tokens e chaves ficam fora do Git.
+- Jobs e assets devem ser tratados como dados não confiáveis.
+- Projetos de terceiros serão integrados por adaptadores versionados e revisados.
