@@ -3,13 +3,67 @@ import { readFile } from "node:fs/promises";
 
 const RATIOS = new Set(["16:9", "9:16", "1:1"]);
 const OUTPUTS = new Set(["video", "audio", "project"]);
+export const MAX_PROJECT_FILES = 80;
+export const MAX_PROJECT_BYTES = 24 * 1024 * 1024;
 
-function isSafeRelativePath(value) {
+export function isSafeRelativePath(value) {
   return typeof value === "string"
     && value.length > 0
     && !isAbsolute(value)
     && !value.includes("\0")
     && !value.split(/[\\/]/).includes("..");
+}
+
+function fileBytes(file) {
+  if (typeof file.content === "string") return Buffer.byteLength(file.content, "utf8");
+  if (typeof file.contentBase64 === "string") return Buffer.from(file.contentBase64, "base64").byteLength;
+  return 0;
+}
+
+export function validateProjectFiles(files) {
+  const errors = [];
+  if (!Array.isArray(files) || files.length === 0) {
+    return { ok: false, errors: ["projectFiles must be a non-empty array"], bytes: 0 };
+  }
+  if (files.length > MAX_PROJECT_FILES) {
+    errors.push("projectFiles may contain at most " + MAX_PROJECT_FILES + " files");
+  }
+
+  let bytes = 0;
+  const paths = new Set();
+  for (const [index, file] of files.entries()) {
+    if (!file || typeof file !== "object") {
+      errors.push("projectFiles[" + index + "] must be an object");
+      continue;
+    }
+    if (!isSafeRelativePath(file.path)) {
+      errors.push("projectFiles[" + index + "].path must be a safe relative path");
+    } else if (paths.has(file.path)) {
+      errors.push("projectFiles contains duplicate path: " + file.path);
+    } else {
+      paths.add(file.path);
+    }
+
+    const hasText = typeof file.content === "string";
+    const hasBinary = typeof file.contentBase64 === "string";
+    if (hasText === hasBinary) {
+      errors.push("projectFiles[" + index + "] must contain exactly one of content or contentBase64");
+    }
+    if (hasBinary && !/^[A-Za-z0-9+/]*={0,2}$/.test(file.contentBase64)) {
+      errors.push("projectFiles[" + index + "].contentBase64 is invalid");
+    }
+
+    bytes += fileBytes(file);
+  }
+
+  if (!paths.has("index.html")) {
+    errors.push("projectFiles must include index.html");
+  }
+  if (bytes > MAX_PROJECT_BYTES) {
+    errors.push("projectFiles exceed the 24 MB project limit");
+  }
+
+  return { ok: errors.length === 0, errors, bytes };
 }
 
 export function validateJob(input) {
