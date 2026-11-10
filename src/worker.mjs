@@ -1,12 +1,14 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
 
 const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
 const jobsDir = join(dataDir, "jobs");
 const plansDir = join(dataDir, "plans");
 const once = process.argv.includes("--once");
 const intervalMs = Number(process.env.MEDIAFORGE_POLL_MS ?? 1500);
+const rendererMode = process.env.MEDIAFORGE_RENDERER ?? "dry-run";
 
 await mkdir(jobsDir, { recursive: true });
 await mkdir(plansDir, { recursive: true });
@@ -29,6 +31,16 @@ async function processJob(job) {
   job.status = "processing";
   job.progress = 10;
   await save(job);
+
+  if (rendererMode === "hyperframes" && job.project.renderer === "hyperframes") {
+    const result = await renderWithHyperFrames(job);
+    job.status = "completed";
+    job.progress = 100;
+    job.result = result;
+    await save(job);
+    console.log("Rendered job " + job.id);
+    return;
+  }
 
   const plan = {
     id: randomUUID(),
@@ -55,7 +67,7 @@ async function processJob(job) {
   job.result = {
     mode: "dry-run",
     planPath: join(plansDir, job.id + ".json"),
-    note: "Renderer adapter not connected yet; this job produced a validated execution plan."
+    note: "Renderer adapter not enabled; this job produced a validated execution plan."
   };
   await save(job);
   console.log("Prepared job " + job.id);
@@ -63,7 +75,17 @@ async function processJob(job) {
 
 async function loop() {
   const job = await nextQueuedJob();
-  if (job) await processJob(job);
+  if (job) {
+    try {
+      await processJob(job);
+    } catch (error) {
+      job.status = "failed";
+      job.progress = 0;
+      job.error = { message: error.message, code: error.code ?? "RENDER_FAILED" };
+      await save(job);
+      console.error("Job " + job.id + " failed: " + error.message);
+    }
+  }
   if (!once) setTimeout(loop, intervalMs);
 }
 
