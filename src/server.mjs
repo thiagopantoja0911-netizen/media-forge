@@ -10,7 +10,7 @@ import {
 } from "./job-schema.mjs";
 import { handleVideosSecretsMcp } from "./videos-secrets-mcp.mjs";
 import { authenticateBearer, handleOAuth } from "./oauth.mjs";
-import { handlePanel } from "./panel.mjs";
+import { handlePanel, isAdminSession } from "./panel.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? "127.0.0.1";
 const port = Number(process.env.MEDIAFORGE_PORT ?? 8787);
@@ -223,7 +223,8 @@ const server = createServer(async (request, response) => {
             throw error;
           }
         },
-        rendererStatus
+        rendererStatus,
+        authenticateBearer
       });
     }
 
@@ -256,8 +257,7 @@ const server = createServer(async (request, response) => {
         parseBody,
         createJob,
         listJobs,
-        rendererStatus,
-        authenticateBearer
+        rendererStatus
       });
     }
 
