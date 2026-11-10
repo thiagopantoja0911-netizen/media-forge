@@ -16,6 +16,7 @@ const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
 const jobsDir = join(dataDir, "jobs");
 const workerStatusFile = join(dataDir, "worker-status.json");
 const projectsRoot = resolve(process.env.MEDIAFORGE_PROJECTS_DIR ?? join(dataDir, "projects"));
+const JOB_ID_PATTERN = /^(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i;
 
 await mkdir(jobsDir, { recursive: true });
 await mkdir(projectsRoot, { recursive: true });
@@ -82,7 +83,7 @@ async function loadJob(id) {
 }
 
 async function listJobs(limit = 50) {
-  const names = (await readdir(jobsDir)).filter((name) => /^[a-f0-9]{32}\.json$/.test(name));
+  const names = (await readdir(jobsDir)).filter((name) => name.endsWith(".json") && JOB_ID_PATTERN.test(name.slice(0, -5)));
   const jobs = [];
   for (const name of names) {
     try {
