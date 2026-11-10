@@ -27,7 +27,9 @@ async function parseBody(request) {
   let raw = "";
   for await (const chunk of request) {
     raw += chunk;
-    if (raw.length > MAX_PROJECT_BYTES + 2_000_000) throw new Error("request body too large");
+    if (Buffer.byteLength(raw, "utf8") > MAX_PROJECT_BYTES + 2_000_000) {
+      throw new Error("request body too large");
+    }
   }
   return JSON.parse(raw || "{}");
 }
@@ -45,7 +47,8 @@ async function materializeProject(jobId, files) {
   for (const file of files) {
     if (!isSafeRelativePath(file.path)) throw new Error("unsafe project file path");
     const target = resolve(root, file.path);
-    if (target !== root && !target.startsWith(root + "\\" ) && !target.startsWith(root + "/")) {
+    const relativeTarget = target.slice(root.length);
+    if (target !== root && !relativeTarget.startsWith("\\") && !relativeTarget.startsWith("/")) {
       throw new Error("project file escapes project root");
     }
     await mkdir(dirname(target), { recursive: true });
@@ -84,10 +87,12 @@ const server = createServer(async (request, response) => {
 
       const id = randomUUID();
       const inputProject = payload.project;
-      const sourceDir = payload.projectFiles ? id : (inputProject.sourceDir ?? null);
+      const hasInlineFiles = Boolean(payload.projectFiles);
+      const sourceDir = hasInlineFiles ? id : (inputProject.sourceDir ?? null);
       const job = {
         id,
         status: "queued",
+        attempts: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         prompt: payload.prompt,
@@ -99,8 +104,8 @@ const server = createServer(async (request, response) => {
           renderer: inputProject.renderer ?? "hyperframes",
           sourceDir,
           outputName: inputProject.outputName ?? null,
-          inlineFiles: Boolean(payload.projectFiles),
-          fileCount: fileValidation.bytes ? payload.projectFiles.length : 0,
+          inlineFiles: hasInlineFiles,
+          fileCount: hasInlineFiles ? payload.projectFiles.length : 0,
           fileBytes: fileValidation.bytes
         },
         voice: payload.voice ?? null,
@@ -108,7 +113,7 @@ const server = createServer(async (request, response) => {
         metadata: payload.metadata ?? {}
       };
 
-      if (payload.projectFiles) await materializeProject(id, payload.projectFiles);
+      if (hasInlineFiles) await materializeProject(id, payload.projectFiles);
       await saveJob(job);
       return send(response, 202, { ok: true, job });
     }
