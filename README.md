@@ -4,7 +4,7 @@ Orquestrador local para criação de áudio e vídeo a partir de prompts enviado
 
 ## Visão
 
-ChatGPT transforma o prompt em um job estruturado. O MediaForge recebe esse job, valida o projeto, coloca na fila e entrega a execução ao worker local. O worker combina geração de assets, voz, composição, edição e renderização para salvar os arquivos no computador.
+ChatGPT transforma o prompt em um job estruturado. O MediaForge recebe o prompt e os arquivos HyperFrames, valida o projeto, coloca na fila e entrega a execução ao worker local.
 
 Fluxo-alvo:
 
@@ -16,10 +16,11 @@ O repositório já contém:
 
 - API HTTP local;
 - contrato de job validável;
+- recebimento de projectFiles com index.html, composições e assets;
 - fila persistente em disco;
 - worker em modo dry-run;
 - adapter inicial real para HyperFrames CLI;
-- exemplo de job e documentação da arquitetura.
+- CI para validar sintaxe e contrato.
 
 O modo dry-run continua sendo o padrão. Ele valida o fluxo e gera um plano sem consumir tempo de renderização.
 
@@ -41,21 +42,34 @@ Para ativar o renderer real:
     set MEDIAFORGE_RENDERER=hyperframes
     npm run worker
 
-O worker espera que o job indique project.sourceDir, relativo a MEDIAFORGE_PROJECTS_DIR. O diretório do projeto precisa conter index.html e assets locais permitidos.
+## Job enviado pelo ChatGPT
 
-Exemplo de job:
+O endpoint POST /v1/jobs aceita o prompt e projectFiles no mesmo payload. projectFiles deve incluir index.html e pode conter até 80 arquivos, com limite total de 24 MB.
+
+Exemplo:
 
     {
       "prompt": "Crie um vídeo vertical de 15 segundos com tipografia cinética.",
       "project": {
         "title": "Teste MediaForge",
-        "sourceDir": "demo-project",
         "durationSeconds": 15,
         "aspectRatio": "9:16",
         "outputs": ["video"],
         "renderer": "hyperframes"
-      }
+      },
+      "projectFiles": [
+        {
+          "path": "index.html",
+          "content": "<!doctype html>..."
+        },
+        {
+          "path": "compositions/main.html",
+          "content": "<!doctype html>..."
+        }
+      ]
     }
+
+Os arquivos são materializados em MEDIAFORGE_PROJECTS_DIR/<job-id> e o worker renderiza a pasta do job. Assets binários podem ser enviados em contentBase64.
 
 ## API
 
@@ -77,7 +91,7 @@ GET /health retorna o estado do orquestrador.
 ## Segurança operacional
 
 - O serviço escuta em localhost por padrão.
-- O job só aceita diretórios relativos para impedir escape do workspace.
+- O job aceita somente paths relativos e limita arquivos/projeto.
 - Tokens e chaves ficam fora do Git.
 - Jobs e assets devem ser tratados como dados não confiáveis.
 - Projetos de terceiros serão integrados por adaptadores versionados e revisados.
