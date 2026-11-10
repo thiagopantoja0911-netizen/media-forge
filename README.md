@@ -17,10 +17,12 @@ O repositório já contém:
 - API HTTP local;
 - contrato de job validável;
 - recebimento de projectFiles com index.html, composições e assets;
+- contrato OpenAPI em openapi.yaml para a futura camada de plugin/MCP;
 - fila persistente em disco;
 - worker em modo dry-run;
 - adapter inicial real para HyperFrames CLI;
-- CI para validar sintaxe e contrato.
+- retries limitados para falhas do renderer;
+- testes automatizados e CI.
 
 O modo dry-run continua sendo o padrão. Ele valida o fluxo e gera um plano sem consumir tempo de renderização.
 
@@ -41,6 +43,8 @@ Para ativar o renderer real:
 
     set MEDIAFORGE_RENDERER=hyperframes
     npm run worker
+
+Para expor a API a um plugin/MCP, use o contrato openapi.yaml e mantenha o serviço protegido por uma ponte local autenticada. Não exponha a porta diretamente à internet.
 
 ## Job enviado pelo ChatGPT
 
@@ -85,8 +89,8 @@ GET /health retorna o estado do orquestrador.
 2. Conectar geração de voz e narração.
 3. Adicionar geração/seleção de assets visuais.
 4. Adicionar montagem FilmCraft e presets profissionais.
-5. Criar um MCP/plugin do MediaForge para o ChatGPT.
-6. Adicionar preview, cache, retry, métricas e exportação multi-formato.
+5. Criar a ponte MCP/plugin do MediaForge para o ChatGPT.
+6. Adicionar preview, cache, métricas e exportação multi-formato.
 
 ## Segurança operacional
 
