@@ -14,6 +14,11 @@ ChatGPT → MediaForge MCP/API → MediaForge Local Worker → HyperFrames / Voi
 
 O repositório contém:
 
+- servidor OAuth 2.1 com PKCE e registro dinâmico;
+- painel web de configuração e administração;
+- estado persistente protegido com hashes;
+- scripts de instalação e execução do worker Windows;
+
 - API HTTP local;
 - endpoint MCP compatível com Vídeos Secrets;
 - contrato de job validável;
@@ -74,6 +79,7 @@ Veja:
 
 - `docs/VIDEOS_SECRETS_BRIDGE.md`
 - `docs/VIDEOS_SECRETS_MIGRATION.md`
+- `docs/MEDIAFORGE_DEPLOYMENT.md`
 
 ## Segurança operacional
 
