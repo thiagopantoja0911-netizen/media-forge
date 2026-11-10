@@ -1,0 +1,133 @@
+openapi: 3.1.0
+info:
+  title: MediaForge Local Orchestrator
+  version: 0.1.0
+  description: >
+    Contrato local para o orquestrador que recebe prompts e projetos HyperFrames,
+    enfileira o trabalho e devolve artefatos no computador do usuário.
+servers:
+  - url: http://127.0.0.1:8787
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        "200":
+          description: Orchestrator health
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, service, renderer]
+                properties:
+                  ok: { type: boolean }
+                  service: { type: string }
+                  renderer: { type: string }
+  /v1/jobs:
+    post:
+      operationId: createMediaJob
+      summary: Create an audio or video job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaJobRequest"
+      responses:
+        "202":
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaJobResponse"
+        "400":
+          description: Invalid job
+  /v1/jobs/{jobId}:
+    get:
+      operationId: getMediaJob
+      summary: Get job status and artifacts
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaJobResponse"
+        "404":
+          description: Job not found
+components:
+  schemas:
+    MediaJobRequest:
+      type: object
+      required: [prompt, project]
+      properties:
+        prompt:
+          type: string
+          minLength: 3
+        project:
+          $ref: "#/components/schemas/Project"
+        projectFiles:
+          type: array
+          maxItems: 80
+          description: Must include index.html. Total decoded size is limited to 24 MB.
+          items:
+            $ref: "#/components/schemas/ProjectFile"
+        voice:
+          type: object
+          additionalProperties: true
+        assets:
+          type: array
+          items: { type: object, additionalProperties: true }
+        metadata:
+          type: object
+          additionalProperties: true
+    Project:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1 }
+        durationSeconds: { type: number, minimum: 1, maximum: 3600, default: 15 }
+        aspectRatio:
+          type: string
+          enum: ["16:9", "9:16", "1:1"]
+          default: "9:16"
+        outputs:
+          type: array
+          items:
+            type: string
+            enum: [video, audio, project]
+        renderer:
+          type: string
+          enum: [hyperframes, dry-run]
+          default: hyperframes
+        outputName:
+          type: string
+          description: Safe filename only, without path separators.
+    ProjectFile:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          description: Relative path, no parent traversal. The root project must include index.html.
+        content:
+          type: string
+        contentBase64:
+          type: string
+          contentEncoding: base64
+      oneOf:
+        - required: [content]
+        - required: [contentBase64]
+    MediaJobResponse:
+      type: object
+      required: [ok, job]
+      properties:
+        ok: { type: boolean }
+        job:
+          type: object
+          additionalProperties: true
