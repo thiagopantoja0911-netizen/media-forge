@@ -16,6 +16,7 @@ jobs:
           node-version: 22
       - run: node --check src/job-schema.mjs
       - run: node --check src/server.mjs
+      - run: node --check src/videos-secrets-mcp.mjs
       - run: node --check src/worker.mjs
       - run: node --check src/renderers/hyperframes.mjs
       - run: node --test test/job-schema.test.mjs
