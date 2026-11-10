@@ -44,7 +44,7 @@ function cookies(request) {
   }).filter(([key]) => key));
 }
 
-async function isAdminSession(request) {
+export async function isAdminSession(request) {
   const state = await readState();
   const session = verifySession(cookies(request)[SESSION_COOKIE], state.settings.sessionSecret);
   return Boolean(session?.role === "admin");
