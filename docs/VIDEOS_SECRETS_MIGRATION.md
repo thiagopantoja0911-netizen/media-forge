@@ -12,13 +12,18 @@ Branch: `migration/videos-secrets-to-mediaforge`
 - Heartbeat do worker em `.mediaforge/worker-status.json`.
 - Status de fila e worker em `/health`.
 - Configuração de autenticação Bearer via variáveis de ambiente.
+- Servidor OAuth 2.1 com PKCE, DCR, refresh token rotativo e discovery.
+- Painel web de configuração inicial, login e rotação de credenciais.
+- Estado persistente com hashes e lock de escrita.
+- Scripts de instalação e execução do worker Windows.
+- Guia de deploy Node.js no Hostinger.
 - Documentação do contrato e do processo de cutover.
 
 ## O que permanece no Vídeos Secrets durante a transição
 
-- OAuth do domínio `videos.secretssystem.online`.
-- Painel PHP e configuração inicial.
-- Instalador atual do agente Windows.
+- URL oficial e OAuth ainda ativos como rollback.
+- Painel PHP antigo ainda publicado.
+- Instalador binário antigo ainda publicado.
 - Fila e estado de produção do Hostinger.
 - Renderização de produção.
 
