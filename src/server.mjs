@@ -82,7 +82,7 @@ async function loadJob(id) {
 }
 
 async function listJobs(limit = 50) {
-  const names = (await readdir(jobsDir)).filter((name) => /^[a-f0-9]{32}\\.json$/.test(name));
+  const names = (await readdir(jobsDir)).filter((name) => /^[a-f0-9]{32}\.json$/.test(name));
   const jobs = [];
   for (const name of names) {
     try {
