@@ -6,6 +6,8 @@ import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
 const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
 const jobsDir = join(dataDir, "jobs");
 const plansDir = join(dataDir, "plans");
+const workerStatusFile = join(dataDir, "worker-status.json");
+const workerId = process.env.MEDIAFORGE_WORKER_ID ?? randomUUID();
 const once = process.argv.includes("--once");
 const intervalMs = Number(process.env.MEDIAFORGE_POLL_MS ?? 1500);
 const rendererMode = process.env.MEDIAFORGE_RENDERER ?? "dry-run";
@@ -14,6 +16,14 @@ const maxRetries = Number.isFinite(configuredRetries) ? Math.max(0, Math.floor(c
 
 await mkdir(jobsDir, { recursive: true });
 await mkdir(plansDir, { recursive: true });
+
+async function writeWorkerStatus() {
+  await writeFile(workerStatusFile, JSON.stringify({
+    workerId,
+    renderer: rendererMode,
+    lastSeen: new Date().toISOString()
+  }) + "\n");
+}
 
 async function save(job) {
   job.updatedAt = new Date().toISOString();
@@ -83,6 +93,7 @@ async function processJob(job) {
 }
 
 async function loop() {
+  await writeWorkerStatus();
   const job = await nextQueuedJob();
   if (job) {
     try {
