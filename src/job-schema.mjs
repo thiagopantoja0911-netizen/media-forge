@@ -1,7 +1,16 @@
+import { isAbsolute } from "node:path";
 import { readFile } from "node:fs/promises";
 
 const RATIOS = new Set(["16:9", "9:16", "1:1"]);
 const OUTPUTS = new Set(["video", "audio", "project"]);
+
+function isSafeRelativePath(value) {
+  return typeof value === "string"
+    && value.length > 0
+    && !isAbsolute(value)
+    && !value.includes("\0")
+    && !value.split(/[\\/]/).includes("..");
+}
 
 export function validateJob(input) {
   const errors = [];
@@ -37,8 +46,17 @@ export function validateJob(input) {
     errors.push("voice must be an object when provided");
   }
 
-  if (project.renderer && project.renderer !== "hyperframes") {
-    errors.push("project.renderer currently supports hyperframes");
+  if (project.renderer && !["hyperframes", "dry-run"].includes(project.renderer)) {
+    errors.push("project.renderer must be hyperframes or dry-run");
+  }
+
+  if (project.sourceDir !== undefined && !isSafeRelativePath(project.sourceDir)) {
+    errors.push("project.sourceDir must be a safe relative path");
+  }
+
+  if (project.outputName !== undefined
+      && (!isSafeRelativePath(project.outputName) || project.outputName.includes("/") || project.outputName.includes("\\"))) {
+    errors.push("project.outputName must be a safe filename");
   }
 
   return { ok: errors.length === 0, errors };
