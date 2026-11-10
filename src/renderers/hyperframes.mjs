@@ -24,9 +24,20 @@ function commandForPlatform() {
   return process.platform === "win32" ? "npx.cmd" : "npx";
 }
 
+function quoteWindowsArg(value) {
+  const text = String(value);
+  if (text.length > 0 && !/[\s"&|<>^]/.test(text)) return text;
+  return '"' + text.replace(/(\\*)"/g, "$1$1\\\"").replace(/(\\+)$/g, "$1$1") + '"';
+}
+
 function run(command, args, cwd) {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, {
+    const isWindowsCmd = process.platform === "win32" && command.toLowerCase().endsWith(".cmd");
+    const spawnCommand = isWindowsCmd ? (process.env.ComSpec ?? "cmd.exe") : command;
+    const spawnArgs = isWindowsCmd
+      ? ["/d", "/s", "/c", [command, ...args].map(quoteWindowsArg).join(" ")]
+      : args;
+    const child = spawn(spawnCommand, spawnArgs, {
       cwd,
       shell: false,
       windowsHide: true,
