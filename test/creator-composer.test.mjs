@@ -41,12 +41,16 @@ test("builds a five-scene editable HyperFrames package without creating a render
   assert.match(built.projectFiles[0].content, /data-track-kind="captions"/);
   const captions = built.projectFiles.find(file => file.path === "compositions/captions.html").content;
   assert.match(captions, /class="clip caption-block"/);
+  assert.match(captions, /bottom: 1200px/);
+  assert.match(captions, /Abertura narrada/);
+  assert.match(built.projectFiles[0].content, /style="z-index:80;pointer-events:none"/);
+  const transitionMarkers = ["fx-1-wash", "fx-2-solid", "fx-3-iris", "fx-4-whip"];
   for (let i = 1; i <= 4; i += 1) {
     const id = "transition-0" + i;
     const transition = built.projectFiles.find(file => file.path === "compositions/" + id + ".html").content;
-    assert.match(transition, /class="clip wipe-group"/);
-    assert.match(transition, /stroke-dasharray="1000"/);
+    assert.match(transition, new RegExp(transitionMarkers[i - 1]));
     assert.match(built.projectFiles[0].content, new RegExp('data-composition-id="' + id + '"'));
+    assert.match(built.projectFiles[0].content, new RegExp('z-index:' + (89 + i)));
   }
   for (let i = 1; i <= 5; i += 1) {
     const file = built.projectFiles.find(item => item.path === `compositions/scene-0${i}.html`);
@@ -54,6 +58,7 @@ test("builds a five-scene editable HyperFrames package without creating a render
     assert.match(file.content, /<template>/);
     assert.match(file.content, /class="clip" data-start="0" data-duration=/);
     assert.match(file.content, /window\.__timelines\["scene-0/);
+    assert.match(file.content, /data-var-text="sceneLabel"/);
   }
   assert.equal(built.projectFiles.some(item => item.path.endsWith(".mp3") || item.path.endsWith(".wav")), false);
 });
