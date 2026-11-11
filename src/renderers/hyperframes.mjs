@@ -93,7 +93,7 @@ function renderArgs(job, outputPath) {
   return args;
 }
 
-export async function renderWithHyperFrames(job) {
+export async function renderWithHyperFrames(job, { onProgress = async () => {} } = {}) {
   const sourceDir = job.project.sourceDir;
   if (!sourceDir || isAbsolute(sourceDir) || sourceDir.split(/[\\/]/).includes("..")) {
     const error = new Error("project.sourceDir is required and must be relative to MEDIAFORGE_PROJECTS_DIR");
@@ -121,10 +121,15 @@ export async function renderWithHyperFrames(job) {
   const outputPath = join(outputRoot, outputName);
   const command = commandForPlatform();
 
-  const preflight = job.project.preflight !== false
-    ? await run(command, cliArgs(command, "check", projectDir, "--json", "--no-craft"), projectDir)
-    : null;
+  let preflight = null;
+  if (job.project.preflight !== false) {
+    await onProgress(24, "Executando auditoria completa HyperFrames, incluindo craft pass");
+    preflight = await run(command, cliArgs(command, "check", projectDir, "--json"), projectDir);
+    await onProgress(36, "Auditoria completa HyperFrames aprovada");
+  }
+  await onProgress(40, "Renderizando com o perfil solicitado, sem redução de qualidade");
   const render = await run(command, cliArgs(command, ...renderArgs(job, outputPath)), projectDir);
+  await onProgress(92, "Render concluído; iniciando verificação do arquivo final");
 
   return {
     mode: "hyperframes-cli",
