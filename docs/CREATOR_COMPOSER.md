@@ -8,7 +8,7 @@
 - five independent scene sub-compositions with distinct flat-color editorial layouts;
 - a dedicated captions composition with timed caption groups positioned inside the portrait title-safe area;
 - four distinct deterministic transitions: editorial flash, scribble wipe, iris reveal and whip sweep;
-- stable IDs, paused GSAP timelines, timed clips, per-scene editable headline/color variables and `.motion.json` seek assertions for scene titles, labels, captions and transition arrivals;
+- stable IDs, paused GSAP timelines, timed clips, per-scene editable headline/color variables and a root `index.motion.json` seek assertion manifest for scene titles, labels, captions and transition arrivals;
 - escaped user text and a `creator-storyboard.json` source record;
 - default delivery profile: 2160 × 3840, 60 FPS, High.
 
