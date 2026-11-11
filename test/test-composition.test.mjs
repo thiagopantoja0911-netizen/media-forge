@@ -13,6 +13,8 @@ test("MediaForge smoke-test composition satisfies the HyperFrames root and timel
   assert.match(TEST_COMPOSITION_HTML, /class="clip" data-start="0" data-duration="10"/);
   assert.match(TEST_COMPOSITION_HTML, /gsap\.timeline\(\{ paused: true \}\)/);
   assert.match(TEST_COMPOSITION_HTML, /window\.__timelines\["main"\] = timeline/);
+  assert.doesNotMatch(TEST_COMPOSITION_HTML, /transform:\s*scaleX/,
+    "the GSAP-animated progress element must not define a competing CSS transform");
   assert.ok(TEST_COMPOSITION_HTML.indexOf('window.__timelines["main"] = timeline')
     > TEST_COMPOSITION_HTML.lastIndexOf("timeline.fromTo("),
   "the timeline must be registered after all tweens are built");
