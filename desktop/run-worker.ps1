@@ -63,10 +63,26 @@ try {
   while ($true) {
     try {
       Add-Content -LiteralPath $logFile -Encoding UTF8 -Value ("[{0}] Iniciando worker remoto HyperFrames." -f (Get-Date -Format o))
-      & node ".\src\remote-worker-client.mjs" 2>&1 | ForEach-Object {
-        Add-Content -LiteralPath $logFile -Encoding UTF8 -Value ("[{0}] NODE: {1}" -f (Get-Date -Format o), $_.ToString())
+      # Windows PowerShell 5.1 turns native stderr redirected by 2>&1 into
+      # PowerShell error records. With ErrorActionPreference=Stop, even a
+      # harmless console.warn kills Node (and the active video render).
+      # Scope Continue to the native process only, preserving strict errors
+      # everywhere else in this runner.
+      $previousPreference = $ErrorActionPreference
+      $nativeExitCode = 1
+      try {
+        $ErrorActionPreference = "Continue"
+        & node ".\src\remote-worker-client.mjs" 2>&1 | ForEach-Object {
+          $message = if ($_ -is [System.Management.Automation.ErrorRecord]) {
+            $_.Exception.Message
+          } else { [string]$_ }
+          Add-Content -LiteralPath $logFile -Encoding UTF8 -Value ("[{0}] NODE: {1}" -f (Get-Date -Format o), $message)
+        }
+        $nativeExitCode = $LASTEXITCODE
+      } finally {
+        $ErrorActionPreference = $previousPreference
       }
-      $exitCode = $LASTEXITCODE
+      $exitCode = $nativeExitCode
       if ($exitCode -eq 0) { $exitCode = 1 }
       Add-Content -LiteralPath $logFile -Encoding UTF8 -Value ("[{0}] Worker encerrou. Código: {1}; reiniciando em {2}s." -f (Get-Date -Format o),$exitCode,$restartDelay)
     } catch {
