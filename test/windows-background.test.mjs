@@ -20,6 +20,8 @@ test("Windows worker is installed and launched as a hidden logon task", async ()
   assert.ok(connector.includes("ProtectedData]::Protect"));
   assert.ok(!connector.includes("MEDIAFORGE_WORKER_TOKEN=$token"));
   assert.match(runner, /remote-worker-client\.mjs/i);
+  assert.ok(runner.includes("Worker saiu inesperadamente com código 0"));
+  assert.ok(runner.includes("$exitCode = 1"));
   assert.doesNotMatch(runner, /WindowStyle Minimized/i);
   assert.match(launcher, /shell\.Run command,\s*0,\s*False/i);
   assert.doesNotMatch(launcher, /cmd\.exe/i);
