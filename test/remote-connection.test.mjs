@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -69,6 +69,19 @@ test("authenticated ChatGPT -> API -> Windows remote worker handshake", async()=
     assert.match(Buffer.from(project.data.files[0].contentBase64,"base64").toString("utf8"),/MediaForge/);
     const heartbeat=await request(base,"/v1/worker/heartbeat",workerToken,"POST",{workerId:"windows-test",jobId:id,leaseId});
     assert.equal(heartbeat.status,200);
+
+    // The Windows worker sends a heartbeat every 15 seconds. The health
+    // endpoint must not mark it offline during that normal interval.
+    await writeFile(join(root,"worker-status.json"),JSON.stringify({
+      workerId:"windows-test",renderer:"hyperframes",
+      lastSeen:new Date(Date.now()-15_000).toISOString()
+    })+"\\n");
+    const healthResponse=await fetch(base+"/health");
+    const health=await healthResponse.json();
+    assert.equal(health.worker.online,true);
+    assert.equal(health.worker.renderer,"hyperframes");
+    assert.match(healthResponse.headers.get("cache-control")||"",/no-store/i);
+
     const complete=await request(base,"/v1/worker/jobs/"+id+"/complete",workerToken,"POST",{
       leaseId,success:true,fileName:"test-4k60.mp4",size:2435,sha256:"c".repeat(64),
       outputPath:"C:\\MediaForge\\test-4k60.mp4",report:{fps:60,width:2160,height:3840}
