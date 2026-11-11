@@ -175,7 +175,7 @@ export async function handleVideosSecretsMcp({
     const status = error.status ?? 400;
     const version = DEFAULT_PROTOCOL;
     if (status === 401) {
-      response.setHeader("www-authenticate", 'Bearer resource_metadata="' + (process.env.MEDIAFORGE_OAUTH_ISSUER ?? "https://mediaforge.salevo.site").replace(/\\/$/, "") + '/.well-known/oauth-protected-resource/mcp", scope="videos:read videos:write"');
+      response.setHeader("www-authenticate", 'Bearer resource_metadata="' + (process.env.MEDIAFORGE_OAUTH_ISSUER ?? "https://mediaforge.salevo.site").replace(/[/]$/, "") + '/.well-known/oauth-protected-resource/mcp", scope="videos:read videos:write"');
     }
     return writeError(response, body?.id ?? null, -32000, error.message, status, version);
   }
@@ -255,7 +255,7 @@ export async function handleVideosSecretsMcp({
     return writeError(response, id, -32602, "Unsupported tool", 400, version);
   } catch (error) {
     const status = error.status ?? 400;
-    if (status === 401) response.setHeader("www-authenticate", 'Bearer resource_metadata="' + (process.env.MEDIAFORGE_OAUTH_ISSUER ?? "https://mediaforge.salevo.site").replace(/\\/$/, "") + '/.well-known/oauth-protected-resource/mcp", scope="videos:read videos:write"');
+    if (status === 401) response.setHeader("www-authenticate", 'Bearer resource_metadata="' + (process.env.MEDIAFORGE_OAUTH_ISSUER ?? "https://mediaforge.salevo.site").replace(/[/]$/, "") + '/.well-known/oauth-protected-resource/mcp", scope="videos:read videos:write"');
     return writeError(response, id, -32603, error.message, status, version);
   }
 }
