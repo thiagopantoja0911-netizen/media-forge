@@ -39,21 +39,6 @@ function validateManifest(manifest) {
   return duration;
 }
 
-function rootHtml(duration) {
-  const hosts = SCENE_IDS.map((id, i) => {
-    const scene = i;
-    const item = i;
-    const source = "compositions/" + id + ".html";
-    const data = manifestSceneDataPlaceholder(scene, item);
-    return data;
-  });
-  return hosts.join("");
-}
-
-function manifestSceneDataPlaceholder() {
-  return "";
-}
-
 function sceneHost(scene, index) {
   const id = SCENE_IDS[index];
   return [
@@ -202,12 +187,12 @@ function sceneHtml(scene, index, duration) {
     <span id="${id}-index" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="6">0${index + 1} / 05</span>
   </div>
   <script>
-    const tl = gsap.timeline({ paused: true });
-    ${motion}
-    ${titleMotion}
-    ${captionMotion}
+    const tl_${id.replaceAll("-", "_")} = gsap.timeline({ paused: true });
+    ${motion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
+    ${titleMotion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
+    ${captionMotion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
     window.__timelines = window.__timelines || {};
-    window.__timelines["${id}"] = tl;
+    window.__timelines["${id}"] = tl_${id.replaceAll("-", "_")};
   </script>
 </template>
 `;
