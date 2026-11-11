@@ -95,8 +95,8 @@ Veja:
 
 ## Creator Studio
 
-O Creator Studio está disponível em `/studio` após autenticação no painel. Ele permite criar briefings, três ganchos, storyboard de cinco cenas, prévia ilustrativa e exportação JSON/TXT. Os rascunhos são guardados no navegador; o módulo não chama APIs nem cria jobs.
+O Creator Studio está disponível em `/studio` após autenticação no painel. Ele permite criar briefings, três ganchos, storyboard de cinco cenas, prévia ilustrativa e exportação JSON/TXT. O botão Gerar pacote HyperFrames envia o briefing ao endpoint autenticado `POST /api/studio/compose` e baixa um pacote editável, sem criar jobs.
 
 A importação do JSON v1 legado é compatível com os rascunhos exportados manualmente de `video.salevo.site/studio/`. O armazenamento local novo usa uma chave separada para não sobrescrever dados do domínio antigo.
 
-**Limite atual:** ainda não gera composição HyperFrames, voz ou MP4. A geração de mídia só será ativada depois da validação do compositor, áudio e QA no Worker Windows. Consulte `docs/CREATOR_STUDIO.md` e `docs/MIGRATION_SALEVO_CREATOR.md`.
+**Limite atual:** gera uma composição tipográfica HyperFrames de protótipo, mas ainda não inclui mídia específica, voz, música ou efeitos. O pacote é marcado `renderReady=false` e não pode ser enviado diretamente à fila. A geração de mídia só será ativada depois da validação de áudio e QA no Worker Windows. Consulte `docs/CREATOR_STUDIO.md` e `docs/MIGRATION_SALEVO_CREATOR.md`.
