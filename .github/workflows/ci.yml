@@ -2,7 +2,7 @@ name: MediaForge CI
 
 on:
   push:
-    branches: [main, feature/conexoes-mediaforge-primeiro]
+    branches: [main, feature/conexoes-mediaforge-primeiro, staging/forge-midjourney-preview-20261111]
   pull_request:
     branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro]
 
