@@ -104,7 +104,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           }
           if(j.status!=="queued" || (j.nextAttemptAt&&Date.parse(j.nextAttemptAt)>Date.now()))continue;
           if(!j.project?.inlineFiles){j.status="failed";j.error={code:"REMOTE_FILES_REQUIRED",message:"Remote worker requires inline project files"};await saveJob(jobsDir,j);continue;}
-          j.status="processing";j.progress=10;j.attempts=(j.attempts||0)+1;
+          j.status="processing";j.progress=10;j.progressMessage="Worker iniciou o trabalho";j.attempts=(j.attempts||0)+1;
           j.workerLease={id:randomUUID(),workerId,expiresAt:new Date(Date.now()+LEASE_MS).toISOString()};
           await saveJob(jobsDir,j);return j;
         }
@@ -112,7 +112,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
       });
       reply(response,200,{ok:true,job:job?{...job,workerLease:undefined}:null,leaseId:job?.workerLease?.id||null});return true;
     }
-    const match=/^\/v1\/worker\/jobs\/([a-f0-9]{32})\/(project|complete)$/.exec(path);
+    const match=/^\/v1\/worker\/jobs\/([a-f0-9]{32})\/(project|progress|complete)$/.exec(path);
     if(match) {
       const id=match[1],action=match[2];
       if(action==="project"&&request.method==="GET"){
@@ -133,6 +133,19 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
         }
         reply(response,200,{ok:true,files});return true;
       }
+      if(action==="progress"&&request.method==="POST"){
+        const body=await parseBody(request,100_000);
+        const result=await updateState(async()=>{
+          const job=await loadJob(jobsDir,id);
+          if(!validLease(job,body.leaseId))return null;
+          const progress=Number(body.progress);
+          job.progress=Number.isFinite(progress)?Math.max(0,Math.min(99,Math.floor(progress))):job.progress;
+          job.progressMessage=String(body.message||"Renderizando").replace(/[\r\n]+/g," ").slice(0,255);
+          await saveJob(job);return job;
+        });
+        if(!result){reply(response,409,{ok:false,error:"LEASE_INVALID"});return true;}
+        reply(response,200,{ok:true,id,progress:result.progress,message:result.progressMessage});return true;
+      }
       if(action==="complete"&&request.method==="POST"){
         const body=await parseBody(request,100_000);
         const result=await updateState(async()=>{
@@ -140,6 +153,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           if(!validLease(job,body.leaseId))return null;
           job.status=body.success===true?"completed":"failed";
           job.progress=body.success===true?100:0;
+          job.progressMessage=body.success===true?"Concluído":"Falhou";
           if(body.success===true){
             job.result={mode:"hyperframes-cli",fileName:String(body.fileName||"").slice(0,240),
               size:Number(body.size)||0,sha256:String(body.sha256||"").slice(0,64),
