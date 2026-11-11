@@ -12,6 +12,7 @@ import { handleVideosSecretsMcp } from "./videos-secrets-mcp.mjs";
 import { authenticateBearer, handleOAuth } from "./oauth.mjs";
 import { handlePanel, isAdminSession } from "./panel.mjs";
 import { handleRemoteWorker } from "./remote-worker-server.mjs";
+import { attachLocalGsap } from "./project-normalizer.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
@@ -23,6 +24,7 @@ const JOB_ID_PATTERN = /^(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-
 
 await mkdir(jobsDir, { recursive: true });
 await mkdir(projectsRoot, { recursive: true });
+const bundledGsap = await readFile(new URL("../assets/gsap.min.js", import.meta.url));
 
 function send(response, status, body) {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -61,8 +63,9 @@ function normalizeProjectFiles(files) {
   });
 }
 
-function normalizePayload(input) {
-  const projectFiles = normalizeProjectFiles(input.projectFiles ?? input.project_files);
+async function normalizePayload(input) {
+  const incomingFiles = normalizeProjectFiles(input.projectFiles ?? input.project_files);
+  const projectFiles = await Promise.resolve(attachLocalGsap(incomingFiles, bundledGsap));
   const project = input.project ?? {
     title: input.title,
     durationSeconds: input.durationSeconds ?? input.duration_seconds,
@@ -117,7 +120,7 @@ async function listJobs(limit = 50) {
 }
 
 async function createJob(rawPayload) {
-  const payload = normalizePayload(rawPayload);
+  const payload = await normalizePayload(rawPayload);
   const validation = validateJob(payload);
   if (!validation.ok) {
     const error = new Error(validation.errors.join("; "));
