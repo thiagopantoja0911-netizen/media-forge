@@ -12,7 +12,7 @@
 - escaped user text and a `creator-storyboard.json` source record;
 - default delivery profile: 2160 × 3840, 60 FPS, High.
 
-VoiceStudio is kept as an independent application/repository (AGPL-3.0). For now, users can export a narration file from VoiceStudio and attach it in Creator Studio; no VoiceStudio source code is copied into MediaForge and no local VoiceStudio API connection is assumed.
+VoiceStudio is kept as an independent application/repository (AGPL-3.0). For now, users can export a narration file from VoiceStudio and attach it in Forge Midjourney; no VoiceStudio source code is copied into MediaForge and no local VoiceStudio API connection is assumed.
 
 ## Deliberate delivery gate
 
