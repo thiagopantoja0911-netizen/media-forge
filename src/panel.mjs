@@ -8,7 +8,7 @@ body{margin:0;background:#090a11;color:#f7f5ff;font:15px system-ui,sans-serif}ma
 <h1>MediaForge</h1><p>Orquestrador de criação e renderização de áudio e vídeo.</p>
 <section id="setup" class="card hidden"><h2>Configuração inicial</h2><p>Defina a senha administrativa e use o código de configuração fornecido no ambiente.</p><form id="setupForm"><label>Código de configuração</label><input id="setupToken" type="password" required><label>Senha administrativa (mínimo 14 caracteres)</label><input id="setupPassword" type="password" minlength="14" required><button>Configurar</button></form><div id="setupOutput" class="mono hidden"></div></section>
 <section id="login" class="card hidden"><h2>Entrar</h2><form id="loginForm"><label>Senha administrativa</label><input id="loginPassword" type="password" required><button>Entrar</button></form></section>
-<section id="dashboard" class="hidden"><div class="row"><div class="stat">Worker: <strong id="worker"></strong></div><div class="stat">Jobs ativos: <strong id="jobs"></strong></div><div class="stat">MCP: <strong id="mcp"></strong></div></div>
+<section id="dashboard" class="hidden"><div class="row"><div class="stat">Worker: <strong id="worker"></strong><div class="muted" id="workerSeen">Aguardando o Windows</div></div><div class="stat">Jobs ativos: <strong id="jobs"></strong></div><div class="stat">MCP: <strong id="mcp"></strong></div></div>
 <div class="card"><h2>Tokens</h2><button id="plugin">Gerar token MCP</button><button id="workerRotate">Gerar token Worker</button><div id="tokenOutput" class="mono hidden"></div></div>
 <div class="card"><h2>Teste controlado</h2><p>O teste só cria o job; a renderização será executada pelo worker Windows conectado.</p><button id="test">Criar job de teste</button><span id="testOutput"></span></div>
 <div class="card"><div class="row"><div><h2>Histórico de renderização</h2><p>Jobs, progresso, perfil solicitado e localização do MP4 no Windows.</p></div><span class="muted" id="lastUpdate">Aguardando atualização</span></div><div class="table-wrap"><table><thead><tr><th>Vídeo</th><th>Duração</th><th>Formato</th><th>Perfil</th><th>Status</th><th>Progresso</th><th>Arquivo local / erro</th></tr></thead><tbody id="jobsBody"><tr><td colspan="7" class="muted">Nenhum vídeo registrado.</td></tr></tbody></table></div></div>
@@ -26,6 +26,7 @@ $("loginForm").onsubmit=async(e)=>{e.preventDefault();try{await api("/api/login"
 async function refresh(){
  const [d,jobsData]=await Promise.all([api("/api/pairing/status"),api("/api/jobs")]);
  msg("worker",d.worker_online?"online":"offline");
+ msg("workerSeen",d.worker_last_seen?"Último sinal: "+new Date(d.worker_last_seen).toLocaleString("pt-BR"):"Aguardando o Windows");
  msg("jobs",String(d.active_jobs));
  msg("mcp",d.plugin_configured?"configurado":"não configurado");
  const rows=jobsData.jobs||[];
