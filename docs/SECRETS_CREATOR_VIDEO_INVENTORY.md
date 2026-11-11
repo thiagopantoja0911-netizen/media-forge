@@ -6,7 +6,7 @@ Data do inventário: 2026-11-11.
 
 - Repositório: `thiagopantoja0911-netizen/Secretssysten`.
 - Branch examinada: `release/secrettrack-20261108`.
-- Snapshot vendorizado: `vendor/kryvia/source`, canonical repo `thiagopantoja0911-netizen/KRYVIA`, commit `ac4787b4d6f9b5a1e0c7d3f2a9b8c6d5e4f3a2b1`.
+- Snapshot vendorizado: `vendor/kryvia/source`, canonical repo `thiagopantoja0911-netizen/KRYVIA`, commit `ac4787ad14defb55c37e5c341d1b9c57ee4e05c3`.
 - O `vendor/kryvia/source-manifest.json` declara explicitamente que `source` é proveniência, não a fonte direta do build. Os arquivos de `vendor/kryvia/overrides` são as customizações efetivas do portal e precisam ser tratados como fonte de produção junto com os arquivos de `source` não sobrescritos.
 - Não foi encontrada licença `LICENSE` no diretório vendorizado nem no root do snapshot KRYVIA consultado. Tratar como código proprietário do workspace; manter atribuição/proveniência e confirmar titularidade antes de redistribuição externa.
 
