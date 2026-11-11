@@ -25,6 +25,28 @@ export async function handleStudioApi({ request, response, parseBody, isAdminSes
     return true;
   }
 
+  // Same-origin browser requests only: do not accept cross-site cookies as authorization.
+  const fetchSite = String(request.headers?.["sec-fetch-site"] ?? "").toLowerCase();
+  if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") {
+    reply(response, 403, { ok: false, error: "CROSS_ORIGIN_REQUEST" });
+    return true;
+  }
+  const contentType = String(request.headers?.["content-type"] ?? "");
+  if (contentType && !/^application\/json(?:\s*;|\s*$)/i.test(contentType)) {
+    reply(response, 415, { ok: false, error: "JSON_REQUIRED" });
+    return true;
+  }
+  const origin = request.headers?.origin;
+  if (origin && request.headers?.host) {
+    let originHost;
+    try { originHost = new URL(origin).host.toLowerCase(); } catch { originHost = ""; }
+    const host = String(request.headers.host).toLowerCase();
+    if (!originHost || originHost !== host) {
+      reply(response, 403, { ok: false, error: "CROSS_ORIGIN_REQUEST" });
+      return true;
+    }
+  }
+
   try {
     const raw = await parseBody(request);
     const imported = importSalevoStudioDraft(raw);
