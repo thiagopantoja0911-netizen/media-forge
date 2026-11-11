@@ -55,9 +55,9 @@ function responseHarness() {
   };
 }
 
-test("Creator Studio is self-contained and isolated from external services", () => {
+test("Forge Midjourney is self-contained and isolated from external services", () => {
   assert.match(page, /Content-Security-Policy/);
-  assert.match(page, /MediaForge Creator Studio/);
+  assert.match(page, /Forge Midjourney/);
   assert.match(page, /o pacote não será enviado à fila/);
   assert.match(page, /id="voiceover-file"/);
   assert.match(page, /id="music-file"/);
