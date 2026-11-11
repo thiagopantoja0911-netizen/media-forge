@@ -6,7 +6,7 @@ $InstallDir = [IO.Path]::GetFullPath($InstallDir)
 if (-not (Test-Path -LiteralPath $InstallDir)) { throw "MediaForge não está instalado em $InstallDir" }
 $logDir = Join-Path $InstallDir ".mediaforge\logs"
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
-$logFile = Join-Path $logDir "worker-session.log"
+$logFile = Join-Path $logDir "worker-session-utf8.log"
 $exitCode = 0
 Push-Location $InstallDir
 try {
@@ -59,14 +59,23 @@ try {
     & npm install --prefix $workerDeps --no-audit --no-fund *>> $logFile
     if ($LASTEXITCODE -ne 0) { throw "Falha ao instalar as dependências locais FFmpeg/FFprobe." }
   }
-  Add-Content -LiteralPath $logFile -Value ("[{0}] Iniciando worker remoto HyperFrames." -f (Get-Date -Format o))
-  & node ".\src\remote-worker-client.mjs" *>> $logFile
-  $exitCode = $LASTEXITCODE
-  if ($exitCode -eq 0) {
-    Add-Content -LiteralPath $logFile -Value ("[{0}] Worker saiu inesperadamente com código 0; solicitando reinício pelo Agendador." -f (Get-Date -Format o))
-    $exitCode = 1
+  $restartDelay = 5
+  while ($true) {
+    try {
+      Add-Content -LiteralPath $logFile -Encoding UTF8 -Value ("[{0}] Iniciando worker remoto HyperFrames." -f (Get-Date -Format o))
+      & node ".\src\remote-worker-client.mjs" 2>&1 | ForEach-Object {
+        Add-Content -LiteralPath $logFile -Encoding UTF8 -Value ("[{0}] NODE: {1}" -f (Get-Date -Format o), $_.ToString())
+      }
+      $exitCode = $LASTEXITCODE
+      if ($exitCode -eq 0) { $exitCode = 1 }
+      Add-Content -LiteralPath $logFile -Encoding UTF8 -Value ("[{0}] Worker encerrou. Código: {1}; reiniciando em {2}s." -f (Get-Date -Format o),$exitCode,$restartDelay)
+    } catch {
+      $exitCode = 1
+      Add-Content -LiteralPath $logFile -Encoding UTF8 -Value ("[{0}] ERRO no runner: {1}" -f (Get-Date -Format o),($_ | Out-String))
+    }
+    Start-Sleep -Seconds $restartDelay
+    $restartDelay = [Math]::Min($restartDelay * 2, 60)
   }
-  Add-Content -LiteralPath $logFile -Value ("[{0}] Worker encerrado. Código: {1}" -f (Get-Date -Format o),$exitCode)
 } catch {
   $exitCode = 1
   Add-Content -LiteralPath $logFile -Value ("[{0}] ERRO: {1}" -f (Get-Date -Format o),($_ | Out-String))
