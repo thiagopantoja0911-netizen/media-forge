@@ -30,6 +30,7 @@ The video system is spread across several branches; the Secrets repository \`mai
 - Local FFmpeg/FFprobe binaries are installed only in the Windows worker package, not in the Hostinger web runtime.
 - Final MP4 verification (dimensions, frame rate, duration, video codec and audio-stream presence where expected).
 - Background Windows operation, startup on logon, single-worker protection, restart after failure, persistent logs and safe updater.
+- Per-user DPAPI protection for the Windows worker token (ported from the legacy AgentHost; plaintext legacy token is migrated on next worker start).
 - OAuth 2.1/PKCE and the four MCP tools: \`create_video\`, \`renderer_status\`, \`list_videos\`, \`get_video\`.
 
 ## Mapping into MediaForge
@@ -43,7 +44,7 @@ The video system is spread across several branches; the Secrets repository \`mai
 | \`apps/video-studio/public/index.html\`, \`dashboard.php\` | Existing \`src/panel.mjs\` (port useful job/status UI, not old PHP) |
 | \`apps/videos-secrets-desktop/agent/worker-desktop.mjs\` | Existing \`src/remote-worker-client.mjs\` + renderer/artifact audit |
 | \`BackgroundAgent.cs\`, \`BackgroundTaskManager.cs\` | Existing hidden Windows Scheduled Task scripts; add safe update lifecycle |
-| \`AgentHost.cs\` DPAPI token storage | Replace plaintext worker token file with per-user DPAPI protection |
+| \`AgentHost.cs\` DPAPI token storage | Replace plaintext worker token file with per-user DPAPI protection (implemented in the migration branch) |
 | \`AutoUpdater.cs\`, \`desktop/latest.json\` | MediaForge updater/manifest; verify HTTPS and SHA-256, update only when idle |
 | \`tests/oauth-e2e.ps1\`, MCP smoke tests | Node integration tests for OAuth, MCP 2026, worker lease and render contract |
 
