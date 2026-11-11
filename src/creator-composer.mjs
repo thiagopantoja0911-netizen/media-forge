@@ -5,11 +5,11 @@ const HEIGHT = 3840;
 const SCENE_IDS = ["scene-01", "scene-02", "scene-03", "scene-04", "scene-05"];
 const SCENE_BEATS = ["hook", "context", "proof", "reveal", "payoff"];
 const PALETTES = [
-  { ground: "#F2D94E", ink: "#171717", accent: "#F24E35", slabLeft: 1260, slabTop: 560, slabWidth: 900, slabHeight: 2300, titleLeft: 216, titleTop: 1100 },
-  { ground: "#2FC4D1", ink: "#111111", accent: "#F4D84D", slabLeft: -150, slabTop: 720, slabWidth: 960, slabHeight: 2100, titleLeft: 420, titleTop: 1050 },
-  { ground: "#151515", ink: "#F6F1E7", accent: "#F4D84D", slabLeft: 1260, slabTop: 580, slabWidth: 900, slabHeight: 2280, titleLeft: 216, titleTop: 1000 },
-  { ground: "#FF684A", ink: "#151515", accent: "#F4D84D", slabLeft: -160, slabTop: 680, slabWidth: 960, slabHeight: 2200, titleLeft: 216, titleTop: 1080 },
-  { ground: "#A8DC4A", ink: "#111111", accent: "#F24E35", slabLeft: 1280, slabTop: 620, slabWidth: 880, slabHeight: 2200, titleLeft: 216, titleTop: 1040 }
+  { ground: "#F2D94E", ink: "#171717", accent: "#F24E35", accentText: "#B52B20", slabLeft: 1260, slabTop: 560, slabWidth: 900, slabHeight: 380, titleLeft: 216, titleTop: 1120 },
+  { ground: "#2FC4D1", ink: "#111111", accent: "#F4D84D", accentText: "#10252B", slabLeft: -150, slabTop: 600, slabWidth: 960, slabHeight: 420, titleLeft: 420, titleTop: 1080 },
+  { ground: "#151515", ink: "#F6F1E7", accent: "#F4D84D", accentText: "#F4D84D", slabLeft: 1260, slabTop: 560, slabWidth: 900, slabHeight: 400, titleLeft: 216, titleTop: 1040 },
+  { ground: "#FF684A", ink: "#151515", accent: "#F4D84D", accentText: "#151515", slabLeft: -160, slabTop: 620, slabWidth: 960, slabHeight: 400, titleLeft: 216, titleTop: 1100 },
+  { ground: "#A8DC4A", ink: "#111111", accent: "#F24E35", accentText: "#B32025", slabLeft: 1280, slabTop: 600, slabWidth: 880, slabHeight: 400, titleLeft: 216, titleTop: 1060 }
 ];
 const MAX_AUDIO_FILE_BYTES = 12 * 1024 * 1024;
 const MAX_AUDIO_TOTAL_BYTES = 18 * 1024 * 1024;
@@ -182,7 +182,8 @@ function sceneHtml(scene, index, duration, brief) {
     { id: "headlineAccent", type: "string", label: "Palavra de destaque", default: accentWord, maxLength: 80 },
     { id: "ground", type: "color", label: "Fundo", default: palette.ground },
     { id: "ink", type: "color", label: "Texto", default: palette.ink },
-    { id: "accent", type: "color", label: "Destaque", default: palette.accent }
+    { id: "accent", type: "color", label: "Bloco gráfico", default: palette.accent },
+    { id: "accentText", type: "color", label: "Palavra destacada", default: palette.accentText }
   ]));
   const safeDuration = Number(duration).toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
   const slab = {
@@ -213,7 +214,7 @@ function sceneHtml(scene, index, duration, brief) {
         `tl.fromTo("#${id}-slab", { y: 260 }, { y: 0, duration: 0.55, ease: "power3.out" }, 0);`,
         `tl.fromTo("#${id}-slab", { x: 180 }, { x: 0, duration: 0.58, ease: "expo.out" }, 0);`
       ][index - 1] + `\ntl.fromTo("#${id}-rule", { scaleX: 0, transformOrigin: "left center" }, { scaleX: 1, duration: 0.42, ease: "power4.out" }, 0.06);`;
-  const drift = [[-140, 60, 8], [110, -42, -10], [150, 30, 12], [-90, -54, -8], [-120, 44, 10], [80, -28, -8]];
+  const drift = [[-42, 14, 2], [28, -10, -2], [38, 12, 2], [-24, -12, -2], [-34, 10, 2], [22, -8, -2]];
   const motionBeats = [];
   for (let beat = 0, at = 1.65; at + 1.3 < seconds; beat += 1, at += 2.8) {
     const [x, y, rotation] = drift[(index + beat) % drift.length];
@@ -265,9 +266,9 @@ function sceneHtml(scene, index, duration, brief) {
       text-wrap: balance;
     }
     #${id}-title-prefix { color: var(--ink); }
-    #${id}-title-accent { color: var(--accent); }
+    #${id}-title-accent { color: var(--accentText); }
   </style>
-  <div id="root" data-composition-id="${id}" data-start="0" data-duration="${safeDuration}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}' style="--ground:${palette.ground};--ink:${palette.ink};--accent:${palette.accent}">
+  <div id="root" data-composition-id="${id}" data-start="0" data-duration="${safeDuration}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}' style="--ground:${palette.ground};--ink:${palette.ink};--accent:${palette.accent};--accentText:${palette.accentText}">
     <div id="${id}-slab" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="1"></div>
     <div id="${id}-rule" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="2"></div>
     <h1 id="${id}-title" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="3" data-beat="${SCENE_BEATS[index]}"><span id="${id}-title-prefix" data-var-text="headlinePrefix">${safePrefix}</span> <span id="${id}-title-accent" data-var-text="headlineAccent">${safeAccentWord}</span></h1>
