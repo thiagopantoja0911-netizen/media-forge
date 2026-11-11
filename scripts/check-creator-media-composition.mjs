@@ -93,8 +93,7 @@ try {
     await writeFile(target, file.contentBase64 ? Buffer.from(file.contentBase64, "base64") : file.content, file.contentBase64 ? undefined : "utf8");
   }
   await cli(dir, ["check", "--json"]);
-  await cli(dir, ["snapshot", "--review", "--at", "0.4"]);
-  await cli(dir, ["snapshot", "--review", "--at", "8.0"]);
+  await cli(dir, ["snapshot", "--review"]);
   const snapDir = join(dir, ".hyperframes", "artifacts", "snapshots");
   const snapshots = await readdir(snapDir, { recursive: true });
   if (snapshots.length === 0) throw new Error("No media review snapshots created");
