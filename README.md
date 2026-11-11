@@ -83,7 +83,7 @@ Veja:
 - `docs/VIDEOS_SECRETS_BRIDGE.md`
 - `docs/VIDEOS_SECRETS_MIGRATION.md`
 - `docs/MEDIAFORGE_DEPLOYMENT.md`
-- `docs/UPSTREAM_UPDATES.md`\n- `docs/UPSTREAM_UPDATES.md`
+- `docs/UPSTREAM_UPDATES.md`
 
 ## Segurança operacional
 
@@ -92,3 +92,15 @@ Veja:
 - Tokens e chaves ficam fora do Git.
 - Jobs e assets devem ser tratados como dados não confiáveis.
 - O `private/config.php` e o estado do Hostinger não são migrados para o repositório.
+
+## Forge Midjourney
+
+O Forge Midjourney está disponível em `/studio` após autenticação no painel. Ele permite criar briefings, três ganchos, storyboard de cinco cenas, prévia ilustrativa e exportação JSON/TXT. O botão Gerar pacote HyperFrames envia o briefing e os arquivos de áudio opcionais (locução e trilha) ao endpoint autenticado `POST /api/studio/compose` e baixa um pacote editável, sem criar jobs. A locução pode ser exportada do VoiceStudio; o VoiceStudio continua independente.
+
+A importação do JSON v1 legado é compatível com os rascunhos exportados manualmente de `video.salevo.site/studio/`. O armazenamento local novo usa uma chave separada para não sobrescrever dados do domínio antigo.
+
+**Limite atual:** gera uma composição editorial tipográfica HyperFrames de protótipo, com cinco cenas, uma faixa de legendas e quatro transições; pode empacotar locução/trilha fornecidas pelo usuário, mas ainda não inclui mídia específica do assunto nem efeitos sonoros por cena. O pacote é marcado `renderReady=false` e não pode ser enviado diretamente à fila. A geração de mídia só será ativada depois da validação de áudio e QA no Worker Windows. Consulte `docs/CREATOR_STUDIO.md` e `docs/MIGRATION_SALEVO_CREATOR.md`.
+
+## Limpeza final da migração
+
+A remoção do hub antigo e de integrações do Secrets só poderá acontecer depois dos testes e backups definidos em `docs/FINAL_CLEANUP_GATE.md`. O Browser MCP, o domínio pai `salevo.site` e o portal `secretssystem.online` são recursos independentes e ficam fora da limpeza do Creator Video.

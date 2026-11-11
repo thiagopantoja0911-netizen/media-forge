@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="theme-color" content="#080d17">
+ <meta name="description" content="Planeje vídeos com briefing, ganchos, storyboard por cena e exportação para o MediaForge.">
+ <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; base-uri 'none'; form-action 'none'; object-src 'none'">
+ 
+ <link rel="stylesheet" href="./studio.css">
+ <title>Forge Midjourney | MediaForge</title>
+ <script defer src="./app.js"></script>
+</head>
+<body>
+ <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+ <header class="top"><div class="container top-inner">
+  <a class="brand" href="/dashboard"><span class="brand-icon">▶</span>Forge Midjourney</a>
+  <span class="top-status"><i aria-hidden="true"></i> Studio de criação</span>
+  <a class="top-link" href="/dashboard">Painel MediaForge ↗</a>
+ </div></header>
+ <main id="conteudo" class="container">
+  <section class="masthead">
+   <div><p class="eyebrow">Estúdio / Briefing criativo</p><h1>Seu próximo Reel<br><span>começa com direção.</span></h1><p class="lead">Organize o briefing, os ganchos e as cinco cenas. Anexe uma locução exportada do VoiceStudio e uma trilha musical para montar um pacote HyperFrames editável. A fila de renderização continua bloqueada até o QA audiovisual.</p></div>
+   <div class="statusbox"><span>ESTADO DO PROJETO</span><strong id="save-state" aria-live="polite">Rascunho local</strong><p>Dados salvos apenas neste navegador. Exporte seu projeto para guardar uma cópia.</p></div>
+  </section>
+  <div class="layout">
+   <div class="editor-column">
+    <form id="brief-form" autocomplete="off">
+     <section class="panel" aria-labelledby="brief-title">
+      <div class="panel-heading"><div><span class="count">01 / DEFINIÇÃO</span><h2 id="brief-title">O briefing</h2></div><span class="fine">Etapa 1 de 3</span></div>
+      <div class="field"><label for="title">Nome do projeto</label><input id="title" maxlength="120" placeholder="Ex.: O segredo das Ilhas Diomedes"></div>
+      <div class="field"><label for="topic">Ideia central / curiosidade</label><textarea id="topic" rows="3" maxlength="1500" placeholder="Qual é a história? O que o público vai descobrir?"></textarea></div>
+      <div class="row"><div class="field"><label for="intent">Objetivo do vídeo</label><select id="intent"><option value="curiosidade">Curiosidade / educação</option><option value="demonstracao">Demonstração de motion</option><option value="produto">Apresentar produto</option><option value="engajamento">Engajamento</option><option value="venda-indireta">Venda indireta</option></select></div><div class="field"><label for="duration">Duração prevista</label><select id="duration"><option value="15">15 segundos</option><option value="30">30 segundos</option><option value="45" selected>45 segundos</option><option value="60">60 segundos</option></select></div></div>
+      <div class="row"><div class="field"><label for="audience">Público</label><input id="audience" maxlength="180" placeholder="Ex.: pessoas que amam curiosidades"></div><div class="field"><label for="tone">Tom de voz</label><select id="tone"><option value="investigativo">Investigativo</option><option value="cinematografico">Cinematográfico</option><option value="direto">Direto e rápido</option><option value="leve">Leve e bem-humorado</option><option value="educativo">Educativo</option></select></div></div>
+      <div class="field"><label for="style">Direção visual</label><textarea id="style" rows="2" maxlength="1000" placeholder="Ex.: objetos reais em transformação, câmera próxima, luz de recorte, microsons e ritmo rápido"></textarea></div>
+      <div class="field"><label for="cta">Encerramento / convite</label><input id="cta" maxlength="260" placeholder="Ex.: Qual dessas curiosidades você já sabia?"></div>
+     </section>
+     <section class="panel" aria-labelledby="hooks-title">
+      <div class="panel-heading"><div><span class="count">02 / ABERTURA</span><h2 id="hooks-title">Três opções de gancho</h2></div><button type="button" class="mini-button" id="suggest-hooks">Sugerir estruturas</button></div>
+      <p class="help">As sugestões são modelos editoriais, não uma avaliação por IA. Edite e selecione o gancho mais forte.</p>
+      <div class="field"><label for="hookA">Gancho A — surpresa</label><input id="hookA" maxlength="230" placeholder="O que quase ninguém sabe é..."></div>
+      <div class="field"><label for="hookB">Gancho B — pergunta</label><input id="hookB" maxlength="230" placeholder="Como isso é possível?"></div>
+      <div class="field"><label for="hookC">Gancho C — contraste</label><input id="hookC" maxlength="230" placeholder="Parece uma coisa, mas é outra..."></div>
+      <fieldset class="hook-selector"><legend>Gancho escolhido para a abertura</legend><label><input type="radio" name="selectedHook" value="hookA" checked><span>A</span></label><label><input type="radio" name="selectedHook" value="hookB"><span>B</span></label><label><input type="radio" name="selectedHook" value="hookC"><span>C</span></label></fieldset>
+     </section>
+    </form>
+    <section class="panel" aria-labelledby="story-title">
+      <div class="panel-heading"><div><span class="count">03 / EXECUÇÃO</span><h2 id="story-title">Storyboard por cena</h2></div><button class="mini-button" id="generate-scenes" type="button">Montar estrutura</button></div>
+      <p class="help">Tempos são estimativas de planejamento. Edite a fala, a ação visual, o movimento de câmera e os sons. O alinhamento definitivo acontece após a locução gravada.</p>
+      <div id="scene-list" class="scenes"></div>
+      <p id="scene-empty" class="empty">Clique em “Montar estrutura” para criar cinco cenas temporizadas, sem gerar mídia ou iniciar renderização.</p>
+     </section>
+     <section class="panel export-panel" aria-labelledby="export-title">
+      <div class="panel-heading"><div><span class="count">04 / ENTREGA</span><h2 id="export-title">Exporte seu projeto</h2></div></div>
+      <p class="help">Salve o briefing localmente ou gere um pacote HyperFrames para revisão. Essa ação envia o roteiro ao MediaForge autenticado, mas não cria job nem inicia renderização.</p>
+      <div class="audio-inputs"><div class="field"><label for="voiceover-file">Locução / narração (VoiceStudio ou gravação)</label><input type="file" id="voiceover-file" accept=".wav,.mp3,.m4a,.aac,.ogg,.opus,.webm,audio/*"><audio id="voiceover-preview" class="audio-preview" controls preload="none" hidden></audio></div><div class="field"><label for="music-file">Trilha musical</label><input type="file" id="music-file" accept=".wav,.mp3,.m4a,.aac,.ogg,.opus,.webm,audio/*"><audio id="music-preview" class="audio-preview" controls preload="none" hidden></audio></div></div><p class="help">Os arquivos de áudio não são salvos no rascunho local. Eles só são enviados ao MediaForge quando você clicar em Gerar pacote. Limite de 12 MB por arquivo e 18 MB no total. Use uma locução próxima da duração do vídeo e uma trilha que cubra todo o corte.</p><div class="button-row"><button type="button" id="copy-brief" class="button primary">Copiar briefing</button><button type="button" id="download-json" class="button secondary">Baixar JSON</button><button type="button" id="download-txt" class="button secondary">Baixar roteiro .txt</button><button type="button" id="build-composition" class="button secondary">Gerar pacote HyperFrames</button></div>
+      <div class="button-row secondary-actions"><a class="button ghost" href="/dashboard" target="_blank" rel="noopener noreferrer">Abrir painel MediaForge ↗</a><a class="button ghost" href="/dashboard">Voltar ao painel MediaForge ↗</a></div>
+      <p class="privacy">Briefing salvo neste navegador. Os áudios ficam apenas na memória até gerar o pacote; o pacote não será enviado à fila.</p>
+      <div class="button-row utility"><button type="button" id="new-project" class="mini-button">Novo projeto</button><button type="button" id="import-json" class="mini-button">Importar JSON</button><input type="file" accept=".json,application/json" id="import-file" hidden></div>
+      <p id="notice" role="status" aria-live="polite"></p>
+     </section>
+   </div>
+   <aside class="sidebar" aria-label="Prévia e informações">
+    <div class="preview-wrap">
+     <div class="sidebar-top"><span>PRÉVIA DE COMPOSIÇÃO</span><span>9:16</span></div>
+     <div class="screen" aria-label="Prévia ilustrativa da cena selecionada">
+      <div class="screen-shine"></div><span id="preview-scene" class="preview-scene">CENA 01 / ABERTURA</span>
+      <div class="preview-center"><span class="small-label">TEXTO DE TELA</span><strong id="preview-text">Seu gancho aparece aqui.</strong><span id="preview-action">Defina uma ação física observável para a cena.</span></div>
+      <span class="preview-footer" id="preview-time">00:00 — 00:03</span>
+     </div>
+     <p class="disclaimer">Ilustração de storyboard. Não é uma prévia de vídeo renderizado.</p>
+     <div class="progress"><span id="timeline-label">0 de 5 cenas preenchidas</span><div class="track"><div id="timeline-bar"></div></div></div>
+    </div>
+    <div class="guidance"><span class="count">CRITÉRIOS CRIATIVOS</span><h3>Motion de verdade, não slides.</h3><ul><li>Comece com uma ação visual no primeiro frame.</li><li>Transforme objetos, câmera e cenário de forma causal.</li><li>Marque as palavras que acionam cada movimento.</li><li>Prove ritmo e microsons no MP4 antes de aprovar.</li></ul></div>
+   </aside>
+  </div>
+ </main>
+ <footer class="footer"><div class="container"><span>© 2026 Forge Midjourney · MediaForge</span><a href="/dashboard">Voltar ao painel</a></div></footer>
+</body>
+</html>

@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, feature/conexoes-mediaforge-primeiro]
   pull_request:
-    branches: [main, migration/videos-secrets-to-mediaforge]
+    branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro]
 
 jobs:
   validate:
@@ -15,6 +15,13 @@ jobs:
         with:
           node-version: 22
       - run: node --check src/job-schema.mjs
+      - run: node --check src/legacy-studio.mjs
+      - run: node --check src/creator-composer.mjs
+      - run: node --check src/studio.mjs
+      - run: node --check src/studio-api.mjs
+      - run: node --check scripts/import-salevo-studio.mjs
+      - run: node --check scripts/extract-creator-package.mjs
+      - run: node --check src/creator-package.mjs
       - run: node --check src/server.mjs
       - run: node --check src/remote-worker-server.mjs
       - run: node --check src/remote-worker-client.mjs
@@ -23,6 +30,16 @@ jobs:
       - run: node --check src/renderers/hyperframes.mjs
       - run: node --test test/*.test.mjs
       - run: npm run validate
+      - name: Check generated Forge Midjourney composition with HyperFrames
+        run: node scripts/check-creator-composition.mjs
+      - name: Upload Forge Midjourney review snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mediaforge-creator-review-snapshots
+          path: ${{ runner.temp }}/mediaforge-creator-snapshots
+          if-no-files-found: warn
+          retention-days: 7
       - name: Verify public staging TLS, OAuth and access controls
         if: github.event_name == 'pull_request' && github.head_ref == 'feature/conexoes-mediaforge-primeiro'
         run: node scripts/staging-health.mjs

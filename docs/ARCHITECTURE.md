@@ -65,3 +65,7 @@ Every job should be checked before expensive rendering:
 ## Local execution
 
 The local worker is the only component allowed to touch the user's media folders. The orchestrator stores manifests and status; it should not require cloud storage for the final MP4.
+
+## Creator Studio
+
+The authenticated `/studio` route provides briefing and storyboard planning. It stores drafts in browser localStorage and exports the legacy v1 JSON shape for manual backup/import. It is intentionally isolated from job creation: only a validated HyperFrames composition with local assets and a reviewed audio track may be submitted to the render queue.
