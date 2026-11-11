@@ -41,8 +41,7 @@ jobs:
             "desktop/run-worker.ps1",
             "desktop/start-worker-background.ps1",
             "desktop/connect-remote.ps1",
-            "desktop/install-worker.ps1",
-            "desktop/launch-installer.vbs"
+            "desktop/install-worker.ps1"
           )
           foreach ($path in $paths) {
             $tokens = $null
