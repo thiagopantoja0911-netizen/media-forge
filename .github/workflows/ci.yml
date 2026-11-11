@@ -16,6 +16,9 @@ jobs:
           node-version: 22
       - run: node --check src/job-schema.mjs
       - run: node --check src/legacy-studio.mjs
+      - run: node --check src/creator-composer.mjs
+      - run: node --check src/studio.mjs
+      - run: node --check src/studio-api.mjs
       - run: node --check scripts/import-salevo-studio.mjs
       - run: node --check src/server.mjs
       - run: node --check src/remote-worker-server.mjs
