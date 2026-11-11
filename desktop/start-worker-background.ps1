@@ -34,7 +34,7 @@ $arguments = '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionP
 $action = New-ScheduledTaskAction -Execute $powerShell -Argument $arguments -WorkingDirectory $InstallDir
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $userId
 $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -RunLevel Limited
-$settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero)
+$settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Seconds 15) -ExecutionTimeLimit ([TimeSpan]::Zero)
 $settings.Hidden = $true
 $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if ($existing) {
