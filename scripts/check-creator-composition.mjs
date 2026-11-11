@@ -43,6 +43,13 @@ function runCli(cwd, args) {
 
 const directory = await mkdtemp(join(tmpdir(), "mediaforge-creator-check-"));
 try {
+  const catalog = await runCli(directory, ["catalog", "--query", "editorial paper wipe color flood transition", "--type", "block", "--tag", "transition", "--json"]);
+  process.stdout.write("Transition registry search:\\n" + catalog.stdout);
+  if (catalog.stderr) process.stderr.write(catalog.stderr);
+  if (catalog.code !== 0) {
+    throw new Error("HyperFrames transition catalog search failed with exit code " + catalog.code);
+  }
+
   const built = await buildCreatorComposition(importSalevoStudioDraft(draft).manifest);
   for (const file of built.projectFiles) {
     const target = join(directory, file.path);
