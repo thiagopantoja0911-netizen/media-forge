@@ -45,7 +45,8 @@ jobs:
             "desktop/start-worker-background.ps1",
             "desktop/connect-remote.ps1",
             "desktop/install-worker.ps1",
-            "desktop/retire-legacy-videos-secrets.ps1"
+            "desktop/retire-legacy-videos-secrets.ps1",
+            "desktop/update-worker.ps1"
           )
           foreach ($path in $paths) {
             $tokens = $null
