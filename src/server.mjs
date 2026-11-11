@@ -13,6 +13,7 @@ import { authenticateBearer, handleOAuth } from "./oauth.mjs";
 import { handlePanel, isAdminSession } from "./panel.mjs";
 import { handleRemoteWorker } from "./remote-worker-server.mjs";
 import { attachLocalGsap } from "./project-normalizer.mjs";
+import { readState } from "./state-store.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
@@ -227,7 +228,9 @@ function sameToken(actual, expected) {
 async function requireApiScope(request, response, scope) {
   const token=String(request.headers.authorization??"").match(/^Bearer\s+(.+)$/i)?.[1]?.trim()||"";
   let identity=token?await authenticateBearer(token):null;
-  if(!identity && sameToken(token,process.env.MEDIAFORGE_MCP_TOKEN))
+  const authState=await readState();
+  const allowBootstrapToken=!authState.settings.pluginTokenHash || process.env.MEDIAFORGE_ALLOW_STATIC_MCP_TOKEN==="true";
+  if(!identity && allowBootstrapToken && sameToken(token,process.env.MEDIAFORGE_MCP_TOKEN))
     identity={scopes:["videos:read","videos:write"]};
   const loopback=["127.0.0.1","localhost","::1"].includes(host);
   const required=process.env.MEDIAFORGE_REQUIRE_AUTH==="true" || !loopback;
