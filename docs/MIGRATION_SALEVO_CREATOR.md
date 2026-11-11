@@ -68,3 +68,13 @@ Não remover pastas locais `%LOCALAPPDATA%\\MediaForge-Staging`, projetos, token
 A Hostinger confirmou que `mediaforge.salevo.site` usa `media-forge` na branch `feature/conexoes-mediaforge-primeiro`, commit `3ce1879fb94293629ebff14dd4eb71d3abc55d49` na verificação de 2026-11-11. A branch atual foi criada a partir dessa base, não de `main`. A publicação automática está habilitada para essa branch. **Não executar merge nem deploy antes de rever autenticação, testes e compatibilidade do Worker remoto.**
 
 O Worker remoto de produção só executa `hyperframes` e rejeita renderizadores diferentes; por isso a importação entrega um manifesto não renderizável, nunca uma solicitação `dry-run` à fila remota.
+
+## Domínios e repositórios independentes confirmados em 2026-11-11
+
+- `mediaforge.salevo.site`: MediaForge Node.js 22, publicado pelo repositório `media-forge`.
+- `video.salevo.site`: hub antigo, ligado ao repositório `paginadevendas`, branch `deploy/video-salevo-hub`.
+- `mcpbrowser.salevo.site`: Browser MCP Relay v0.5.0, publicado de um arquivo próprio, sem Git auto-deploy. Deve continuar independente.
+- `secretssystem.online`: portal Secrets System, Next.js, ligado ao repositório `Secretssysten`, branch `release/secrettrack-20261108`. É outro produto e não deve ser removido para migrar o Creator Video.
+- `salevo.site`: domínio pai com outros subdomínios. Não remover em lote.
+
+A lista de websites da Hostinger tinha 28 entradas na verificação. Apenas os recursos diretamente relacionados à migração estão documentados acima. Ver `docs/FINAL_CLEANUP_GATE.md` para os critérios e a lista protegida de recursos.
