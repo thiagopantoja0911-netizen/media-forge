@@ -141,7 +141,7 @@ function makeIndexHtml(duration, scenes, audioAssets) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=2160, height=3840">
-  <title>MediaForge Creator Project</title>
+  <title>MediaForge Forge Midjourney Project</title>
 </head>
 <body>
   <div id="root" data-composition-id="main" data-start="0" data-duration="${duration}" data-width="${WIDTH}" data-height="${HEIGHT}" style="background:${PALETTES[0].ground}">
