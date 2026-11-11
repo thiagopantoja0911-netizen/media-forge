@@ -2,7 +2,28 @@ import { isAbsolute } from "node:path";
 import { readFile } from "node:fs/promises";
 
 const RATIOS = new Set(["16:9", "9:16", "1:1"]);
-const OUTPUTS = new Set(["video", "audio", "project"]);\nconst RESOLUTIONS = new Set([\n  "landscape", "portrait", "square", "landscape-4k", "portrait-4k", "square-4k",\n  "landscape-1440p", "portrait-1440p", "square-1440p", "1080p", "4k", "uhd",\n  "1440p", "qhd", "1080p-square", "square-1080p", "4k-square",\n  "1440p-portrait", "1440p-square"\n]);\nconst QUALITIES = new Set(["draft", "looks", "standard", "high", "delivery"]);\n\nfunction validFps(value) {\n  if (typeof value === "number") return Number.isInteger(value) && value >= 1 && value <= 240;\n  if (typeof value !== "string") return false;\n  if (/^\\d+$/.test(value)) {\n    const number = Number(value);\n    return number >= 1 && number <= 240;\n  }\n  const match = /^(\\d+)\\/(\\d+)$/.exec(value);\n  if (!match || Number(match[2]) === 0) return false;\n  const number = Number(match[1]) / Number(match[2]);\n  return number >= 1 && number <= 240;\n}
+const OUTPUTS = new Set(["video", "audio", "project"]);
+const RESOLUTIONS = new Set([
+  "landscape", "portrait", "square", "landscape-4k", "portrait-4k", "square-4k",
+  "landscape-1440p", "portrait-1440p", "square-1440p", "1080p", "4k", "uhd",
+  "1440p", "qhd", "1080p-square", "square-1080p", "4k-square",
+  "1440p-portrait", "1440p-square"
+]);
+const QUALITIES = new Set(["draft", "looks", "standard", "high", "delivery"]);
+
+function validFps(value) {
+  if (typeof value === "number") return Number.isInteger(value) && value >= 1 && value <= 240;
+  if (typeof value !== "string") return false;
+  if (/^\d+$/.test(value)) {
+    const number = Number(value);
+    return number >= 1 && number <= 240;
+  }
+  const match = /^(\d+)\/(\d+)$/.exec(value);
+  if (!match || Number(match[2]) === 0) return false;
+  const number = Number(match[1]) / Number(match[2]);
+  return number >= 1 && number <= 240;
+}
+
 export const MAX_PROJECT_FILES = 80;
 export const MAX_PROJECT_BYTES = 24 * 1024 * 1024;
 
