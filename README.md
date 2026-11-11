@@ -93,9 +93,9 @@ Veja:
 - Jobs e assets devem ser tratados como dados não confiáveis.
 - O `private/config.php` e o estado do Hostinger não são migrados para o repositório.
 
-## Creator Studio
+## Forge Midjourney
 
-O Creator Studio está disponível em `/studio` após autenticação no painel. Ele permite criar briefings, três ganchos, storyboard de cinco cenas, prévia ilustrativa e exportação JSON/TXT. O botão Gerar pacote HyperFrames envia o briefing e os arquivos de áudio opcionais (locução e trilha) ao endpoint autenticado `POST /api/studio/compose` e baixa um pacote editável, sem criar jobs. A locução pode ser exportada do VoiceStudio; o VoiceStudio continua independente.
+O Forge Midjourney está disponível em `/studio` após autenticação no painel. Ele permite criar briefings, três ganchos, storyboard de cinco cenas, prévia ilustrativa e exportação JSON/TXT. O botão Gerar pacote HyperFrames envia o briefing e os arquivos de áudio opcionais (locução e trilha) ao endpoint autenticado `POST /api/studio/compose` e baixa um pacote editável, sem criar jobs. A locução pode ser exportada do VoiceStudio; o VoiceStudio continua independente.
 
 A importação do JSON v1 legado é compatível com os rascunhos exportados manualmente de `video.salevo.site/studio/`. O armazenamento local novo usa uma chave separada para não sobrescrever dados do domínio antigo.
 
