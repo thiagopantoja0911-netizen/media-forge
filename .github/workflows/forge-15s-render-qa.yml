@@ -21,12 +21,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Ensure FFmpeg and ffprobe are available for audio validation
+      - name: Install isolated static FFmpeg and ffprobe without apt mirrors
+        shell: bash
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg
-          ffmpeg -version | head -1
-          ffprobe -version | head -1
+          mkdir -p "$RUNNER_TEMP/forge-audio-tools/bin"
+          npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/forge-audio-tools" --no-save @ffmpeg-installer/linux-x64 @ffprobe-installer/linux-x64
+          cp "$RUNNER_TEMP/forge-audio-tools/node_modules/@ffmpeg-installer/linux-x64/ffmpeg" "$RUNNER_TEMP/forge-audio-tools/bin/ffmpeg"
+          cp "$RUNNER_TEMP/forge-audio-tools/node_modules/@ffprobe-installer/linux-x64/ffprobe" "$RUNNER_TEMP/forge-audio-tools/bin/ffprobe"
+          chmod +x "$RUNNER_TEMP/forge-audio-tools/bin/ffmpeg" "$RUNNER_TEMP/forge-audio-tools/bin/ffprobe"
+          echo "$RUNNER_TEMP/forge-audio-tools/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/forge-audio-tools/bin/ffmpeg" -version | head -1
+          "$RUNNER_TEMP/forge-audio-tools/bin/ffprobe" -version | head -1
       - name: Verify smoke-test script syntax
         run: node --check scripts/forge-15s-render-smoke.mjs
       - name: Render a 15s vertical 4K60 composition with diagnostic audio
