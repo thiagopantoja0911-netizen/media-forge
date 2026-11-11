@@ -11,6 +11,7 @@ for(let i=0;i<8;i++){
     const health=await check("/health",undefined,200);
     const data=await health.json();
     if(data.service!=="mediaforge-orchestrator")throw new Error("Wrong target service");
+    if(process.env.MEDIAFORGE_EXPECT_WORKER==="true") console.log("Live Windows worker:",JSON.stringify(data.worker));
     if(process.env.MEDIAFORGE_EXPECT_WORKER==="true" && data.worker?.online!==true)
       throw new Error("Windows HyperFrames worker is not online in the live staging health endpoint");
     if(process.env.MEDIAFORGE_EXPECT_WORKER==="true" && data.worker?.renderer!=="hyperframes")
