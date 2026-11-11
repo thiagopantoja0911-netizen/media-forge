@@ -264,7 +264,7 @@ function sceneHtml(scene, index, duration, brief) {
     #${id}-title-prefix { color: var(--ink); }
     #${id}-title-accent { color: var(--accent); }
   </style>
-  <div id="root" data-composition-id="${id}" data-start="0" data-duration="${safeDuration}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}'>
+  <div id="root" data-composition-id="${id}" data-start="0" data-duration="${safeDuration}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}' style="--ground:${palette.ground};--ink:${palette.ink};--accent:${palette.accent}">
     <div id="${id}-slab" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="1"></div>
     <div id="${id}-rule" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="2"></div>
     <h1 id="${id}-title" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="3" data-beat="${SCENE_BEATS[index]}"><span id="${id}-title-prefix" data-var-text="headlinePrefix">${safePrefix}</span> <span id="${id}-title-accent" data-var-text="headlineAccent">${safeAccentWord}</span></h1>
@@ -383,7 +383,7 @@ function makeTransitionOverlayHtml(scenes, duration) {
       const initial = band % 2 ? -1000 : 1000;
       paths.push(`<path id="${id}" class="clip" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="${band + 1}" d="${wipePath(index + 1, band, orientation, bands)}" pathLength="1000" stroke="${color}" stroke-width="${strokeWidth.toFixed(1)}" stroke-dasharray="1000" stroke-dashoffset="${initial}"></path>`);
       tweens.push(`tl.to("#${id}", { strokeDashoffset: 0, duration: 0.55, ease: "power2.in" }, ${(start + 0.04 * band).toFixed(3)});`);
-      tweens.push(`tl.to("#${id}", { strokeDashoffset: ${-initial}, duration: 0.5, ease: "power2.out" }, ${(start + 1.42 + 0.035 * band).toFixed(3)});`);
+      tweens.push(`tl.to("#${id}", { strokeDashoffset: ${initial}, duration: 0.5, ease: "power2.out" }, ${(start + 1.42 + 0.035 * band).toFixed(3)});`);
     }
     markup.push(`<div id="${group}" class="clip wipe-group" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="${20 + index}" style="opacity:0"><svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none" data-layout-allow-overflow>${paths.join("")}</svg><div id="${group}-solid" class="clip" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="40" style="opacity:0;background:${color}"></div></div>`);
     tweens.push(`tl.set("#${group}", { opacity: 1 }, ${start.toFixed(3)});`);
