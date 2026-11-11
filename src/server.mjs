@@ -14,7 +14,7 @@ import { handlePanel, isAdminSession } from "./panel.mjs";
 import { handleRemoteWorker } from "./remote-worker-server.mjs";
 import { attachLocalGsap } from "./project-normalizer.mjs";
 import { readState } from "./state-store.mjs";
-import { resolveStoragePath, mediaForgeDataDirectory } from "./storage-paths.mjs";
+import { resolveStoragePath, mediaForgeDataDirectory, isPathInside } from "./storage-paths.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
@@ -310,7 +310,11 @@ const server = createServer(async (request, response) => {
         ok: true,
         service: "mediaforge-orchestrator",
         renderer: process.env.MEDIAFORGE_RENDERER ?? "dry-run",
-        worker: await rendererStatus()
+        worker: await rendererStatus(),
+        storage: {
+          dataDirectoryPersistent: !isPathInside(process.cwd(), dataDir),
+          projectsDirectoryPersistent: !isPathInside(process.cwd(), projectsRoot)
+        }
       });
     }
 
