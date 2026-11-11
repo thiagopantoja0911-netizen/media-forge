@@ -58,9 +58,11 @@ function responseHarness() {
 test("Creator Studio is self-contained and isolated from external services", () => {
   assert.match(page, /Content-Security-Policy/);
   assert.match(page, /MediaForge Creator Studio/);
-  assert.match(page, /Nenhum job será enviado à fila nesta etapa/);
+  assert.match(page, /O pacote gerado não será enviado à fila nesta etapa/);
   assert.match(script, /mediaforge_creator_studio_v1/);
-  assert.doesNotMatch(script, /(?:fetch\s*\(|XMLHttpRequest|WebSocket\s*\()/);
+  assert.match(script, /fetch\(['"]\/api\/studio\/compose/);
+  assert.doesNotMatch(script, /fetch\(['"]https?:/);
+  assert.doesNotMatch(script, /XMLHttpRequest|WebSocket\s*\()/);
   assert.doesNotMatch(page, /salevo\.site|plugins_6af35b6c46648191924c063620fe6e91/i);
   assert.match(dashboard, /href="\/studio"/);
 });
@@ -104,7 +106,7 @@ test("requires an authenticated MediaForge session for studio and assets", async
   });
   assert.equal(auth.status, 200);
   assert.match(auth.headers["content-type"], /javascript/);
-  assert.match(auth.headers["content-security-policy"], /connect-src 'none'/);
+  assert.match(auth.headers["content-security-policy"], /connect-src 'self'/);
   assert.match(String(auth.body), /mediaforge_creator_studio_v1/);
 });
 
