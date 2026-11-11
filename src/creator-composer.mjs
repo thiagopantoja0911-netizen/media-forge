@@ -101,7 +101,8 @@ function validateAudioAsset(asset, role) {
   }
   const paths = {
     voiceover: "assets/audio/voiceover." + extension,
-    music: "assets/audio/music." + extension
+    music: "assets/audio/music." + extension,
+    ...Object.fromEntries(Array.from({ length: 5 }, (_, index) => ["sfx" + index, "assets/audio/sfx-" + (index + 1) + "." + extension]))
   };
   return {
     path: paths[role],
@@ -132,11 +133,12 @@ function audioTag(asset, id, index, duration, volume, fades = false) {
   ].join("");
 }
 
-function makeIndexHtml(duration, scenes, audioAssets) {
+function makeIndexHtml(duration, scenes, audioAssets, sfxAssets = []) {
   const hosts = scenes.map(sceneHost).join("\n    ");
   const voice = audioTag(audioAssets.voiceover, "voiceover", 10, duration, 1);
   const musicVolume = audioAssets.voiceover ? 0.14 : 0.9;
   const music = audioTag(audioAssets.music, "music", 11, duration, musicVolume, true);
+  const sfx = sfxAssets.map((asset, index) => asset ? `<audio id="sfx-${index + 1}" src="${asset.path}" data-start="${scenes[index].start}" data-duration="${Math.min(scenes[index].end - scenes[index].start, asset.durationSeconds).toFixed(3)}" data-track-index="${20 + index}" data-volume="0.5"></audio>` : "").join("\n    ");
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -150,6 +152,7 @@ function makeIndexHtml(duration, scenes, audioAssets) {
     <div id="captions" data-composition-id="captions" data-composition-src="compositions/captions.html" data-start="0" data-duration="${duration}" data-track-index="70" data-track-kind="captions" data-width="${WIDTH}" data-height="${HEIGHT}" style="z-index:80;pointer-events:none"></div>
     ${voice}
     ${music}
+    ${sfx}
     ${scenes.slice(0, -1).map((scene, index) => {
       const id = "transition-" + String(index + 1).padStart(2, "0");
       return '<div id="' + id + '" data-composition-id="' + id + '" data-composition-src="compositions/' + id + '.html" data-start="' + Math.max(0, scene.end - 1.1).toFixed(3) + '" data-duration="2.2" data-track-index="' + (90 + index) + '" data-track-kind="graphics" data-beat="transition" data-width="' + WIDTH + '" data-height="' + HEIGHT + '" style="z-index:' + (90 + index) + ';pointer-events:none"></div>';
@@ -500,15 +503,18 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   const scenes = manifest.brief.scenes;
   const voiceover = validateAudioAsset(mediaInput.voiceover, "voiceover");
   const music = validateAudioAsset(mediaInput.music, "music");
-  const totalAudioBytes = (voiceover?.sizeBytes ?? 0) + (music?.sizeBytes ?? 0);
+  const sfxInput = mediaInput.sfx == null ? Array(5).fill(null) : mediaInput.sfx;
+  if (!Array.isArray(sfxInput) || sfxInput.length !== 5) throw new TypeError("Envie cinco posições para efeitos sonoros");
+  const sfxAssets = sfxInput.map((item, i) => validateAudioAsset(item, "sfx" + i));
+  const totalAudioBytes = (voiceover?.sizeBytes ?? 0) + (music?.sizeBytes ?? 0) + sfxAssets.reduce((sum, asset) => sum + (asset?.sizeBytes || 0), 0);
   if (totalAudioBytes > MAX_AUDIO_TOTAL_BYTES) {
     throw new TypeError("A soma dos arquivos de áudio deve ter no máximo 18 MB");
   }
   const audioAssets = { voiceover, music };
   const sceneMedia = validateSceneMedia(mediaInput.scenes);
-  const testGate = sceneMediaReadiness(sceneMedia, audioAssets, duration, scenes);
+  const testGate = sceneMediaReadiness(sceneMedia, audioAssets, duration, scenes, sfxAssets);
   const projectFiles = [
-    { path: "index.html", content: makeIndexHtml(duration, scenes, audioAssets), encoding: "utf8" }
+    { path: "index.html", content: makeIndexHtml(duration, scenes, audioAssets, sfxAssets), encoding: "utf8" }
   ];
   const motionAssertions = [];
   for (let index = 0; index < scenes.length; index += 1) {
@@ -564,6 +570,9 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   projectFiles.push({ path: "assets/gsap.min.js", content: gsap, encoding: "utf8" });
   if (voiceover) projectFiles.push({ path: voiceover.path, contentBase64: voiceover.contentBase64, encoding: "base64" });
   if (music) projectFiles.push({ path: music.path, contentBase64: music.contentBase64, encoding: "base64" });
+  for (const sfx of sfxAssets) {
+    if (sfx) projectFiles.push({ path: sfx.path, contentBase64: sfx.contentBase64, encoding: "base64" });
+  }
   for (const media of sceneMedia) {
     if (media) projectFiles.push({ path: media.path, contentBase64: media.contentBase64, encoding: "base64" });
   }
@@ -596,7 +605,7 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   else if (Math.abs(voiceover.durationSeconds - duration) > 1.5) blockers.push("A narração tem " + voiceover.durationSeconds.toFixed(2) + " s e o vídeo " + duration + " s; ajustar a timeline e sincronizar as falas.");
   if (!music) blockers.push("Trilha musical ainda não foi anexada.");
   else if (music.durationSeconds < duration - 0.5) blockers.push("A trilha musical termina antes do vídeo; não haverá loop automático.");
-  if (scenes.some(scene => textValue(scene.sound).trim())) blockers.push("As notas de som por cena ainda precisam ser resolvidas em efeitos sonoros reais e licenciados.");
+  if (scenes.some((scene, index) => textValue(scene.sound).trim() && !sfxAssets[index])) warnings.push("Algumas cenas descrevem efeitos sonoros sem arquivos; revisar na montagem final.");
   if (sceneMedia.some(media => !media)) blockers.push("Há cenas sem mídia real; anexe imagens ou vídeos relevantes às cinco cenas.");
   else warnings.push("Revisar se os arquivos de mídia representam fielmente as ações narradas.");
   blockers.push(...testGate.blockers);
@@ -622,6 +631,7 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
       testRenderWarnings: testGate.warnings,
       media: { attachedScenes: sceneMedia.filter(Boolean).length, totalBytes: testGate.totalMediaBytes, sceneKinds: sceneMedia.map(media => media ? media.kind : null) },
       audio: {
+        sceneSfxAttached: sfxAssets.filter(Boolean).length,
         voiceover: voiceover ? { attached: true, durationSeconds: voiceover.durationSeconds } : { attached: false },
         music: music ? { attached: true, durationSeconds: music.durationSeconds } : { attached: false }
       },
