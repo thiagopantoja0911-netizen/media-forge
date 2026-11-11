@@ -113,7 +113,7 @@
     formToProject();message('Três modelos de gancho criados. Ajuste a linguagem ao seu público.');
   }
   async function copy(){
-    var data=exportText();try{await navigator.clipboard.writeText(data);message('Plano copiado. Abra o Motion Studio e cole na conversa.');}
+    var data=exportText();try{await navigator.clipboard.writeText(data);message('Plano copiado. Cole o briefing no ChatGPT para continuar a criação.');}
     catch(e){download(data,safeFilename(project.title)+'.txt','text/plain;charset=utf-8');message('Cópia pelo navegador indisponível. Baixei o arquivo .txt.');}
   }
   function importData(file){
