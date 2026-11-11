@@ -29,7 +29,8 @@ PR: https://github.com/thiagopantoja0911-netizen/media-forge/pull/2
 - GitHub CI: sintaxe, esquema do job e handshake HTTP autenticado API ↔ worker passaram.
 - Smoke externo do CI: HTTPS, health, OAuth discovery, bloqueio das rotas REST e bloqueio de worker sem token passaram.
 - Publicação Hostinger concluída, processo Node.js iniciado, certificado HTTPS ativo.
-- **Ainda pendente:** execução do novo worker no Windows, autorização OAuth do plugin e renderização real de teste ponta a ponta.
+- **Windows confirmado:** o instalador corrigido foi executado; o relatório confirmou heartbeat, worker HyperFrames online e tarefa oculta em segundo plano.
+- **Ainda pendente:** autorização OAuth do plugin e renderização real 4K60 High ponta a ponta.
 
 ## Regras de corte
 1. Não mover arquivos do Creator Video, Salevo ou Secretssysten nesta etapa.
