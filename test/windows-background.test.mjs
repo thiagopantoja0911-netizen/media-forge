@@ -23,7 +23,11 @@ test("Windows worker is installed and launched as a hidden logon task", async ()
   assert.match(runner, /while\s*\(\$true\)/i);
   assert.match(runner, /Start-Sleep -Seconds \$restartDelay/i);
   assert.match(runner, /Add-Content[\s\S]*?-Encoding UTF8/i);
-  assert.match(task, /RestartInterval \(New-TimeSpan -Seconds 15\)/i);
+  assert.match(task, /RestartInterval \(New-TimeSpan -Minutes 1\)/i);
+  assert.doesNotMatch(task, /RestartInterval \(New-TimeSpan -Seconds 15\)/i);
+  assert.match(task, /Export-ScheduledTask[\s\S]*?existingXml/i);
+  assert.match(task, /Register-ScheduledTask[\s\S]*?existingXml[\s\S]*?Start-ScheduledTask/i);
+  assert.match(task, /Task Scheduler requires[\s\S]*?at least one minute/i);
   assert.doesNotMatch(runner, /WindowStyle Minimized/i);
   assert.match(launcher, /shell\.Run command,\s*0,\s*False/i);
   assert.doesNotMatch(launcher, /cmd\.exe/i);
