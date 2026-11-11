@@ -13,3 +13,12 @@ export function resolveStoragePath(value, options = {}) {
 export function defaultDataDirectory({ production = process.env.NODE_ENV === "production", home = homedir() } = {}) {
   return production ? join(home, ".mediaforge-runtime") : ".mediaforge";
 }
+
+export function mediaForgeDataDirectory({
+  configured = process.env.MEDIAFORGE_DATA_DIR,
+  production = process.env.NODE_ENV === "production",
+  home = homedir(),
+  cwd = process.cwd()
+} = {}) {
+  return resolveStoragePath(configured || defaultDataDirectory({ production, home }), { home, cwd });
+}
