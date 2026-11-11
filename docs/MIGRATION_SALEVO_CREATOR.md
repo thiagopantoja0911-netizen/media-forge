@@ -91,3 +91,9 @@ O botão de pacote não cria job nem inicia renderização.
 ## Revisão editorial da composição (2026-11-11)
 
 A revisão da versão anterior encontrou legendas muito próximas da borda inferior e repetição do mesmo wipe em todas as cenas. A implementação foi atualizada para posicionar as legendas em `bottom: 1200px` (2160 × 3840), adicionar o rótulo editável de cada cena e alternar quatro transições determinísticas: flash editorial, rabisco, íris e whip. A versão atual continua sendo um protótipo tipográfico; a revisão visual final e a renderização 4K/60 FPS no Worker ainda são gates pendentes.
+
+## Limpeza iniciada — confirmação do proprietário (11/11/2026)
+
+O Nexora Workspace / Media Editor **deve continuar no Secrets** e está explicitamente fora do escopo. Foram arquivadas as branches antigas do `paginadevendas` antes das exclusões. O código antigo PHP, Studio, arquivos do site e workflow foram removidos da branch `deploy/video-salevo-hub`, restando apenas README de aposentadoria. A branch `main` também teve os arquivos exclusivos `videosai` removidos via PR #33, sem modificar os outros mapeamentos de vendas.
+
+A Hostinger teve o auto-deploy do `video.salevo.site` desativado. O **website ainda existe**, inclusive possível estado privado em `salevo-private` fora do Git. A exclusão total do website é permanente; não foi executada até comprovar backup de arquivos e estado ou receber autorização consciente para descartá-los. Nada da instalação MediaForge/Worker ou do Nexora foi removido.
