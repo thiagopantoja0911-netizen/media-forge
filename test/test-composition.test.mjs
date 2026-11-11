@@ -8,8 +8,8 @@ test("MediaForge smoke-test composition satisfies the HyperFrames root and timel
   assert.match(TEST_COMPOSITION_HTML, /data-composition-id="main"/);
   assert.match(TEST_COMPOSITION_HTML, /data-start="0"/);
   assert.match(TEST_COMPOSITION_HTML, /data-duration="10"/);
-  assert.match(TEST_COMPOSITION_HTML, /data-width="1920"/);
-  assert.match(TEST_COMPOSITION_HTML, /data-height="1080"/);
+  assert.match(TEST_COMPOSITION_HTML, /data-width="3840"/);
+  assert.match(TEST_COMPOSITION_HTML, /data-height="2160"/);
   assert.match(TEST_COMPOSITION_HTML, /class="clip" data-start="0" data-duration="10"/);
   assert.match(TEST_COMPOSITION_HTML, /gsap\.timeline\(\{ paused: true \}\)/);
   assert.match(TEST_COMPOSITION_HTML, /window\.__timelines\["main"\] = timeline/);
