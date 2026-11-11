@@ -15,7 +15,12 @@ export async function handleStudio({ request, response, isAdminSession }) {
     return;
   }
 
-  if (!(await isAdminSession(request))) {
+  const authenticated = await isAdminSession(request);
+  // Only the dedicated preview hostname may show UI assets without a session.
+  // The compose API and all admin endpoints remain authenticated.
+  const previewMode = process.env.MEDIAFORGE_STAGING_PREVIEW === "true"
+    && String(request.headers?.host ?? "").split(":")[0].toLowerCase() === "forge-preview.salevo.site";
+  if (!authenticated && !previewMode) {
     response.writeHead(303, { location: "/dashboard", "cache-control": "no-store" });
     response.end();
     return;
@@ -30,7 +35,16 @@ export async function handleStudio({ request, response, isAdminSession }) {
   }
 
   const [file, contentType] = asset;
-  const content = await readFile(new URL("../studio/" + file, import.meta.url));
+  let content = await readFile(new URL("../studio/" + file, import.meta.url));
+  if (previewMode && !authenticated && file === "index.html") {
+    const html = content.toString("utf8")
+      .replace(
+        '<main id="conteudo" class="container">',
+        '<main id="conteudo" class="container"><aside role="note" style="margin:16px 0;padding:14px 18px;border:1px solid #e9bd61;border-radius:10px;color:#f5deb0;background:#242018"><strong>PRÉVIA ISOLADA DO FORGE MIDJOURNEY</strong> — Navegue, edite o roteiro e exporte os dados locais. A geração de pacotes no servidor, os jobs e a renderização exigem login administrativo e não estão liberados nesta prévia.</aside>'
+      )
+      .replace('id="build-composition"', 'id="build-composition" disabled title="Indisponível nesta prévia sem login"');
+    content = Buffer.from(html, "utf8");
+  }
   response.writeHead(200, {
     "content-type": contentType,
     "cache-control": "no-store",
