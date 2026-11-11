@@ -152,9 +152,9 @@ export const TEST_COMPOSITION_SCENE_HTML = `<template>
     );
 
     timeline.fromTo("#test-title-text",
-      { opacity: 0, y: 48, scale: 0.96 },
-      { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: "power4.out" },
-      0.55
+      { opacity: 1, y: 0, scale: 1 },
+      { opacity: 1, y: -12, scale: 1.02, duration: 0.9, ease: "power4.out" },
+      0
     );
 
     timeline.fromTo("#test-subtitle-text",
