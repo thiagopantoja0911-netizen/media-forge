@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { defaultDataDirectory, mediaForgeDataDirectory, resolveStoragePath } from "../src/storage-paths.mjs";
+import { defaultDataDirectory, isPathInside, mediaForgeDataDirectory, resolveStoragePath } from "../src/storage-paths.mjs";
 
 test("tilde storage paths resolve against the stable account home",()=>{
   assert.equal(resolveStoragePath("~/.mediaforge-runtime",{home:"/home/u123",cwd:"/app/current"}),"/home/u123/.mediaforge-runtime");
@@ -19,4 +19,10 @@ test("server and OAuth state store share the same tilde-expanded data directory"
   const dataDir=mediaForgeDataDirectory(options);
   assert.equal(dataDir,"/home/u123/.mediaforge-runtime");
   assert.equal(resolveStoragePath(dataDir,{home:"/home/u123",cwd:"/app/releases/current"}),dataDir);
+});
+
+test("persistent storage classification detects release-relative directories",()=>{
+  assert.equal(isPathInside("/home/u123/releases/current","/home/u123/releases/current/.mediaforge"),true);
+  assert.equal(isPathInside("/home/u123/releases/current","/home/u123/.mediaforge-runtime"),false);
+  assert.equal(isPathInside("/home/u123/releases/current","/home/u123/releases/previous/.mediaforge"),false);
 });
