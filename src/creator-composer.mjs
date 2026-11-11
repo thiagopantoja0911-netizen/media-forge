@@ -4,6 +4,17 @@ const WIDTH = 2160;
 const HEIGHT = 3840;
 const SCENE_IDS = ["scene-01", "scene-02", "scene-03", "scene-04", "scene-05"];
 const ACCENTS = ["#91f4d5", "#b5a2ff", "#ffbd72", "#82c8ff", "#f1a6cf"];
+const MAX_AUDIO_FILE_BYTES = 12 * 1024 * 1024;
+const MAX_AUDIO_TOTAL_BYTES = 18 * 1024 * 1024;
+const AUDIO_TYPES = {
+  wav: ["audio/wav", "audio/x-wav", "audio/vnd.wave"],
+  mp3: ["audio/mpeg", "audio/mp3"],
+  m4a: ["audio/mp4", "audio/x-m4a"],
+  aac: ["audio/aac", "audio/aacp"],
+  ogg: ["audio/ogg"],
+  opus: ["audio/ogg"],
+  webm: ["audio/webm"]
+};
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -39,6 +50,53 @@ function validateManifest(manifest) {
   return duration;
 }
 
+function validateAudioAsset(asset, role) {
+  if (asset == null) return null;
+  if (!asset || typeof asset !== "object" || Array.isArray(asset)) {
+    throw new TypeError("Arquivo de áudio inválido: " + role);
+  }
+  const filename = textValue(asset.filename, 140).split(/[\\/]/).pop();
+  const extension = filename.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+  if (!extension || !Object.hasOwn(AUDIO_TYPES, extension)) {
+    throw new TypeError("Formato de áudio não suportado em " + role + "; use WAV, MP3, M4A, AAC, OGG, OPUS ou WEBM");
+  }
+  const mimeType = textValue(asset.mimeType, 100).toLowerCase().split(";")[0] || AUDIO_TYPES[extension][0];
+  if (!AUDIO_TYPES[extension].includes(mimeType) && mimeType !== "application/octet-stream") {
+    throw new TypeError("Tipo MIME não corresponde ao arquivo de áudio " + role);
+  }
+  const encoded = asset.contentBase64;
+  if (typeof encoded !== "string" || !encoded.length || encoded.length % 4 !== 0
+      || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+    throw new TypeError("Conteúdo Base64 inválido em " + role);
+  }
+  const bytes = Buffer.from(encoded, "base64");
+  if (!bytes.length || bytes.toString("base64") !== encoded) {
+    throw new TypeError("Conteúdo Base64 inválido em " + role);
+  }
+  if (bytes.byteLength > MAX_AUDIO_FILE_BYTES) {
+    throw new TypeError("Cada arquivo de áudio deve ter no máximo 12 MB");
+  }
+  if (asset.sizeBytes !== undefined && asset.sizeBytes !== bytes.byteLength) {
+    throw new TypeError("Tamanho declarado não corresponde ao arquivo " + role);
+  }
+  const durationSeconds = Number(asset.durationSeconds);
+  if (!Number.isFinite(durationSeconds) || durationSeconds < 0.25 || durationSeconds > 1200) {
+    throw new TypeError("Duração do áudio inválida em " + role);
+  }
+  const paths = {
+    voiceover: "assets/audio/voiceover." + extension,
+    music: "assets/audio/music." + extension
+  };
+  return {
+    path: paths[role],
+    filename,
+    mimeType,
+    contentBase64: encoded,
+    sizeBytes: bytes.byteLength,
+    durationSeconds
+  };
+}
+
 function sceneHost(scene, index) {
   const id = SCENE_IDS[index];
   return [
@@ -50,8 +108,25 @@ function sceneHost(scene, index) {
   ].join("");
 }
 
-function makeIndexHtml(duration, scenes) {
+function audioTag(asset, id, index, duration, volume, fades = false) {
+  if (!asset) return "";
+  const clipDuration = Math.min(duration, asset.durationSeconds);
+  const fadeIn = Math.min(0.6, clipDuration / 3);
+  const fadeOut = Math.min(1.2, clipDuration / 3);
+  return [
+    '<audio id="', id, '" src="', asset.path,
+    '" data-start="0" data-duration="', clipDuration.toFixed(3),
+    '" data-track-index="', index, '" data-volume="', volume, '"',
+    fades ? ' data-fade-in="' + fadeIn.toFixed(3) + '" data-fade-out="' + fadeOut.toFixed(3) + '"' : "",
+    '></audio>'
+  ].join("");
+}
+
+function makeIndexHtml(duration, scenes, audioAssets) {
   const hosts = scenes.map(sceneHost).join("\n    ");
+  const voice = audioTag(audioAssets.voiceover, "voiceover", 10, duration, 1);
+  const musicVolume = audioAssets.voiceover ? 0.14 : 0.9;
+  const music = audioTag(audioAssets.music, "music", 11, duration, musicVolume, true);
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -62,6 +137,8 @@ function makeIndexHtml(duration, scenes) {
 <body>
   <div id="root" data-composition-id="main" data-start="0" data-duration="${duration}" data-width="${WIDTH}" data-height="${HEIGHT}">
     ${hosts}
+    ${voice}
+    ${music}
   </div>
   <script src="assets/gsap.min.js"></script>
   <script>
@@ -205,11 +282,18 @@ function sceneHtml(scene, index, duration) {
 `;
 }
 
-export async function buildCreatorComposition(manifest) {
+export async function buildCreatorComposition(manifest, mediaInput = {}) {
   const duration = validateManifest(manifest);
   const scenes = manifest.brief.scenes;
+  const voiceover = validateAudioAsset(mediaInput.voiceover, "voiceover");
+  const music = validateAudioAsset(mediaInput.music, "music");
+  const totalAudioBytes = (voiceover?.sizeBytes ?? 0) + (music?.sizeBytes ?? 0);
+  if (totalAudioBytes > MAX_AUDIO_TOTAL_BYTES) {
+    throw new TypeError("A soma dos arquivos de áudio deve ter no máximo 18 MB");
+  }
+  const audioAssets = { voiceover, music };
   const projectFiles = [
-    { path: "index.html", content: makeIndexHtml(duration, scenes), encoding: "utf8" }
+    { path: "index.html", content: makeIndexHtml(duration, scenes, audioAssets), encoding: "utf8" }
   ];
   for (let index = 0; index < scenes.length; index += 1) {
     const scene = scenes[index];
@@ -221,11 +305,39 @@ export async function buildCreatorComposition(manifest) {
   }
   const gsap = await readFile(new URL("../assets/gsap.min.js", import.meta.url), "utf8");
   projectFiles.push({ path: "assets/gsap.min.js", content: gsap, encoding: "utf8" });
+  if (voiceover) projectFiles.push({ path: voiceover.path, contentBase64: voiceover.contentBase64, encoding: "base64" });
+  if (music) projectFiles.push({ path: music.path, contentBase64: music.contentBase64, encoding: "base64" });
   projectFiles.push({
     path: "creator-storyboard.json",
-    content: JSON.stringify(manifest, null, 2) + "\n",
+    content: JSON.stringify({
+      ...manifest,
+      audioAssets: {
+        voiceover: voiceover ? { filename: voiceover.filename, durationSeconds: voiceover.durationSeconds, sizeBytes: voiceover.sizeBytes } : null,
+        music: music ? { filename: music.filename, durationSeconds: music.durationSeconds, sizeBytes: music.sizeBytes } : null
+      }
+    }, null, 2) + "\n",
     encoding: "utf8"
   });
+
+  const blockers = [];
+  const warnings = scenes.flatMap((scene, index) => {
+    const seconds = scene.end - scene.start;
+    const titleLimit = seconds <= 3.5 ? 44 : seconds <= 6 ? 64 : 96;
+    const captionLimit = seconds <= 3.5 ? 36 : seconds <= 6 ? 70 : 120;
+    const title = textValue(scene.onscreen, 220).trim() || (index === 0 ? textValue(scene.spoken, 120).trim() : scene.name);
+    const caption = textValue(scene.spoken, 280).trim();
+    const result = [];
+    if (title.length > titleLimit) result.push("Cena " + (index + 1) + ": texto principal reduzido visualmente; o texto integral está em creator-storyboard.json.");
+    if (caption.length > captionLimit) result.push("Cena " + (index + 1) + ": legenda reduzida visualmente; o texto integral está em creator-storyboard.json.");
+    return result;
+  });
+  if (!voiceover) blockers.push("Narração ainda não foi anexada. Exporte uma voz do VoiceStudio ou anexe uma gravação WAV/MP3.");
+  else if (Math.abs(voiceover.durationSeconds - duration) > 1.5) blockers.push("A narração tem " + voiceover.durationSeconds.toFixed(2) + " s e o vídeo " + duration + " s; ajustar a timeline e sincronizar as falas.");
+  if (!music) blockers.push("Trilha musical ainda não foi anexada.");
+  else if (music.durationSeconds < duration - 0.5) blockers.push("A trilha musical termina antes do vídeo; não haverá loop automático.");
+  if (scenes.some(scene => textValue(scene.sound).trim())) blockers.push("As notas de som por cena ainda precisam ser resolvidas em efeitos sonoros reais e licenciados.");
+  blockers.push("As cenas usam tipografia cinética abstrata; faltam imagens ou vídeos específicos do assunto.");
+  blockers.push("A composição precisa passar por HyperFrames check, preview e revisão visual no Worker antes de liberar a fila.");
 
   return {
     project: {
@@ -242,27 +354,17 @@ export async function buildCreatorComposition(manifest) {
     projectFiles,
     readiness: {
       renderReady: false,
-      warnings: scenes.flatMap((scene, index) => {
-        const seconds = scene.end - scene.start;
-        const titleLimit = seconds <= 3.5 ? 44 : seconds <= 6 ? 64 : 96;
-        const captionLimit = seconds <= 3.5 ? 36 : seconds <= 6 ? 70 : 120;
-        const title = textValue(scene.onscreen, 220).trim() || (index === 0 ? textValue(scene.spoken, 120).trim() : scene.name);
-        const caption = textValue(scene.spoken, 280).trim();
-        const warnings = [];
-        if (title.length > titleLimit) warnings.push("Cena " + (index + 1) + ": texto principal reduzido visualmente para caber no tempo; o texto integral está em creator-storyboard.json.");
-        if (caption.length > captionLimit) warnings.push("Cena " + (index + 1) + ": legenda reduzida visualmente; o texto integral está em creator-storyboard.json.");
-        return warnings;
-      }),
-      blockers: [
-        "Narração ainda não foi gerada nem anexada como arquivo de áudio.",
-        "Música e efeitos sonoros ainda não foram anexados.",
-        "As cenas usam tipografia cinética abstrata; faltam imagens ou vídeos específicos do assunto.",
-        "A composição precisa passar por HyperFrames check, preview e revisão visual no Worker antes de liberar a fila."
-      ],
+      audio: {
+        voiceover: voiceover ? { attached: true, durationSeconds: voiceover.durationSeconds } : { attached: false },
+        music: music ? { attached: true, durationSeconds: music.durationSeconds } : { attached: false }
+      },
+      warnings,
+      blockers,
       notes: [
         "A primeira cena mantém o gancho visível no frame zero.",
         "Cada cena é uma subcomposição independente e editável.",
-        "O texto do usuário é escapado antes de entrar no HTML."
+        "O texto do usuário é escapado antes de entrar no HTML.",
+        "Arquivos de áudio são copiados para o pacote e nunca enviados à fila automaticamente."
       ]
     }
   };
