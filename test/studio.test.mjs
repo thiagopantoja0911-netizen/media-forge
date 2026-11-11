@@ -58,7 +58,7 @@ function responseHarness() {
 test("Creator Studio is self-contained and isolated from external services", () => {
   assert.match(page, /Content-Security-Policy/);
   assert.match(page, /MediaForge Creator Studio/);
-  assert.match(page, /O pacote gerado não será enviado à fila nesta etapa/);
+  assert.match(page, /o pacote não será enviado à fila/);
   assert.match(page, /id="voiceover-file"/);
   assert.match(page, /id="music-file"/);
   assert.match(page, /VoiceStudio/);
