@@ -14,6 +14,11 @@ export const VIDEOS_SECRETS_TOOLS = [
         prompt: { type: "string", minLength: 8, maxLength: 5000 },
         duration_seconds: { type: "integer", minimum: 10, maximum: 3600 },
         aspect_ratio: { type: "string", enum: ["16:9", "9:16", "1:1"] },
+        resolution: { type: "string", description: "HyperFrames preset, e.g. portrait-4k" },
+        fps: { type: "integer", minimum: 1, maximum: 240 },
+        quality: { type: "string", enum: ["draft", "looks", "standard", "high", "delivery"] },
+        workers: { type: "integer", minimum: 1, maximum: 64 },
+        preflight: { type: "boolean" },
         project_files: {
           type: "array",
           minItems: 1,
@@ -216,6 +221,11 @@ export async function handleVideosSecretsMcp({
         prompt: args.prompt,
         duration_seconds: args.duration_seconds,
         aspect_ratio: args.aspect_ratio,
+        resolution: args.resolution ?? "portrait-4k",
+        fps: args.fps ?? 60,
+        quality: args.quality ?? "high",
+        workers: args.workers,
+        preflight: args.preflight ?? true,
         project_files: args.project_files
       });
       return writeResult(response, id, textResult({
