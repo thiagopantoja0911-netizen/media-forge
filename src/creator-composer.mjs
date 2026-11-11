@@ -197,9 +197,21 @@ function sceneHtml(scene, index, duration, brief, sceneMedia = null) {
       ? `<video id="${id}-media" class="clip scene-media" data-start="0" data-duration="${Number(duration).toFixed(3)}" data-track-index="0" src="${sceneMedia.path}" muted playsinline preload="metadata"></video>`
       : `<div id="${id}-media" class="clip scene-media" data-start="0" data-duration="${Number(duration).toFixed(3)}" data-track-index="0"><img id="${id}-media-image" src="${sceneMedia.path}" alt="" loading="eager"></div>`)
     : "";
-  const mediaMotion = !sceneMedia ? "" : sceneMedia.kind === "video"
-    ? `tl.fromTo("#${id}-media", { scale: 1.025 }, { scale: 1.085, duration: ${Math.max(0.5, Number(duration) - 0.05).toFixed(3)}, ease: "none" }, 0);`
-    : `tl.fromTo("#${id}-media-image", { scale: 1.05, xPercent: -1.5, yPercent: 0 }, { scale: 1.17, xPercent: 1.5, yPercent: -1, duration: ${Math.max(0.5, Number(duration) - 0.05).toFixed(3)}, ease: "none" }, 0);`
+  // A restrained camera plan follows each narrative beat rather than repeating one generic zoom.
+  const cameraPlans = [
+    [{ scale: 1.14, xPercent: -2, yPercent: 0 }, { scale: 1.22, xPercent: 1, yPercent: -1 }], // hook: close-in
+    [{ scale: 1.11, xPercent: -3.5, yPercent: -1 }, { scale: 1.11, xPercent: 3, yPercent: 1 }], // context: tracking
+    [{ scale: 1.04, xPercent: 1, yPercent: 0 }, { scale: 1.20, xPercent: -2, yPercent: -1 }], // proof: detail
+    [{ scale: 1.22, xPercent: 2, yPercent: -1 }, { scale: 1.06, xPercent: -1, yPercent: 0 }], // reveal: pull-back
+    [{ scale: 1.10, xPercent: 0, yPercent: -2 }, { scale: 1.06, xPercent: 0, yPercent: 2 }]  // payoff: settle
+  ];
+  const cue = String(scene.action || "").toLowerCase();
+  let [cameraFrom, cameraTo] = cameraPlans[index];
+  if (/aproxim|zoom.in|dolly.in|push.in/.test(cue)) [cameraFrom, cameraTo] = cameraPlans[2];
+  else if (/afasta|zoom.out|pull.back|revela|reveal/.test(cue)) [cameraFrom, cameraTo] = cameraPlans[3];
+  else if (/pan|lateral|travell|tracking/.test(cue)) [cameraFrom, cameraTo] = cameraPlans[1];
+  const selector = sceneMedia?.kind === "video" ? "#" + id + "-media" : "#" + id + "-media-image";
+  const mediaMotion = sceneMedia ? `tl.fromTo("${selector}", ${JSON.stringify(cameraFrom)}, { ...${JSON.stringify(cameraTo)}, duration: ${Math.max(0.5, Number(duration) - 0.05).toFixed(3)}, ease: "none" }, 0);` : "";
   const safeDuration = Number(duration).toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
   const slab = {
     left: palette.slabLeft,
@@ -258,7 +270,7 @@ function sceneHtml(scene, index, duration, brief, sceneMedia = null) {
       width: ${slab.width}px;
       height: ${slab.height}px;
       background: var(--accent);
-      opacity: ${sceneMedia ? "0.19" : "1"};
+      opacity: ${sceneMedia ? "0.11" : "1"};
       clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%);
       z-index: 1;
     }
@@ -292,7 +304,7 @@ function sceneHtml(scene, index, duration, brief, sceneMedia = null) {
       max-width: 1728px;
       margin: 0;
       z-index: 3;
-      font-size: 292px;
+      font-size: ${sceneMedia ? 196 : 292}px;
       text-shadow: ${sceneMedia ? "0 12px 66px rgba(0,0,0,.72)" : "none"};
       line-height: 0.94;
       font-weight: 900;
