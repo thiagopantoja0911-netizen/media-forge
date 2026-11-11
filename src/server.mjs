@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import {
   MAX_PROJECT_BYTES,
   validateJob,
@@ -11,9 +11,10 @@ import {
 import { handleVideosSecretsMcp } from "./videos-secrets-mcp.mjs";
 import { authenticateBearer, handleOAuth } from "./oauth.mjs";
 import { handlePanel, isAdminSession } from "./panel.mjs";
+import { handleRemoteWorker } from "./remote-worker-server.mjs";
 
-const host = process.env.MEDIAFORGE_HOST ?? "127.0.0.1";
-const port = Number(process.env.MEDIAFORGE_PORT ?? 8787);
+const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
+const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
 const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
 const jobsDir = join(dataDir, "jobs");
 const workerStatusFile = join(dataDir, "worker-status.json");
@@ -215,10 +216,34 @@ async function rendererStatus() {
   };
 }
 
+function sameToken(actual, expected) {
+  if (!actual || !expected) return false;
+  const a=Buffer.from(actual), b=Buffer.from(expected);
+  return a.length===b.length && timingSafeEqual(a,b);
+}
+async function requireApiScope(request, response, scope) {
+  const token=String(request.headers.authorization??"").match(/^Bearer\s+(.+)$/i)?.[1]?.trim()||"";
+  let identity=token?await authenticateBearer(token):null;
+  if(!identity && sameToken(token,process.env.MEDIAFORGE_MCP_TOKEN))
+    identity={scopes:["videos:read","videos:write"]};
+  const loopback=["127.0.0.1","localhost","::1"].includes(host);
+  const required=process.env.MEDIAFORGE_REQUIRE_AUTH==="true" || !loopback;
+  if(!required && !token)return true;
+  if(!identity) {
+    response.setHeader("www-authenticate","Bearer");
+    send(response,401,{ok:false,error:"AUTH_REQUIRED"});return false;
+  }
+  if(!identity.scopes?.includes(scope)) {
+    send(response,403,{ok:false,error:"INSUFFICIENT_SCOPE"});return false;
+  }
+  return true;
+}
+
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, "http://" + (request.headers.host ?? "localhost"));
     const parts = url.pathname.split("/").filter(Boolean);
+    if(await handleRemoteWorker({request,response,url,jobsDir,projectsRoot,workerStatusFile})) return;
 
     if (url.pathname === "/mcp") {
       return handleVideosSecretsMcp({
@@ -283,15 +308,18 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "POST" && url.pathname === "/v1/jobs") {
+      if(!(await requireApiScope(request,response,"videos:write")))return;
       const job = await createJob(await parseBody(request));
       return send(response, 202, { ok: true, job });
     }
 
     if (request.method === "GET" && url.pathname === "/v1/jobs") {
+      if(!(await requireApiScope(request,response,"videos:read")))return;
       return send(response, 200, { ok: true, jobs: await listJobs(100) });
     }
 
     if (request.method === "GET" && parts[0] === "v1" && parts[1] === "jobs" && parts[2]) {
+      if(!(await requireApiScope(request,response,"videos:read")))return;
       const job = await loadJob(parts[2]);
       return send(response, 200, { ok: true, job });
     }
