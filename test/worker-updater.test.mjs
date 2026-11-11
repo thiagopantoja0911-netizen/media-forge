@@ -9,7 +9,7 @@ test("silent updater preserves connection secrets and validates continuous worke
   assert.match(script,/\.worker-token\.dpapi/);
   assert.match(script,/Invoke-Git @\("fetch","origin",\$Branch\)/);
   assert.match(script,/checkout.*origin/);
-  assert.match(script,/npm install/);
+  assert.match(script,/Invoke-Npm @\("install"/);
   assert.match(script,/desktop\\worker/);
   assert.match(script,/MediaForge Worker - Staging/);
   assert.match(script,/stableCount -ge 4/);
