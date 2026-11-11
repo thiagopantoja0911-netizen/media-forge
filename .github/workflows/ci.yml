@@ -30,6 +30,14 @@ jobs:
       - run: npm run validate
       - name: Check generated Creator Studio composition with HyperFrames
         run: node scripts/check-creator-composition.mjs
+      - name: Upload Creator Studio review snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mediaforge-creator-review-snapshots
+          path: ${{ runner.temp }}/mediaforge-creator-snapshots
+          if-no-files-found: warn
+          retention-days: 7
       - name: Verify public staging TLS, OAuth and access controls
         if: github.event_name == 'pull_request' && github.head_ref == 'feature/conexoes-mediaforge-primeiro'
         run: node scripts/staging-health.mjs
