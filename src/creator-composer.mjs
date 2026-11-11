@@ -88,13 +88,24 @@ function sceneHtml(scene, index, duration) {
   const safeKicker = escapeHtml(kicker);
   const safeCaption = escapeHtml(caption);
   const safeDuration = Number(duration).toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
-  const motion = [
+  const openingMotion = [
     `tl.fromTo("#${id}-orb", { rotation: -18, scale: 0.78, opacity: 0.12 }, { rotation: 0, scale: 1, opacity: 0.42, duration: 0.72, ease: "power4.out" }, 0);`,
     `tl.fromTo("#${id}-bar", { scaleX: 0, transformOrigin: "left center" }, { scaleX: 1, duration: 0.48, ease: "expo.out" }, 0.08);`,
     `tl.fromTo("#${id}-orb", { scale: 0.62, rotation: 12, opacity: 0.08 }, { scale: 1, rotation: 0, opacity: 0.38, duration: 0.62, ease: "power3.out" }, 0);`,
     `tl.fromTo("#${id}-bar", { y: 110, opacity: 0 }, { y: 0, opacity: 1, duration: 0.42, ease: "power4.out" }, 0.1);`,
     `tl.fromTo("#${id}-orb", { scale: 1.24, rotation: -9, opacity: 0.08 }, { scale: 1, rotation: 0, opacity: 0.4, duration: 0.78, ease: "power2.out" }, 0);`
   ][index];
+  const motionBeats = [];
+  const drift = [
+    [-130, 72, 12], [105, -54, -17], [160, 38, 20], [-95, -66, -14],
+    [-145, 52, 16], [88, -34, -12], [125, 72, 18], [-110, -58, -16]
+  ];
+  for (let beat = 0, at = 1.35; at + 1.35 < duration; beat += 1, at += 2.45) {
+    const [x, y, rotation] = drift[(index + beat) % drift.length];
+    const scale = beat % 2 === 0 ? 1.075 : 0.94;
+    motionBeats.push(`tl.to("#${id}-orb", { x: ${x}, y: ${y}, rotation: ${rotation}, scale: ${scale}, duration: 1.35, ease: "power2.inOut" }, ${at.toFixed(2)});`);
+  }
+  const motion = [openingMotion, ...motionBeats].join("\\n");
   const titleMotion = index === 0
     ? `tl.fromTo("#${id}-title", { y: 0, scale: 1 }, { y: -10, scale: 1.015, duration: 0.42, ease: "power2.out" }, 0.05);`
     : `tl.fromTo("#${id}-title", { y: 88, opacity: 0, filter: "blur(10px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.42, ease: "power4.out" }, 0.12);`;
