@@ -68,7 +68,13 @@ function normalizePayload(input) {
     aspectRatio: input.aspectRatio ?? input.aspect_ratio,
     outputs: ["video"],
     renderer: "hyperframes",
-    outputName: input.outputName ?? input.output_name
+    outputName: input.outputName ?? input.output_name,
+    resolution: input.resolution,
+    fps: input.fps,
+    quality: input.quality,
+    workers: input.workers,
+    browserGpu: input.browserGpu ?? input.browser_gpu,
+    preflight: input.preflight
   };
 
   return {
@@ -147,6 +153,12 @@ async function createJob(rawPayload) {
       renderer: inputProject.renderer ?? "hyperframes",
       sourceDir,
       outputName: inputProject.outputName ?? null,
+      resolution: inputProject.resolution ?? null,
+      fps: inputProject.fps ?? null,
+      quality: inputProject.quality ?? null,
+      workers: inputProject.workers ?? null,
+      browserGpu: inputProject.browserGpu ?? null,
+      preflight: inputProject.preflight ?? true,
       inlineFiles: hasInlineFiles,
       fileCount: hasInlineFiles ? payload.projectFiles.length : 0,
       fileBytes: fileValidation.bytes
