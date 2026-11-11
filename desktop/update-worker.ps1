@@ -54,7 +54,10 @@ try {
   New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
   Copy-Item -LiteralPath $envFile -Destination (Join-Path $backupDir ".env.local") -Force
   if (Test-Path -LiteralPath $tokenFile) { Copy-Item -LiteralPath $tokenFile -Destination (Join-Path $backupDir ".worker-token.dpapi") -Force }
-  Add-Report "Configuração de conexão e token protegidos em backup local."
+  $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+  & icacls $backupDir /inheritance:r /grant:r ('*' + $sid + ':(OI)(CI)(F)') /T /C | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Não foi possível proteger o backup local da conexão." }
+  Add-Report "Configuração de conexão e token protegidos em backup local com ACL do usuário atual."
 
   $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
   if ($task -and $task.State -eq "Running") {
