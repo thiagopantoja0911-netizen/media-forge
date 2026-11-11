@@ -114,8 +114,8 @@
   }
   async function selectAudio(kind,file){
     if(!file){audioFiles[kind]=null;return;}
-    if(file.size>12*1024*1024){message('Cada arquivo de áudio pode ter no máximo 12 MB.');return;}
-    if(!/\\.(wav|mp3|m4a|aac|ogg|opus|webm)$/i.test(file.name)){message('Use WAV, MP3, M4A, AAC, OGG, OPUS ou WEBM.');return;}
+    if(file.size>12*1024*1024){audioFiles[kind]=null;message('Cada arquivo de áudio pode ter no máximo 12 MB.');return;}
+    if(!/\.(wav|mp3|m4a|aac|ogg|opus|webm)$/i.test(file.name)){audioFiles[kind]=null;message('Use WAV, MP3, M4A, AAC, OGG, OPUS ou WEBM.');return;}
     try{
       var duration=await audioDuration(file);
       audioFiles[kind]={file:file,durationSeconds:duration};
