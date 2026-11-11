@@ -27,7 +27,7 @@ test("extracts text and base64 files into a new directory", async () => {
   }
 });
 
-test("rejects unsafe paths and removes a partially extracted directory", async () => {
+test("rejects unsafe paths before creating the destination", async () => {
   const parent = await mkdtemp(join(tmpdir(), "mediaforge-package-"));
   const output = join(parent, "project");
   const bundle = {
@@ -38,6 +38,25 @@ test("rejects unsafe paths and removes a partially extracted directory", async (
   };
   try {
     await assert.rejects(() => extractCreatorPackage(bundle, output), /projectFiles/);
+  } finally {
+    await rm(parent, { recursive: true, force: true });
+  }
+});
+
+test("removes a partially extracted directory after a filesystem conflict", async () => {
+  const parent = await mkdtemp(join(tmpdir(), "mediaforge-package-"));
+  const output = join(parent, "project");
+  const bundle = {
+    projectFiles: [
+      { path: "index.html", content: "<html></html>" },
+      { path: "assets", content: "not-a-directory" },
+      { path: "assets/audio.wav", content: "conflict" }
+    ]
+  };
+  try {
+    await assert.rejects(() => extractCreatorPackage(bundle, output));
+    const { access } = await import("node:fs/promises");
+    await assert.rejects(() => access(output));
   } finally {
     await rm(parent, { recursive: true, force: true });
   }
