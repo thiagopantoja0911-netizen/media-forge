@@ -75,7 +75,7 @@ test("authenticated ChatGPT -> API -> Windows remote worker handshake", async()=
     await writeFile(join(root,"worker-status.json"),JSON.stringify({
       workerId:"windows-test",renderer:"hyperframes",
       lastSeen:new Date(Date.now()-15_000).toISOString()
-    })+"\\n");
+    })+"\n");
     const healthResponse=await fetch(base+"/health");
     const health=await healthResponse.json();
     assert.equal(health.worker.online,true);
