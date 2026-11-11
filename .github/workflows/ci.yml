@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, feature/conexoes-mediaforge-primeiro]
   pull_request:
-    branches: [main]
+    branches: [main, migration/videos-secrets-to-mediaforge]
 
 jobs:
   validate:
