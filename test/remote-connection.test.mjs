@@ -82,6 +82,20 @@ test("authenticated ChatGPT -> API -> Windows remote worker handshake", async()=
     assert.equal(health.worker.renderer,"hyperframes");
     assert.match(healthResponse.headers.get("cache-control")||"",/no-store/i);
 
+    const progress=await request(base,"/v1/worker/jobs/"+id+"/progress",workerToken,"POST",{
+      leaseId,progress:38,message:"Auditoria HyperFrames em andamento"
+    });
+    assert.equal(progress.status,200,JSON.stringify(progress.data));
+    assert.equal(progress.data.progress,38);
+    const inProgress=await request(base,"/v1/jobs/"+id,mcpToken);
+    assert.equal(inProgress.data.job.progress,38);
+    assert.equal(inProgress.data.job.progressMessage,"Auditoria HyperFrames em andamento");
+    const invalidProgress=await request(base,"/v1/worker/jobs/"+id+"/progress",workerToken,"POST",{
+      leaseId:"invalid-lease",progress:99,message:"Não autorizado"
+    });
+    assert.equal(invalidProgress.status,409);
+    assert.equal(invalidProgress.data.error,"LEASE_INVALID");
+
     const complete=await request(base,"/v1/worker/jobs/"+id+"/complete",workerToken,"POST",{
       leaseId,success:true,fileName:"test-4k60.mp4",size:2435,sha256:"c".repeat(64),
       outputPath:"C:\\MediaForge\\test-4k60.mp4",report:{fps:60,width:2160,height:3840}
