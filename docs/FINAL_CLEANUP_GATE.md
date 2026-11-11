@@ -6,10 +6,10 @@ A green completion status must not be shown until every required technical gate 
 
 | Resource | Verified role | Final action |
 | --- | --- | --- |
-| GitHub `media-forge` | Independent MediaForge / Creator Studio codebase | Keep as the source of truth for video creation |
+| GitHub `media-forge` | Independent MediaForge / Forge Midjourney codebase | Keep as the source of truth for video creation |
 | GitHub `paginadevendas`, branch `deploy/video-salevo-hub` | Legacy `video.salevo.site` hub, PHP API and old Studio | Preserve until all compatibility and rollback gates pass |
 | GitHub `Secretssysten` | Separate Secrets System monorepo | Keep independent; not part of Creator Video retirement |
-| GitHub `VoiceStudio` | Independent local speech app, AGPL-3.0 | Keep independent; Creator Studio accepts exported audio files |
+| GitHub `VoiceStudio` | Independent local speech app, AGPL-3.0 | Keep independent; Forge Midjourney accepts exported audio files |
 | Hostinger `mediaforge.salevo.site` | MediaForge Node.js 22 app | Keep |
 | Hostinger `video.salevo.site` | Former Creator Video/Salevo Video hub | **Website deleted** in Hostinger on 2026-11-11 at the owner's request; verification returned zero matches |
 | Hostinger `mcpbrowser.salevo.site` | Browser MCP Relay v0.5.0, deployed from its own archive | Keep independent; never merge into MediaForge |
@@ -21,7 +21,7 @@ Hostinger inventory contained 28 websites at the 2026-11-11 review. The table li
 
 ## Required technical gates
 
-- [ ] Creator Studio is deployed from the reviewed `media-forge` repository behind MediaForge admin authentication.
+- [ ] Forge Midjourney is deployed from the reviewed `media-forge` repository behind MediaForge admin authentication.
 - [ ] Existing exported Studio v1 JSON files import without losing briefing, hooks, scene text, action or sound notes.
 - [x] Latest editorial layout, 56 px scene labels, safe-area captions, four transition styles (flash, scribble, iris, whip) and seekable root `index.motion.json` assertions pass the pinned HyperFrames CLI `check --json` and review snapshot generation in GitHub Actions run `43047916144` (2026-11-11). This confirms the CI fixture only, not an approved final video. The no-audio fixture may report the expected `film_silent` warning.
 - [ ] HyperFrames review snapshots are generated and visually inspected; text safe areas, timing, first frame and transitions pass.
@@ -70,9 +70,9 @@ The final green report must name exact domains/services safe to retire, exact re
 ## Latest verification (2026-11-11)
 
 - GitHub PR #6, head `b7072e398b5a57fa118b52b9eff8d923bc96c445`, passed CI run `43047916144`; Windows PowerShell syntax job also passed.
-- Creator Studio composition endpoint now rejects cross-site browser requests and non-JSON payloads before parsing, with unit tests.
+- Forge Midjourney composition endpoint now rejects cross-site browser requests and non-JSON payloads before parsing, with unit tests.
 - Connected browser confirmed `https://mediaforge.salevo.site/health`: orchestrator healthy, Windows Worker online, HyperFrames renderer, zero queued/processing jobs.
-- Connected browser confirmed `https://mediaforge.salevo.site/studio` returns `not_found`; Creator Studio is **not published yet**.
+- Connected browser confirmed `https://mediaforge.salevo.site/studio` returns `not_found`; Forge Midjourney is **not published yet**.
 - Hostinger deployment source remains `media-forge` branch `feature/conexoes-mediaforge-primeiro`, commit `3ce1879fb94293629ebff14dd4eb71d3abc55d49`. The migration PR targets this branch but has not been merged or deployed.
 - No domain, secret, Windows task, service or legacy code has been deleted.
 
