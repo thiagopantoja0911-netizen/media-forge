@@ -1,7 +1,7 @@
 Option Explicit
 ' This launcher is executed by Task Scheduler through wscript.exe.
 ' It waits for the persistent PowerShell worker, without creating a visible
-' cmd.exe/PowerShell console window in the interactive user session.
+' terminal or console window in the interactive user session.
 Dim shell, fso, runnerPath, installDir, command, result
 If WScript.Arguments.Count <> 2 Then WScript.Quit 2
 Set shell = CreateObject("WScript.Shell")
