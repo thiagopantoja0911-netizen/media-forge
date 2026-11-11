@@ -1,5 +1,5 @@
 param(
-  [string]$InstallDir = "$env:LOCALAPPDATA\MediaForge"
+  [string]$InstallDir = "$env:LOCALAPPDATA\MediaForge-Staging"
 )
 
 $ErrorActionPreference = "Stop"
