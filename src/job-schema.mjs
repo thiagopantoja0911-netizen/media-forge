@@ -117,7 +117,32 @@ export function validateJob(input) {
     errors.push("project.outputs may contain only video, audio or project");
   }
 
-  if (project.resolution !== undefined && (!RESOLUTIONS.has(project.resolution) || project.resolution === "hdr")) {\n    errors.push("project.resolution must be a supported HyperFrames preset");\n  }\n\n  if (project.fps !== undefined && !validFps(project.fps)) {\n    errors.push("project.fps must be an integer from 1 to 240 or an ffmpeg rational such as 30000/1001");\n  }\n\n  if (project.quality !== undefined && !QUALITIES.has(project.quality)) {\n    errors.push("project.quality must be draft, looks, standard, high or delivery");\n  }\n\n  if (project.workers !== undefined\n      && !(project.workers === "auto" || (Number.isInteger(project.workers) && project.workers >= 1 && project.workers <= 64))) {\n    errors.push("project.workers must be auto or an integer from 1 to 64");\n  }\n\n  if (project.browserGpu !== undefined && typeof project.browserGpu !== "boolean") {\n    errors.push("project.browserGpu must be boolean when provided");\n  }\n\n  if (project.preflight !== undefined && typeof project.preflight !== "boolean") {\n    errors.push("project.preflight must be boolean when provided");\n  }\n\n  if (project.voice && typeof project.voice !== "object") {
+  if (project.resolution !== undefined && !RESOLUTIONS.has(project.resolution)) {
+    errors.push("project.resolution must be a supported HyperFrames preset");
+  }
+
+  if (project.fps !== undefined && !validFps(project.fps)) {
+    errors.push("project.fps must be an integer from 1 to 240 or an ffmpeg rational such as 30000/1001");
+  }
+
+  if (project.quality !== undefined && !QUALITIES.has(project.quality)) {
+    errors.push("project.quality must be draft, looks, standard, high or delivery");
+  }
+
+  if (project.workers !== undefined
+      && !(project.workers === "auto" || (Number.isInteger(project.workers) && project.workers >= 1 && project.workers <= 64))) {
+    errors.push("project.workers must be auto or an integer from 1 to 64");
+  }
+
+  if (project.browserGpu !== undefined && typeof project.browserGpu !== "boolean") {
+    errors.push("project.browserGpu must be boolean when provided");
+  }
+
+  if (project.preflight !== undefined && typeof project.preflight !== "boolean") {
+    errors.push("project.preflight must be boolean when provided");
+  }
+
+  if (project.voice && typeof project.voice !== "object") {
     errors.push("voice must be an object when provided");
   }
 
