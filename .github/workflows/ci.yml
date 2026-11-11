@@ -2,9 +2,9 @@ name: MediaForge CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/conexoes-mediaforge-primeiro, migration/creator-video-to-mediaforge]
   pull_request:
-    branches: [main]
+    branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro]
 
 jobs:
   validate:
@@ -16,7 +16,45 @@ jobs:
           node-version: 22
       - run: node --check src/job-schema.mjs
       - run: node --check src/server.mjs
+      - run: node --check src/remote-worker-server.mjs
+      - run: node --check src/remote-worker-client.mjs
+      - run: node --check src/worker-heartbeat.mjs
+      - run: node --check src/videos-secrets-mcp.mjs
       - run: node --check src/worker.mjs
       - run: node --check src/renderers/hyperframes.mjs
-      - run: node --test test/job-schema.test.mjs
+      - run: node --check src/renderers/verify-video.mjs
+      - run: node --check src/project-normalizer.mjs
+      - run: node --test test/*.test.mjs
       - run: npm run validate
+      - name: Verify public staging TLS, OAuth and access controls
+        if: github.event_name == 'pull_request' && (github.head_ref == 'feature/conexoes-mediaforge-primeiro' || github.head_ref == 'migration/creator-video-to-mediaforge')
+        env:
+          MEDIAFORGE_EXPECT_WORKER: 'true'
+        run: node scripts/staging-health.mjs
+
+
+  windows-background:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Windows PowerShell 5.1 scripts
+        shell: powershell
+        run: |
+          $paths = @(
+            "desktop/run-worker.ps1",
+            "desktop/start-worker-background.ps1",
+            "desktop/connect-remote.ps1",
+            "desktop/install-worker.ps1",
+            "desktop/retire-legacy-videos-secrets.ps1",
+            "desktop/update-worker.ps1"
+          )
+          foreach ($path in $paths) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | Format-List | Out-String | Write-Error
+              exit 1
+            }
+            Write-Host "PowerShell 5.1 syntax OK: $path"
+          }

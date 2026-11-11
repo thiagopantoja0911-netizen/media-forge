@@ -3,6 +3,27 @@ import { readFile } from "node:fs/promises";
 
 const RATIOS = new Set(["16:9", "9:16", "1:1"]);
 const OUTPUTS = new Set(["video", "audio", "project"]);
+const RESOLUTIONS = new Set([
+  "landscape", "portrait", "square", "landscape-4k", "portrait-4k", "square-4k",
+  "landscape-1440p", "portrait-1440p", "square-1440p", "1080p", "4k", "uhd",
+  "1440p", "qhd", "1080p-square", "square-1080p", "4k-square",
+  "1440p-portrait", "1440p-square"
+]);
+const QUALITIES = new Set(["draft", "looks", "standard", "high", "delivery"]);
+
+function validFps(value) {
+  if (typeof value === "number") return Number.isInteger(value) && value >= 1 && value <= 240;
+  if (typeof value !== "string") return false;
+  if (/^\d+$/.test(value)) {
+    const number = Number(value);
+    return number >= 1 && number <= 240;
+  }
+  const match = /^(\d+)\/(\d+)$/.exec(value);
+  if (!match || Number(match[2]) === 0) return false;
+  const number = Number(match[1]) / Number(match[2]);
+  return number >= 1 && number <= 240;
+}
+
 export const MAX_PROJECT_FILES = 80;
 export const MAX_PROJECT_BYTES = 24 * 1024 * 1024;
 
@@ -94,6 +115,31 @@ export function validateJob(input) {
   const outputs = project.outputs ?? ["video"];
   if (!Array.isArray(outputs) || outputs.length === 0 || outputs.some((item) => !OUTPUTS.has(item))) {
     errors.push("project.outputs may contain only video, audio or project");
+  }
+
+  if (project.resolution !== undefined && !RESOLUTIONS.has(project.resolution)) {
+    errors.push("project.resolution must be a supported HyperFrames preset");
+  }
+
+  if (project.fps !== undefined && !validFps(project.fps)) {
+    errors.push("project.fps must be an integer from 1 to 240 or an ffmpeg rational such as 30000/1001");
+  }
+
+  if (project.quality !== undefined && !QUALITIES.has(project.quality)) {
+    errors.push("project.quality must be draft, looks, standard, high or delivery");
+  }
+
+  if (project.workers !== undefined
+      && !(project.workers === "auto" || (Number.isInteger(project.workers) && project.workers >= 1 && project.workers <= 64))) {
+    errors.push("project.workers must be auto or an integer from 1 to 64");
+  }
+
+  if (project.browserGpu !== undefined && typeof project.browserGpu !== "boolean") {
+    errors.push("project.browserGpu must be boolean when provided");
+  }
+
+  if (project.preflight !== undefined && typeof project.preflight !== "boolean") {
+    errors.push("project.preflight must be boolean when provided");
   }
 
   if (project.voice && typeof project.voice !== "object") {

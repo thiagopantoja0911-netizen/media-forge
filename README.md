@@ -6,23 +6,29 @@ Orquestrador local para criação de áudio e vídeo a partir de prompts enviado
 
 ChatGPT transforma o prompt em um job estruturado. O MediaForge recebe o prompt e os arquivos HyperFrames, valida o projeto, coloca na fila e entrega a execução ao worker local.
 
-Fluxo-alvo:
+Fluxo:
 
-ChatGPT → MediaForge Orchestrator → MediaForge Local Worker → HyperFrames / VoiceStudio / FilmCraft → arquivos locais
+ChatGPT → MediaForge MCP/API → MediaForge Local Worker → HyperFrames / VoiceStudio / FilmCraft → arquivos locais
 
 ## Estado atual
 
-O repositório já contém:
+O repositório contém:
+
+- servidor OAuth 2.1 com PKCE e registro dinâmico;
+- painel web de configuração e administração;
+- estado persistente protegido com hashes;
+- scripts de instalação e execução do worker Windows;
 
 - API HTTP local;
+- endpoint MCP compatível com Vídeos Secrets;
 - contrato de job validável;
-- recebimento de projectFiles com index.html, composições e assets;
-- contrato OpenAPI em openapi.yaml para a futura camada de plugin/MCP;
+- recebimento de `projectFiles` e `project_files`;
 - fila persistente em disco;
-- worker em modo dry-run;
-- adapter inicial real para HyperFrames CLI;
+- worker em modo dry-run ou HyperFrames real;
+- heartbeat do worker;
 - retries limitados para falhas do renderer;
-- testes automatizados e CI.
+- contrato OpenAPI;
+- bridge documentada para a migração do Vídeos Secrets.
 
 O modo dry-run continua sendo o padrão. Ele valida o fluxo e gera um plano sem consumir tempo de renderização.
 
@@ -42,55 +48,42 @@ Por padrão, a API escuta em http://127.0.0.1:8787.
 Para ativar o renderer real:
 
     set MEDIAFORGE_RENDERER=hyperframes
+    set HYPERFRAMES_VERSION=0.9.25
     npm run worker
 
-Para expor a API a um plugin/MCP, use o contrato openapi.yaml e mantenha o serviço protegido por uma ponte local autenticada. Não exponha a porta diretamente à internet.
+O job pode definir `resolution` (`1080p`, `1440p`, `4k` ou presets por orientação), `fps` (1–240 ou racional como `30000/1001`), `quality` (`draft`, `looks`, `standard`, `high` ou `delivery`), `workers`, `browserGpu` e `preflight`. O worker executa `hyperframes check --json --no-craft` antes do render por padrão.
+
+Para habilitar o MCP em uma máquina exposta, configure:
+
+    MEDIAFORGE_REQUIRE_AUTH=true
+    MEDIAFORGE_MCP_TOKEN=<token-longo-e-aleatorio>
+
+O serviço local não deve ser exposto diretamente à internet sem uma ponte autenticada.
 
 ## Job enviado pelo ChatGPT
 
-O endpoint POST /v1/jobs aceita o prompt e projectFiles no mesmo payload. projectFiles deve incluir index.html e pode conter até 80 arquivos, com limite total de 24 MB.
+O endpoint `POST /v1/jobs` aceita o prompt e `projectFiles` no mesmo payload. O endpoint `POST /mcp` oferece as ferramentas `create_video`, `renderer_status`, `list_videos` e `get_video`.
 
-Exemplo:
-
-    {
-      "prompt": "Crie um vídeo vertical de 15 segundos com tipografia cinética.",
-      "project": {
-        "title": "Teste MediaForge",
-        "durationSeconds": 15,
-        "aspectRatio": "9:16",
-        "outputs": ["video"],
-        "renderer": "hyperframes"
-      },
-      "projectFiles": [
-        {
-          "path": "index.html",
-          "content": "<!doctype html>..."
-        },
-        {
-          "path": "compositions/main.html",
-          "content": "<!doctype html>..."
-        }
-      ]
-    }
-
-Os arquivos são materializados em MEDIAFORGE_PROJECTS_DIR/<job-id> e o worker renderiza a pasta do job. Assets binários podem ser enviados em contentBase64.
+`projectFiles` deve incluir `index.html` e pode conter até 80 arquivos, com limite total de 24 MB. Assets binários podem ser enviados em `contentBase64`.
 
 ## API
 
-POST /v1/jobs cria um job e retorna o ID.
+- `POST /v1/jobs` cria um job.
+- `GET /v1/jobs` lista jobs.
+- `GET /v1/jobs/:id` retorna estado, progresso, erro e artefatos.
+- `POST /mcp` expõe o contrato MCP compatível com Vídeos Secrets.
+- `GET /health` retorna o estado do orquestrador e do worker.
 
-GET /v1/jobs/:id retorna estado, progresso, erro e artefatos.
+## Migração do Vídeos Secrets
 
-GET /health retorna o estado do orquestrador.
+A branch `migration/videos-secrets-to-mediaforge` contém a primeira etapa da migração. O serviço antigo continua sendo o renderer de produção até que um teste real confirme o worker MediaForge, o MCP, o MP4 local e o rollback.
 
-## Próximas etapas
+Veja:
 
-1. Criar um template HyperFrames validado para o MediaForge.
-2. Conectar geração de voz e narração.
-3. Adicionar geração/seleção de assets visuais.
-4. Adicionar montagem FilmCraft e presets profissionais.
-5. Criar a ponte MCP/plugin do MediaForge para o ChatGPT.
-6. Adicionar preview, cache, métricas e exportação multi-formato.
+- `docs/VIDEOS_SECRETS_BRIDGE.md`
+- `docs/VIDEOS_SECRETS_MIGRATION.md`
+- `docs/MEDIAFORGE_DEPLOYMENT.md`
+- `docs/UPSTREAM_UPDATES.md`\n- `docs/UPSTREAM_UPDATES.md`
 
 ## Segurança operacional
 
@@ -98,4 +91,4 @@ GET /health retorna o estado do orquestrador.
 - O job aceita somente paths relativos e limita arquivos/projeto.
 - Tokens e chaves ficam fora do Git.
 - Jobs e assets devem ser tratados como dados não confiáveis.
-- Projetos de terceiros serão integrados por adaptadores versionados e revisados.
+- O `private/config.php` e o estado do Hostinger não são migrados para o repositório.
