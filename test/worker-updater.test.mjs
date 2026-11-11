@@ -7,7 +7,7 @@ test("silent updater preserves connection secrets and validates continuous worke
   const launcher=await readFile(new URL("../desktop/launch-update-worker.vbs",import.meta.url),"utf8");
   assert.match(script,/\.env\.local/);
   assert.match(script,/\.worker-token\.dpapi/);
-  assert.match(script,/git fetch origin/);
+  assert.match(script,/Invoke-Git @\("fetch","origin",\$Branch\)/);
   assert.match(script,/checkout.*origin/);
   assert.match(script,/npm install/);
   assert.match(script,/desktop\\worker/);
