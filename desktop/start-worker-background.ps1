@@ -8,6 +8,28 @@ if (-not (Test-Path -LiteralPath $runner)) { throw "Worker não encontrado: $run
 $taskName = "MediaForge Worker - Staging"
 $userId = [Security.Principal.WindowsIdentity]::GetCurrent().Name
 $powerShell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+
+# Stop only the previous MediaForge-Staging runner and its child processes.
+$processes = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+$roots = @($processes | Where-Object {
+  $_.Name -match '^(powershell|pwsh)\.exe$' -and
+  $_.CommandLine -and $_.CommandLine.IndexOf($runner,[StringComparison]::OrdinalIgnoreCase) -ge 0
+})
+$stopIds = New-Object 'System.Collections.Generic.HashSet[int]'
+foreach ($root in $roots) { [void]$stopIds.Add([int]$root.ProcessId) }
+do {
+  $changed = $false
+  foreach ($process in $processes) {
+    if ($stopIds.Contains([int]$process.ParentProcessId) -and -not $stopIds.Contains([int]$process.ProcessId)) {
+      [void]$stopIds.Add([int]$process.ProcessId)
+      $changed = $true
+    }
+  }
+} while ($changed)
+foreach ($processId in $stopIds) {
+  Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+}
+
 $arguments = '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $runner + '" -InstallDir "' + $InstallDir + '"'
 $action = New-ScheduledTaskAction -Execute $powerShell -Argument $arguments -WorkingDirectory $InstallDir
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $userId
