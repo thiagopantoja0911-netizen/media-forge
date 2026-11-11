@@ -9,7 +9,15 @@ test("Windows worker is installed and launched as a hidden logon task", async ()
   const connector = await readFile(new URL("../desktop/connect-remote.ps1", import.meta.url), "utf8");
   assert.match(task, /New-ScheduledTaskTrigger\s+-AtLogOn/i);
   assert.match(task, /New-ScheduledTaskPrincipal[\s\S]*?LogonType Interactive/i);
-  assert.match(task, /WindowStyle Hidden/i);
+  const hiddenLauncher = await readFile(new URL("../desktop/launch-worker-hidden.vbs", import.meta.url), "utf8");
+  assert.match(task, /New-ScheduledTaskAction\s+-Execute \$wscript/i);
+  assert.match(task, /desktop\\launch-worker-hidden\.vbs/i);
+  assert.match(task, /System32\\wscript\.exe/i);
+  assert.match(task, /\/\/B \/\/Nologo/i);
+  assert.match(hiddenLauncher, /shell\.Run\(command, 0, True\)/i);
+  assert.match(hiddenLauncher, /-WindowStyle Hidden/i);
+  assert.doesNotMatch(hiddenLauncher, /cmd\.exe/i);
+  assert.doesNotMatch(task, /New-ScheduledTaskAction\s+-Execute \$powerShell/i);
   assert.match(task, /\$settings\.Hidden\s*=\s*\$true/i);
   assert.match(task, /Start-ScheduledTask/i);
   assert.match(task, /RestartCount 999/i);
