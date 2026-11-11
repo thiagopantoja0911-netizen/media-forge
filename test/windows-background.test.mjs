@@ -23,6 +23,11 @@ test("Windows worker is installed and launched as a hidden logon task", async ()
   assert.match(runner, /while\s*\(\$true\)/i);
   assert.match(runner, /Start-Sleep -Seconds \$restartDelay/i);
   assert.match(runner, /Add-Content[\s\S]*?-Encoding UTF8/i);
+  // Native stderr is a log line, not a terminating PowerShell exception.
+  assert.match(runner, /\$previousPreference = \$ErrorActionPreference/);
+  assert.match(runner, /\$ErrorActionPreference = "Continue"[\s\S]*?& node "[^"]*remote-worker-client\.mjs" 2>&1/);
+  assert.match(runner, /\$ErrorActionPreference = \$previousPreference/);
+  assert.match(runner, /\$exitCode = \$nativeExitCode/);
   assert.match(task, /RestartInterval \(New-TimeSpan -Minutes 1\)/i);
   assert.doesNotMatch(task, /RestartInterval \(New-TimeSpan -Seconds 15\)/i);
   assert.match(task, /Export-ScheduledTask[\s\S]*?existingXml/i);
