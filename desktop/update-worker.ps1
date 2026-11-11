@@ -73,7 +73,7 @@ try {
   }
   if (-not (Test-Path -LiteralPath $envFile)) { throw "Conexão local não foi preservada." }
   Add-Report ("Código atualizado para branch " + $Branch + ".")
-  Invoke-Npm @("install","--no-audit","--no-fund")
+  Invoke-Npm @("install","--prefix",$InstallDir,"--no-audit","--no-fund")
   Invoke-Npm @("install","--prefix",(Join-Path $InstallDir "desktop\worker"),"--no-audit","--no-fund")
   Add-Report "Dependências do worker e binários locais FFmpeg/FFprobe instalados."
 
