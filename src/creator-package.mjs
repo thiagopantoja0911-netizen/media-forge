@@ -12,7 +12,7 @@ export async function extractCreatorPackage(bundle, outputDirectory) {
   await mkdir(root, { recursive: false });
   try {
     for (const file of bundle.projectFiles) {
-      if (!isSafeRelativePath(file.path) || file.path.includes("\\") || file.path === ".") {
+      if (!isSafeRelativePath(file.path) || file.path.includes("\\") || file.path.includes(":") || file.path.split("/").some(part => !part || part === "." || part === "..")) {
         throw new TypeError("Caminho inseguro no pacote: " + file.path);
       }
       const target = resolve(root, file.path);
