@@ -13,9 +13,9 @@ O Creator Studio é a interface de planejamento de vídeos do repositório Media
 
 ## Limites intencionais
 
-Esta versão é um planejador, não um renderizador. Não chama APIs, não cria jobs, não coloca nada na fila e não envia conteúdo do navegador ao servidor. O JSON importado/exportado não é, por si só, uma composição HyperFrames. O botão de renderização só deve ser adicionado depois que o gerador de composição, o áudio e o QA forem implementados e testados no Worker Windows.
+Esta versão ainda não é um renderizador de entrega. O botão Gerar pacote HyperFrames envia o briefing ao endpoint autenticado do próprio MediaForge e baixa um pacote de composição editável. O endpoint não cria jobs nem coloca nada na fila. O pacote usa tipografia cinética abstrata e fica marcado `renderReady=false` até receber assets específicos, narração, música, efeitos e aprovação no QA do Worker Windows.
 
-A rota `/studio` e seus assets exigem sessão administrativa MediaForge. O conteúdo usa CSP sem conexões externas.
+A rota `/studio`, seus assets e `POST /api/studio/compose` exigem sessão administrativa MediaForge. A CSP permite somente a chamada same-origin necessária para gerar o pacote.
 
 ## Dados legados
 
