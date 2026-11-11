@@ -399,7 +399,7 @@ function makeTransitionHtml(index, color, type) {
     style += "#" + group + "-wash{position:absolute;inset:0;background:#fffaf0;opacity:0;z-index:2;}";
     style += "#" + group + "-sweep{position:absolute;left:-40%;top:-8%;width:180%;height:116%;opacity:0;background:linear-gradient(100deg,transparent 16%," + color + " 42%,#fff 50%," + color + " 58%,transparent 84%);z-index:1;}";
     markup = '<div id="' + group + '" class="clip fx-group" data-start="0" data-duration="2.2" data-track-index="20" style="opacity:0">' +
-      '<div id="' + group + '-sweep" class="clip" data-start="0" data-duration="2.2" data-track-index="21"></div>' +
+      '<div id="' + group + '-sweep" class="clip" data-start="0" data-duration="2.2" data-track-index="21" data-layout-allow-overflow></div>' +
       '<div id="' + group + '-wash" class="clip" data-start="0" data-duration="2.2" data-track-index="22"></div>' +
       '</div>';
     tweens.push('tl.set("#' + group + '",{opacity:1},0);');
@@ -411,7 +411,7 @@ function makeTransitionHtml(index, color, type) {
     style += ".fx-group{position:absolute;inset:0;opacity:0;overflow:hidden;}";
     style += "#" + group + "-iris{position:absolute;left:50%;top:50%;width:5200px;height:5200px;margin:-2600px 0 0 -2600px;border-radius:50%;background:" + color + ";transform:scale(.001);transform-origin:center center;}";
     markup = '<div id="' + group + '" class="clip fx-group" data-start="0" data-duration="2.2" data-track-index="20" style="opacity:0">' +
-      '<div id="' + group + '-iris" class="clip" data-start="0" data-duration="2.2" data-track-index="21"></div>' +
+      '<div id="' + group + '-iris" class="clip" data-start="0" data-duration="2.2" data-track-index="21" data-layout-allow-overflow></div>' +
       '</div>';
     tweens.push('tl.set("#' + group + '",{opacity:1},0);');
     tweens.push('tl.fromTo("#' + group + '-iris",{scale:.001},{scale:1.12,duration:1.08,ease:"power3.in"},.02);');
@@ -443,11 +443,11 @@ function makeTransitionHtml(index, color, type) {
     tweens.push('tl.to("#' + group + '",{opacity:0,duration:.01},2.12);');
   } else {
     style += ".fx-group{position:absolute;inset:0;opacity:0;overflow:hidden;}";
-    style += "#" + group + "-whip{position:absolute;left:-30%;top:0;width:160%;height:100%;background:linear-gradient(90deg," + color + " 0%," + color + " 72%,rgba(255,255,255,.98) 86%,transparent 100%);transform:translateX(-120%);}";
+    style += "#" + group + "-whip{position:absolute;left:-30%;top:0;width:160%;height:100%;background:linear-gradient(90deg," + color + " 0%," + color + " 72%,rgba(255,255,255,.98) 86%,transparent 100%);}";
     style += "#" + group + "-streak{position:absolute;left:-25%;top:0;width:150%;height:100%;background:linear-gradient(90deg,transparent 38%,rgba(255,255,255,.72) 49%,transparent 60%);opacity:0;}";
     markup = '<div id="' + group + '" class="clip fx-group" data-start="0" data-duration="2.2" data-track-index="20" style="opacity:0">' +
-      '<div id="' + group + '-whip" class="clip" data-start="0" data-duration="2.2" data-track-index="21"></div>' +
-      '<div id="' + group + '-streak" class="clip" data-start="0" data-duration="2.2" data-track-index="22"></div>' +
+      '<div id="' + group + '-whip" class="clip" data-start="0" data-duration="2.2" data-track-index="21" data-layout-allow-overflow></div>' +
+      '<div id="' + group + '-streak" class="clip" data-start="0" data-duration="2.2" data-track-index="22" data-layout-allow-overflow></div>' +
       '</div>';
     tweens.push('tl.set("#' + group + '",{opacity:1},0);');
     tweens.push('tl.fromTo("#' + group + '-whip",{xPercent:-120},{xPercent:0,duration:.38,ease:"power3.in"},.72);');
