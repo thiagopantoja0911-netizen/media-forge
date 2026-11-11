@@ -99,7 +99,7 @@ O Creator Studio está disponível em `/studio` após autenticação no painel. 
 
 A importação do JSON v1 legado é compatível com os rascunhos exportados manualmente de `video.salevo.site/studio/`. O armazenamento local novo usa uma chave separada para não sobrescrever dados do domínio antigo.
 
-**Limite atual:** gera uma composição tipográfica HyperFrames de protótipo e pode empacotar locução/trilha fornecidas pelo usuário, mas ainda não inclui mídia específica do assunto nem efeitos sonoros por cena. O pacote é marcado `renderReady=false` e não pode ser enviado diretamente à fila. A geração de mídia só será ativada depois da validação de áudio e QA no Worker Windows. Consulte `docs/CREATOR_STUDIO.md` e `docs/MIGRATION_SALEVO_CREATOR.md`.
+**Limite atual:** gera uma composição editorial tipográfica HyperFrames de protótipo, com cinco cenas, uma faixa de legendas e quatro transições; pode empacotar locução/trilha fornecidas pelo usuário, mas ainda não inclui mídia específica do assunto nem efeitos sonoros por cena. O pacote é marcado `renderReady=false` e não pode ser enviado diretamente à fila. A geração de mídia só será ativada depois da validação de áudio e QA no Worker Windows. Consulte `docs/CREATOR_STUDIO.md` e `docs/MIGRATION_SALEVO_CREATOR.md`.
 
 ## Limpeza final da migração
 
