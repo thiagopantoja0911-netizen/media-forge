@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { handleStudioApi } from "../src/studio-api.mjs";
 
 const draft = {
-  version: 1, title: "Teste Creator Studio", topic: "Uma história",
+  version: 1, title: "Teste Forge Midjourney", topic: "Uma história",
   duration: "30", intent: "curiosidade", tone: "investigativo",
   hookA: "O começo", hookB: "Uma pergunta", hookC: "Um contraste",
   selectedHook: "hookA",
