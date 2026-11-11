@@ -12,7 +12,7 @@ test("silent updater preserves connection secrets and validates continuous worke
   assert.match(script,/Invoke-Npm @\("install"/);
   assert.match(script,/desktop\\worker/);
   assert.match(script,/MediaForge Worker - Staging/);
-  assert.match(script,/stableCount -ge 4/);
+  assert.match(script,/stableCount -ge 21/);
   assert.match(script,/worker-session-utf8\.log/);
   assert.match(launcher,/shell\.Run command,\s*0,\s*False/i);
   assert.doesNotMatch(launcher,/cmd\.exe/i);
