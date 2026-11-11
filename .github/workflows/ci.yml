@@ -26,3 +26,28 @@ jobs:
       - name: Verify public staging TLS, OAuth and access controls
         if: github.event_name == 'pull_request' && github.head_ref == 'feature/conexoes-mediaforge-primeiro'
         run: node scripts/staging-health.mjs
+
+
+  windows-background:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Windows PowerShell 5.1 scripts
+        shell: powershell
+        run: |
+          $paths = @(
+            "desktop/run-worker.ps1",
+            "desktop/start-worker-background.ps1",
+            "desktop/connect-remote.ps1",
+            "desktop/install-worker.ps1"
+          )
+          foreach ($path in $paths) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | Format-List | Out-String | Write-Error
+              exit 1
+            }
+            Write-Host "PowerShell 5.1 syntax OK: $path"
+          }
