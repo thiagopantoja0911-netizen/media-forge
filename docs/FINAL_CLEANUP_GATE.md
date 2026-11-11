@@ -11,7 +11,7 @@ A green completion status must not be shown until every required technical gate 
 | GitHub `Secretssysten` | Separate Secrets System monorepo | Keep independent; not part of Creator Video retirement |
 | GitHub `VoiceStudio` | Independent local speech app, AGPL-3.0 | Keep independent; Creator Studio accepts exported audio files |
 | Hostinger `mediaforge.salevo.site` | MediaForge Node.js 22 app | Keep |
-| Hostinger `video.salevo.site` | Legacy Creator Video/Salevo Video hub | Candidate for retirement only after all gates pass |
+| Hostinger `video.salevo.site` | Former Creator Video/Salevo Video hub | **Website deleted** in Hostinger on 2026-11-11 at the owner's request; verification returned zero matches |
 | Hostinger `mcpbrowser.salevo.site` | Browser MCP Relay v0.5.0, deployed from its own archive | Keep independent; never merge into MediaForge |
 | Hostinger `secretssystem.online` | Secrets System Next.js portal; KRYVIA runs as a private loopback child at `/kryvia` | **Keep everything, including Nexora Workspace / Media Editor**; the owner explicitly excluded it from this migration |
 | Hostinger `salevo.site` | Parent website with other subdomains | Keep; do not bulk-delete |
@@ -47,12 +47,12 @@ The owner explicitly instructed **do not touch Nexora Workspace / Media Editor**
 - In `paginadevendas` branch `deploy/video-salevo-hub`, all 23 video site/API/Studio/deployment files were removed. Only a retirement `README.md` remains; latest commit `ff642ef9d8a788aa353e104b8f1786f647c5d4f8`.
 - `paginadevendas` main snapshot archived at `archive/paginadevendas-before-videosai-cleanup-20261111` (commit `ad54b3cfc057e7756e32527712402f7ec3224775`).
 - Old `paginas/videosai/`, deployment workflow, dispatch option, and `deploy/pages.json` entry removed from `paginadevendas` main via PR #33, merged at `fdad8c8a65fd1bae61f0e0cfb526db9c19939f6e`. Existing sales/checkout mappings preserved.
-- `video.salevo.site` hosting was **not** deleted. The old PHP API uses persistent `salevo-private` directory OUTSIDE `public_html` which is not backed up by Git. Website deletion in Hostinger is irreversible and removes website files, configuration and potentially jobs/tokens outside version control. Require informed confirmation and a full data disposition/backup before deleting the website.
+- **Later update (2026-11-11):** the owner authorized deleting `video.salevo.site`, with informed acknowledgement that website data/configuration and private legacy jobs/tokens could be permanently lost. Hostinger returned `Request accepted`; the subsequent website list returned **zero matches** for this domain. The prior Git branch archive is a **code-only** backup; preservation of runtime private jobs/OAuth data was not established. Do not claim complete data recovery.
 - **Nexora / Media Editor, KRYVIA, Secrets System, Browser MCP, current MediaForge production branch and Windows Worker were not modified in this cleanup.**
 
 ## Potential retirement candidates after approval
 
-1. Legacy `video.salevo.site` domain/site and its PHP API, only after no client or OAuth connection depends on it.
+1. Legacy `video.salevo.site` website — **already removed from Hostinger** on owner's instruction; no additional deletion action pending for this website.
 2. Legacy Creator Video endpoints and compatibility bridge code in MediaForge, only after no caller uses the old protocol.
 3. Old setup/pairing artifacts proven unused after the replacement Worker passes reconnect and recovery tests.
 
@@ -79,3 +79,9 @@ The final green report must name exact domains/services safe to retire, exact re
 ## Scope correction from owner — 2026-11-11
 
 The owner explicitly instructed: **KEEP Nexora Workspace / Media Editor in Secrets**. Do not migrate, edit, retire or delete this module or its API routes. Creator Video/Salevo Video legacy hosting and the isolated `paginadevendas` deployment branch are the only newly authorized retirement targets. MediaForge will continue evolving after retirement; no false claim of final audiovisual readiness is allowed.
+
+## Confirmed Hostinger deletion — 2026-11-11
+
+The owner authorized final website removal after code cleanup. The exact deletion target was **only** `video.salevo.site` (a standalone addon website). Hostinger accepted the request, and the verification listing returned 0 results. Separate verification confirmed the following websites **still enabled**: `mediaforge.salevo.site`, `secretssystem.online`, `mcpbrowser.salevo.site`.
+
+No separate database, DNS zone, Secrets/Nexora component, Browser MCP, MediaForge repository/worker, or other domain deletion was performed in this action. Possible lost private legacy runtime data remains; the Git branch archive is not a hosting backup.
