@@ -4,10 +4,10 @@
 
 `src/creator-composer.mjs` converts the MediaForge planning manifest into an editable 9:16 HyperFrames package:
 
-- one root `index.html` with five scene hosts, one captions track, two optional audio tracks and one transition overlay;
+- one root `index.html` with five scene hosts, one captions track, two optional audio tracks and four timed transition hosts;
 - five independent scene sub-compositions with distinct flat-color editorial layouts;
-- a dedicated captions composition with timed caption groups;
-- four deterministic scribble-wipe transitions, adapted from the registry's `hw-scribble-transition` pattern into one 4K multi-seam overlay;
+- a dedicated captions composition with timed caption groups positioned inside the portrait title-safe area;
+- four distinct deterministic transitions: editorial flash, scribble wipe, iris reveal and whip sweep;
 - stable IDs, paused GSAP timelines, timed clips and per-scene editable headline/color variables;
 - escaped user text and a `creator-storyboard.json` source record;
 - default delivery profile: 2160 × 3840, 60 FPS, High.
@@ -21,5 +21,7 @@ The composer returns `readiness.renderReady=false` and **does not create a job**
 - music and specific sound effects (the Studio can attach a music bed; scene SFX are still pending);
 - subject-specific image/video assets; the current visual treatment is a typographic/color-block prototype;
 - current-revision HyperFrames CLI check, snapshot generation and visual review on the target Worker.
+
+The caption band is placed at `bottom: 1200px` in a 2160 × 3840 composition, keeping its two-line box inside the 9:16 platform-safe region. Scene labels are editable through the `sceneLabel` composition variable. The four transitions are deterministic and run across the scene boundaries; they do not authorize queue submission.
 
 Do not bypass these blockers by posting the package directly to `/v1/jobs`. The next integration step must attach verified media, inspect the preview, then require explicit approval before queue submission.
