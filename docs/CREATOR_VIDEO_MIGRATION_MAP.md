@@ -27,6 +27,7 @@ The video system is spread across several branches; the Secrets repository \`mai
 - Progress reporting that does not interrupt rendering if telemetry fails.
 - Heartbeat and renewable worker lease while a long render is active.
 - Local MP4 delivery in the user's Downloads folder, plus a report that records the actual artifact path and checksum.
+- Local FFmpeg/FFprobe binaries are installed only in the Windows worker package, not in the Hostinger web runtime.
 - Final MP4 verification (dimensions, frame rate, duration, video codec and audio-stream presence where expected).
 - Background Windows operation, startup on logon, single-worker protection, restart after failure, persistent logs and safe updater.
 - OAuth 2.1/PKCE and the four MCP tools: \`create_video\`, \`renderer_status\`, \`list_videos\`, \`get_video\`.
