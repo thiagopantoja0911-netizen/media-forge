@@ -6,15 +6,16 @@ Data do inventário: 2026-11-11.
 
 - Repositório: `thiagopantoja0911-netizen/Secretssysten`.
 - Branch examinada: `release/secrettrack-20261108`.
+- KRYVIA é empacotado como processo filho privado em `/kryvia` dentro do mesmo deployment Hostinger de `secretssystem.online`; não é um domínio ou website Hostinger independente.
 - Snapshot vendorizado: `vendor/kryvia/source`, canonical repo `thiagopantoja0911-netizen/KRYVIA`, commit `ac4787ad14defb55c37e5c341d1b9c57ee4e05c3`.
-- O `vendor/kryvia/source-manifest.json` declara explicitamente que `source` é proveniência, não a fonte direta do build. Os arquivos de `vendor/kryvia/overrides` são as customizações efetivas do portal e precisam ser tratados como fonte de produção junto com os arquivos de `source` não sobrescritos.
+- O `vendor/kryvia/source-manifest.json` registra a proveniência do snapshot canônico. O campo `baseline` descreve um artefato legado que não é usado no build; o diretório `source` é a base reconstruída que o script de build copia para a raiz, e `overrides` é aplicado por cima. O script `vendor/kryvia/scripts/hostinger-node-build.sh` copia `source/app`, `source/lib` e `source/public`, depois aplica explicitamente os overrides e os testes de produção.
 - Não foi encontrada licença `LICENSE` no diretório vendorizado nem no root do snapshot KRYVIA consultado. Tratar como código proprietário do workspace; manter atribuição/proveniência e confirmar titularidade antes de redistribuição externa.
 
 ## Módulo que pertence ao fluxo de vídeo
 
 ### Nexora Workspace
 
-Arquivo de produção: `vendor/kryvia/overrides/app/workspace/nexora-workspace.tsx`.
+Arquivo de produção: `vendor/kryvia/overrides/app/workspace/nexora-workspace.tsx`, copiado explicitamente pelo script de build para `app/workspace/nexora-workspace.tsx`.
 
 Vistas e funções observadas:
 - overview, editor, transcribe, teleprompter e projects;
@@ -27,9 +28,9 @@ Vistas e funções observadas:
 ### Media Editor
 
 Arquivos:
-- `vendor/kryvia/source/app/workspace/media-editor.tsx`;
-- `vendor/kryvia/overrides/app/workspace/media-editor-engine.ts`;
-- `vendor/kryvia/overrides/app/workspace/nexora-captions.ts`;
+- `vendor/kryvia/source/app/workspace/media-editor.tsx`, copiado da base `source/app`;
+- `vendor/kryvia/overrides/app/workspace/media-editor-engine.ts`, aplicado como override sincronizado;
+- `vendor/kryvia/overrides/app/workspace/nexora-captions.ts`, aplicado como override sincronizado;
 - `vendor/kryvia/source/app/workspace/media-project-portable.ts`.
 
 Funções observadas no editor:
