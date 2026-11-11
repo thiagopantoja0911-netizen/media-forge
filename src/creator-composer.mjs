@@ -114,14 +114,7 @@ function validateAudioAsset(asset, role) {
 
 function sceneHost(scene, index) {
   const id = SCENE_IDS[index];
-  return [
-    '<div id="', id, '" data-composition-id="', id,
-    '" data-composition-src="compositions/', id, '.html"',
-    '" data-start="', scene.start, '" data-duration="', scene.end - scene.start,
-    '" data-track-index="', index + 1, '" data-track-kind="graphics"',
-    '" data-beat="', SCENE_BEATS[index], '"',
-    '" data-width="', WIDTH, '" data-height="', HEIGHT, '"></div>'
-  ].join("");
+  return `<div id="${id}" data-composition-id="${id}" data-composition-src="compositions/${id}.html" data-start="${scene.start}" data-duration="${scene.end - scene.start}" data-track-index="${index + 1}" data-track-kind="graphics" data-beat="${SCENE_BEATS[index]}" data-width="${WIDTH}" data-height="${HEIGHT}"></div>`;
 }
 
 function audioTag(asset, id, index, duration, volume, fades = false) {
@@ -271,10 +264,10 @@ function sceneHtml(scene, index, duration, brief) {
     #${id}-title-prefix { color: var(--ink); }
     #${id}-title-accent { color: var(--accent); }
   </style>
-  <div id="root" data-composition-id="${id}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}'>
+  <div id="root" data-composition-id="${id}" data-start="0" data-duration="${safeDuration}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}'>
     <div id="${id}-slab" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="1"></div>
     <div id="${id}-rule" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="2"></div>
-    <h1 id="${id}-title" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="3" data-beat="${SCENE_BEATS[index]}"><span id="${id}-title-prefix" data-var-text="headlinePrefix">${safePrefix}</span><span id="${id}-title-accent" data-var-text="headlineAccent">${safeAccentWord}</span></h1>
+    <h1 id="${id}-title" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="3" data-beat="${SCENE_BEATS[index]}"><span id="${id}-title-prefix" data-var-text="headlinePrefix">${safePrefix}</span> <span id="${id}-title-accent" data-var-text="headlineAccent">${safeAccentWord}</span></h1>
   </div>
   <script>
     const tl_${id.replaceAll("-", "_")} = gsap.timeline({ paused: true });
@@ -290,34 +283,37 @@ function sceneHtml(scene, index, duration, brief) {
 
 function makeCaptionsHtml(scenes, duration) {
   const variables = [];
-  const entries = scenes.map((scene, index) => {
+  const entries = [];
+  const tweens = [];
+  for (let index = 0; index < scenes.length; index += 1) {
+    const scene = scenes[index];
     const seconds = scene.end - scene.start;
     const limit = seconds <= 3.5 ? 28 : seconds <= 6 ? 44 : 72;
     const caption = truncateAtWord(scene.spoken, limit);
+    if (!caption) continue;
     const start = Math.min(scene.end - 0.4, scene.start + 0.25);
     const clipDuration = Math.max(0.8, scene.end - start - 0.25);
     const variableId = "caption" + String(index + 1).padStart(2, "0");
     variables.push({ id: variableId, type: "string", label: "Legenda " + (index + 1), default: caption, maxLength: 280 });
-    return `<div id="caption-${index + 1}" class="clip" data-start="${start.toFixed(3)}" data-duration="${clipDuration.toFixed(3)}" data-track-index="${index + 1}" data-beat="${SCENE_BEATS[index]}"><span class="caption-text" data-var-text="${variableId}">${escapeHtml(caption)}</span></div>`;
-  }).join("\n    ");
-  const vars = escapeHtml(JSON.stringify(variables));
-  const tweens = scenes.map((scene, index) => {
-    const start = Math.min(scene.end - 0.4, scene.start + 0.25);
+    entries.push(`<div id="caption-${index + 1}" class="clip caption-block" data-start="${start.toFixed(3)}" data-duration="${clipDuration.toFixed(3)}" data-track-index="${index + 1}" data-beat="${SCENE_BEATS[index]}"><span class="caption-text" data-var-text="${variableId}">${escapeHtml(caption)}</span></div>`);
     const end = Math.max(start + 0.5, scene.end - 0.25);
-    return `tl.fromTo("#caption-${index + 1} .caption-text", { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.24, ease: "power3.out" }, ${start.toFixed(3)});\ntl.to("#caption-${index + 1} .caption-text", { opacity: 0, duration: 0.16, ease: "power2.in" }, ${Math.max(start + 0.25, end - 0.16).toFixed(3)});`;
-  }).join("\n");
+    tweens.push(`tl.fromTo("#caption-${index + 1}", { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.24, ease: "power3.out" }, ${start.toFixed(3)});`);
+    tweens.push(`tl.to("#caption-${index + 1}", { opacity: 0, duration: 0.16, ease: "power2.in" }, ${Math.max(start + 0.25, end - 0.16).toFixed(3)});`);
+  }
+  const vars = escapeHtml(JSON.stringify(variables));
+  const tweenScript = tweens.join("\n").replaceAll("tl.", "tl_captions.");
   return `<template>
   <style>
-    #root { position: absolute; inset: 0; overflow: hidden; font-family: Inter, Arial, sans-serif; }
-    #root > .clip {
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: Inter, Arial, sans-serif; --caption-accent: #F24E35; }
+    .caption-block {
       position: absolute;
       left: 216px;
       right: 216px;
       bottom: 460px;
       padding: 32px 36px;
       color: #fff;
-      background: rgba(17, 17, 17, .88);
-      border-left: 14px solid #F24E35;
+      background: rgba(17, 17, 17, .9);
+      border-left: 14px solid var(--caption-accent);
       font-size: 76px;
       line-height: 1.18;
       font-weight: 800;
@@ -326,14 +322,14 @@ function makeCaptionsHtml(scenes, duration) {
     }
     .caption-text { display: block; }
   </style>
-  <div id="root" data-composition-id="captions" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${vars}'>
-    ${entries}
+  <div id="root" data-composition-id="captions" data-start="0" data-duration="${duration}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${vars}'>
+    ${entries.join("\n    ")}
   </div>
   <script>
-    const tl = gsap.timeline({ paused: true });
-    ${tweens}
+    const tl_captions = gsap.timeline({ paused: true });
+    ${tweenScript}
     window.__timelines = window.__timelines || {};
-    window.__timelines["captions"] = tl;
+    window.__timelines["captions"] = tl_captions;
   </script>
 </template>
 `;
@@ -371,7 +367,7 @@ function wipePath(index, band, orientation, bands) {
 function makeTransitionOverlayHtml(scenes, duration) {
   const bands = 7;
   const orientations = ["horizontal", "vertical", "horizontal", "vertical"];
-  const transitionColors = [PALETTES[1].accent, PALETTES[2].accent, PALETTES[3].accent, PALETTES[4].accent];
+  const transitionColors = PALETTES.slice(1).map(palette => palette.ground);
   const markup = [];
   const tweens = [];
   for (let index = 0; index < scenes.length - 1; index += 1) {
@@ -389,7 +385,7 @@ function makeTransitionOverlayHtml(scenes, duration) {
       tweens.push(`tl.to("#${id}", { strokeDashoffset: 0, duration: 0.55, ease: "power2.in" }, ${(start + 0.04 * band).toFixed(3)});`);
       tweens.push(`tl.to("#${id}", { strokeDashoffset: ${-initial}, duration: 0.5, ease: "power2.out" }, ${(start + 1.42 + 0.035 * band).toFixed(3)});`);
     }
-    markup.push(`<div id="${group}" class="clip" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="${20 + index}" style="opacity:0"><svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none" data-layout-allow-overflow>${paths.join("")}</svg><div id="${group}-solid" class="clip" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="40" style="opacity:0;background:${color}"></div></div>`);
+    markup.push(`<div id="${group}" class="clip wipe-group" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="${20 + index}" style="opacity:0"><svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none" data-layout-allow-overflow>${paths.join("")}</svg><div id="${group}-solid" class="clip" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="40" style="opacity:0;background:${color}"></div></div>`);
     tweens.push(`tl.set("#${group}", { opacity: 1 }, ${start.toFixed(3)});`);
     tweens.push(`tl.to("#${group}-solid", { opacity: 1, duration: 0.12, ease: "none" }, ${(start + 0.8).toFixed(3)});`);
     tweens.push(`tl.to("#${group}-solid", { opacity: 0, duration: 0.15, ease: "none" }, ${(start + 1.42).toFixed(3)});`);
@@ -399,18 +395,21 @@ function makeTransitionOverlayHtml(scenes, duration) {
   <style>
     #root { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
     .wipe-group { position: absolute; inset: 0; opacity: 0; }
+    .wipe-group > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .wipe-group path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .wipe-group > .clip:last-child { position: absolute; inset: 0; }
     .wipe-group svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
     .wipe-group path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
     .wipe-group > .clip:last-child { position: absolute; inset: 0; }
   </style>
-  <div id="root" data-composition-id="transition-overlay" data-width="${WIDTH}" data-height="${HEIGHT}">
+  <div id="root" data-composition-id="transition-overlay" data-start="0" data-duration="${duration}" data-width="${WIDTH}" data-height="${HEIGHT}">
     ${markup.join("\n    ")}
   </div>
   <script>
-    const tl = gsap.timeline({ paused: true });
-    ${tweens.join("\n    ")}
+    const tl_transition_overlay = gsap.timeline({ paused: true });
+    ${tweens.join("\n    ").replaceAll("tl.", "tl_transition_overlay.")}
     window.__timelines = window.__timelines || {};
-    window.__timelines["transition-overlay"] = tl;
+    window.__timelines["transition-overlay"] = tl_transition_overlay;
   </script>
 </template>
 `;
