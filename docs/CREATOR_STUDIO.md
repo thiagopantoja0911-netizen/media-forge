@@ -1,6 +1,6 @@
-# MediaForge Creator Studio
+# Forge Midjourney
 
-O Creator Studio é a interface de planejamento de vídeos do repositório MediaForge. Ele foi migrado do antigo `video.salevo.site/studio/` para uma rota protegida no serviço MediaForge.
+O Forge Midjourney é a interface de planejamento de vídeos do repositório MediaForge. Ele foi migrado do antigo `video.salevo.site/studio/` para uma rota protegida no serviço MediaForge.
 
 ## Escopo desta etapa
 
