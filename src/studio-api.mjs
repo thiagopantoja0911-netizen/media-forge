@@ -10,22 +10,45 @@ function reply(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-export async function handleStudioApi({ request, response, parseBody, isAdminSession }) {
+/**
+ * The Studio API is session-authenticated. Controlled render submission does not
+ * bypass the creator delivery gate: it produces TEST jobs only, after explicit
+ * consent, five uploaded scene assets and a verified-length narration.
+ */
+export async function handleStudioApi({ request, response, parseBody, isAdminSession, createJob, getJob }) {
   const url = new URL(request.url, "http://localhost");
-  if (url.pathname !== "/api/studio/compose") return false;
-
-  if (request.method !== "POST") {
-    response.writeHead(405, { allow: "POST", "cache-control": "no-store" });
+  const path = url.pathname;
+  const isCompose = path === "/api/studio/compose";
+  const isRender = path === "/api/studio/render";
+  const statusId = /^\/api\/studio\/jobs\/([a-f0-9]{32})$/.exec(path)?.[1];
+  if (!isCompose && !isRender && !statusId) return false;
+  if (request.method !== (statusId ? "GET" : "POST")) {
+    response.writeHead(405, { allow: statusId ? "GET" : "POST", "cache-control": "no-store" });
     response.end();
     return true;
   }
-
   if (!(await isAdminSession(request))) {
     reply(response, 401, { ok: false, error: "AUTH_REQUIRED" });
     return true;
   }
+  if (statusId) {
+    if (typeof getJob !== "function") {
+      reply(response, 503, { ok: false, error: "JOB_STATUS_UNAVAILABLE" });
+      return true;
+    }
+    const job = await getJob(statusId);
+    if (!job || job.metadata?.source !== "forge-midjourney-studio" || job.metadata?.mode !== "controlled-test") {
+      reply(response, 404, { ok: false, error: "JOB_NOT_FOUND" });
+      return true;
+    }
+    reply(response, 200, { ok: true, job: {
+      id: job.id, status: job.status, progress: job.progress,
+      result: job.result ?? null, error: job.error ?? null,
+      updatedAt: job.updatedAt
+    } });
+    return true;
+  }
 
-  // Same-origin browser requests only: do not accept cross-site cookies as authorization.
   const fetchSite = String(request.headers?.["sec-fetch-site"] ?? "").toLowerCase();
   if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") {
     reply(response, 403, { ok: false, error: "CROSS_ORIGIN_REQUEST" });
@@ -49,12 +72,48 @@ export async function handleStudioApi({ request, response, parseBody, isAdminSes
 
   try {
     const raw = await parseBody(request);
+    if (isRender && raw.confirmControlledRender !== true) {
+      reply(response, 428, { ok: false, error: "RENDER_CONFIRMATION_REQUIRED" });
+      return true;
+    }
     const imported = importSalevoStudioDraft(raw);
     const mediaAssets = raw.mediaAssets && typeof raw.mediaAssets === "object" ? raw.mediaAssets : {};
     const composition = await buildCreatorComposition(imported.manifest, mediaAssets);
-    reply(response, 200, { ok: true, ...composition, warnings: imported.warnings });
+    if (isCompose) {
+      reply(response, 200, { ok: true, ...composition, warnings: imported.warnings });
+      return true;
+    }
+    if (!composition.readiness.testRenderReady) {
+      reply(response, 422, {
+        ok: false, error: "CREATIVE_ASSETS_REQUIRED",
+        blockers: composition.readiness.testRenderBlockers
+      });
+      return true;
+    }
+    if (typeof createJob !== "function") {
+      reply(response, 503, { ok: false, error: "RENDER_QUEUE_UNAVAILABLE" });
+      return true;
+    }
+    const job = await createJob({
+      prompt: String(raw.topic || raw.title || "Forge Midjourney controlled render").slice(0, 2000),
+      project: composition.project,
+      projectFiles: composition.projectFiles,
+      metadata: {
+        source: "forge-midjourney-studio",
+        mode: "controlled-test",
+        qaStatus: "pending-technical-and-artistic-review",
+        approvedBy: "authenticated-admin-confirmation"
+      }
+    });
+    reply(response, 202, {
+      ok: true, jobId: job.id, status: job.status,
+      statusUrl: "/api/studio/jobs/" + job.id,
+      message: "Teste enviado ao Worker. O MP4 final exige revisão de qualidade antes de aprovação.",
+      readiness: { ...composition.readiness, renderReady: false }
+    });
   } catch (error) {
-    reply(response, 400, { ok: false, error: error.message || "INVALID_CREATOR_PROJECT" });
+    const status = error.code === "INVALID_JOB" || error.code === "INVALID_PROJECT" ? 422 : 400;
+    reply(response, status, { ok: false, error: error.message || "INVALID_CREATOR_PROJECT" });
   }
   return true;
 }
