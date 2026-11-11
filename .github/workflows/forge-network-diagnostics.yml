@@ -26,3 +26,7 @@ jobs:
           echo '--- Response body (if any) ---'
           head -c 400 /tmp/forge-health.txt 2>/dev/null || true
           echo
+          echo '--- DIRECT ORIGIN HTTPS IPv4 (bypass CDN DNS) ---'
+          curl -4 --silent --show-error --verbose --resolve forge-preview.salevo.site:443:45.152.44.30 --connect-timeout 7 --max-time 13 -D - https://forge-preview.salevo.site/health -o /tmp/forge-origin-health.txt || true
+          head -c 400 /tmp/forge-origin-health.txt 2>/dev/null || true
+          echo
