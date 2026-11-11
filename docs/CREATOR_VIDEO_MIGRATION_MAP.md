@@ -65,4 +65,6 @@ The video system is spread across several branches; the Secrets repository \`mai
 5. Only then merge the migration PR and redeploy the MediaForge staging service.
 6. Retire the old service only after ChatGPT OAuth, Windows auto-start, repeat render and rollback tests pass.
 
-The current MediaForge Windows installation is confirmed online by the user's installer report. The worker connection is not a substitute for a completed real render test.
+The installer report confirmed the worker online at setup time. A later live staging health probe reported the worker offline, so persistent heartbeat still needs re-verification after the 45-second freshness fix is deployed. The worker connection is not a substitute for a completed real render test.
+
+Hostinger publishes versioned release directories and switches the active version. Production must use a durable home-directory path (for example `~/.mediaforge-runtime`) for state/jobs/projects; do not deploy with a version-relative `.mediaforge` path. The code now expands `~` using the runtime account home. Before switching the Hostinger environment variable, preserve/migrate the current staging state or deliberately re-pair the worker and OAuth client.
