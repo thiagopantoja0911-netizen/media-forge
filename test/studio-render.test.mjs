@@ -57,6 +57,12 @@ test("five licensed visuals and narration authorize a test job but not final app
  assert.equal(result.created[0].metadata.mode,"controlled-test");
  assert.equal(result.created[0].metadata.expectsAudio,true);
  assert.equal(result.created[0].projectFiles.filter(f=>f.path.startsWith("assets/scenes/")).length,5);
+ const firstScene=result.created[0].projectFiles.find(f=>f.path==="compositions/scene-01.html");
+ assert.match(firstScene.content,/scene-01-media-image/);
+ assert.match(firstScene.content,/assets\/scenes\/scene-01.png/);
+ assert.match(firstScene.content,/tl_scene_01\.fromTo/);
+ const otherScene=result.created[0].projectFiles.find(f=>f.path==="compositions/scene-02.html");
+ assert.match(otherScene.content,/scene-02-media-image/);
 });
 test("studio job status endpoint requires ownership and admin login",async()=>{
  const jobId="a".repeat(32);const res=response();
