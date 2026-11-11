@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { readState } from "./state-store.mjs";
 
 const LEGACY_PROTOCOLS = new Set(["2025-03-26", "2025-06-18", "2025-11-25"]);
 const SUPPORTED_PROTOCOLS = new Set([...LEGACY_PROTOCOLS, "2026-07-28"]);
@@ -84,7 +85,9 @@ async function requireBearer(request, authenticateBearer) {
   const loopback = ["127.0.0.1", "localhost", "::1"].includes(host);
   const required = process.env.MEDIAFORGE_REQUIRE_AUTH === "true" || !loopback;
   if (!required) return { scopes: ["videos:read", "videos:write", "offline_access"], legacy: true };
-  if (!expected) {
+  const authState = await readState();
+  const allowBootstrapToken = !authState.settings.pluginTokenHash || process.env.MEDIAFORGE_ALLOW_STATIC_MCP_TOKEN === "true";
+  if (!expected || !allowBootstrapToken) {
     const error = new Error("MEDIAFORGE_MCP_TOKEN is required when MCP authentication is enabled");
     error.code = "MCP_AUTH_NOT_CONFIGURED"; error.status = 500; throw error;
   }
