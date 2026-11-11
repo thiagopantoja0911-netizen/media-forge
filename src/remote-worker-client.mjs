@@ -1,9 +1,24 @@
 import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
 import { createReadStream } from "node:fs";
 import { mkdir, stat, writeFile, access } from "node:fs/promises";
 import { resolve, join, relative, sep, basename } from "node:path";
 import { hostname } from "node:os";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
+import { verifyVideoArtifact } from "./renderers/verify-video.mjs";
+
+const workerRequire = createRequire(new URL("../desktop/worker/package.json", import.meta.url));
+const ffmpegPath = process.env.MEDIAFORGE_FFMPEG_PATH || workerRequire("ffmpeg-static");
+const ffprobePath = process.env.MEDIAFORGE_FFPROBE_PATH || workerRequire("@derhuerst/ffprobe-static");
+if (!ffmpegPath || !ffprobePath) throw new Error("FFmpeg/FFprobe binaries are unavailable in the Windows worker");
+process.env.MEDIAFORGE_FFMPEG_PATH = ffmpegPath;
+process.env.MEDIAFORGE_FFPROBE_PATH = ffprobePath;
+process.env.HYPERFRAMES_FFMPEG_PATH = ffmpegPath;
+process.env.HYPERFRAMES_FFPROBE_PATH = ffprobePath;
+process.env.FFMPEG_PATH = ffmpegPath;
+process.env.FFMPEG_BIN = ffmpegPath;
+process.env.FFPROBE_PATH = ffprobePath;
+process.env.FFPROBE_BIN = ffprobePath;
 
 const url=String(process.env.MEDIAFORGE_REMOTE_URL||"").replace(/\/$/,"");
 const token=process.env.MEDIAFORGE_WORKER_TOKEN||"";
@@ -90,11 +105,17 @@ async function processRemote(job,leaseId) {
     });
     const info=await stat(rendered.outputPath);
     if(!info.isFile()||info.size===0)throw new Error("Video artifact missing or empty");
-    await reportProgress(job,leaseId,96,"MP4 gerado; conferindo integridade e tamanho");
+    await reportProgress(job,leaseId,96,"MP4 gerado; auditando resolução, FPS, duração e áudio");
+    const probe=await verifyVideoArtifact(rendered.outputPath,configured.project,ffprobePath);
+    const profile={
+      resolution:configured.project.resolution,
+      fps:configured.project.fps,
+      quality:configured.project.quality
+    };
     await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
       leaseId,success:true,fileName:basename(rendered.outputPath),size:info.size,
       sha256:await hashFile(rendered.outputPath),outputPath:rendered.outputPath,
-      report:{outputName:basename(rendered.outputPath)}
+      report:{outputName:basename(rendered.outputPath),profile,probe,preflight:rendered.preflight}
     });
     console.log("Remote job completed:",job.id);
   }catch(error){
