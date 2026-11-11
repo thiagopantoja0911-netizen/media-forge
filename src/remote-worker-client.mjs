@@ -62,6 +62,14 @@ async function downloadProject(id,leaseId){
   }
   await access(join(root,"index.html"));
 }
+async function reportProgress(job,leaseId,progress,message) {
+  try {
+    await call("/v1/worker/jobs/"+job.id+"/progress","POST",{leaseId,progress,message},leaseId);
+  } catch(error) {
+    // Telemetry must never cancel a valid local render.
+    console.warn("Progress update failed:",error.message);
+  }
+}
 async function hashFile(path) {
   const hash=createHash("sha256");
   for await (const chunk of createReadStream(path)) hash.update(chunk);
@@ -72,12 +80,17 @@ async function processRemote(job,leaseId) {
   const interval=setInterval(()=>sendHeartbeat(active).catch((error)=>
     console.error("Heartbeat failed:",error.message)),15000);
   try{
+    await reportProgress(job,leaseId,12,"Baixando e verificando os arquivos do projeto");
     await downloadProject(job.id,leaseId);
+    await reportProgress(job,leaseId,20,"Arquivos recebidos e checksums conferidos");
     const configured={...job,project:{...job.project,sourceDir:job.id}};
     if(configured.project.renderer!=="hyperframes")throw new Error("Unsupported renderer for remote worker");
-    const rendered=await renderWithHyperFrames(configured);
+    const rendered=await renderWithHyperFrames(configured,{
+      onProgress:(progress,message)=>reportProgress(job,leaseId,progress,message)
+    });
     const info=await stat(rendered.outputPath);
     if(!info.isFile()||info.size===0)throw new Error("Video artifact missing or empty");
+    await reportProgress(job,leaseId,96,"MP4 gerado; conferindo integridade e tamanho");
     await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
       leaseId,success:true,fileName:basename(rendered.outputPath),size:info.size,
       sha256:await hashFile(rendered.outputPath),outputPath:rendered.outputPath,
