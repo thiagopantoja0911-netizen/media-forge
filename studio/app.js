@@ -112,15 +112,25 @@
       audio.src=url;
     });
   }
+  function clearAudio(kind){
+    var current=audioFiles[kind];
+    if(current&&current.previewUrl)URL.revokeObjectURL(current.previewUrl);
+    audioFiles[kind]=null;
+    var preview=el(kind+'-preview');
+    preview.pause();preview.removeAttribute('src');preview.load();preview.hidden=true;
+  }
   async function selectAudio(kind,file){
-    if(!file){audioFiles[kind]=null;return;}
-    if(file.size>12*1024*1024){audioFiles[kind]=null;message('Cada arquivo de áudio pode ter no máximo 12 MB.');return;}
-    if(!/\.(wav|mp3|m4a|aac|ogg|opus|webm)$/i.test(file.name)){audioFiles[kind]=null;message('Use WAV, MP3, M4A, AAC, OGG, OPUS ou WEBM.');return;}
+    if(!file){clearAudio(kind);return;}
+    if(file.size>12*1024*1024){clearAudio(kind);message('Cada arquivo de áudio pode ter no máximo 12 MB.');return;}
+    if(!/\.(wav|mp3|m4a|aac|ogg|opus|webm)$/i.test(file.name)){clearAudio(kind);message('Use WAV, MP3, M4A, AAC, OGG, OPUS ou WEBM.');return;}
     try{
       var duration=await audioDuration(file);
-      audioFiles[kind]={file:file,durationSeconds:duration};
-      message((kind==='voiceover'?'Locução':'Trilha')+' anexada · '+duration.toFixed(1)+' s · '+(file.size/1048576).toFixed(1)+' MB.');
-    }catch(error){audioFiles[kind]=null;message(error.message);}
+      clearAudio(kind);
+      var previewUrl=URL.createObjectURL(file);
+      audioFiles[kind]={file:file,durationSeconds:duration,previewUrl:previewUrl};
+      var preview=el(kind+'-preview');preview.src=previewUrl;preview.hidden=false;preview.load();
+      message((kind==='voiceover'?'Locução':'Trilha')+' anexada · '+duration.toFixed(1)+' s · '+(file.size/1048576).toFixed(1)+' MB. Ouça antes de gerar o pacote.');
+    }catch(error){clearAudio(kind);message(error.message);}
   }
   function fileBase64(file){
     return new Promise(function(resolve,reject){
@@ -186,7 +196,7 @@
       }catch(error){message(error.message);}
     });
 
-    el('new-project').addEventListener('click',function(){if(!confirm('Criar um novo projeto? Exporte o atual antes de substituí-lo.'))return;try{localStorage.removeItem(STORAGE);}catch(e){}audioFiles={voiceover:null,music:null};el('voiceover-file').value='';el('music-file').value='';project=sanitizedProject({duration:'45',intent:'curiosidade',tone:'investigativo',scenes:[]});active=0;projectToForm();persist();message('Novo rascunho criado.');});
+    el('new-project').addEventListener('click',function(){if(!confirm('Criar um novo projeto? Exporte o atual antes de substituí-lo.'))return;try{localStorage.removeItem(STORAGE);}catch(e){}clearAudio('voiceover');clearAudio('music');el('voiceover-file').value='';el('music-file').value='';project=sanitizedProject({duration:'45',intent:'curiosidade',tone:'investigativo',scenes:[]});active=0;projectToForm();persist();message('Novo rascunho criado.');});
     el('import-json').addEventListener('click',function(){el('import-file').click();});
     el('import-file').addEventListener('change',function(e){importData(e.target.files&&e.target.files[0]);e.target.value='';});
   });
