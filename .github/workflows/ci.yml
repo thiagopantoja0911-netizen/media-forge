@@ -34,6 +34,8 @@ jobs:
       - run: npm run validate
       - name: Check generated Forge Midjourney composition with HyperFrames
         run: node scripts/check-creator-composition.mjs
+      - name: Check real-media HyperFrames composition and snapshots
+        run: node scripts/check-creator-media-composition.mjs
       - name: Upload Forge Midjourney review snapshots
         if: always()
         uses: actions/upload-artifact@v4
