@@ -3,7 +3,14 @@ import { readFile } from "node:fs/promises";
 const WIDTH = 2160;
 const HEIGHT = 3840;
 const SCENE_IDS = ["scene-01", "scene-02", "scene-03", "scene-04", "scene-05"];
-const ACCENTS = ["#91f4d5", "#b5a2ff", "#ffbd72", "#82c8ff", "#f1a6cf"];
+const SCENE_BEATS = ["hook", "context", "proof", "reveal", "payoff"];
+const PALETTES = [
+  { ground: "#F2D94E", ink: "#171717", accent: "#F24E35", slabLeft: 1260, slabTop: 560, slabWidth: 900, slabHeight: 2300, titleLeft: 216, titleTop: 1100 },
+  { ground: "#2FC4D1", ink: "#111111", accent: "#F4D84D", slabLeft: -150, slabTop: 720, slabWidth: 960, slabHeight: 2100, titleLeft: 420, titleTop: 1050 },
+  { ground: "#151515", ink: "#F6F1E7", accent: "#F4D84D", slabLeft: 1260, slabTop: 580, slabWidth: 900, slabHeight: 2280, titleLeft: 216, titleTop: 1000 },
+  { ground: "#FF684A", ink: "#151515", accent: "#F4D84D", slabLeft: -160, slabTop: 680, slabWidth: 960, slabHeight: 2200, titleLeft: 216, titleTop: 1080 },
+  { ground: "#A8DC4A", ink: "#111111", accent: "#F24E35", slabLeft: 1280, slabTop: 620, slabWidth: 880, slabHeight: 2200, titleLeft: 216, titleTop: 1040 }
+];
 const MAX_AUDIO_FILE_BYTES = 12 * 1024 * 1024;
 const MAX_AUDIO_TOTAL_BYTES = 18 * 1024 * 1024;
 const AUDIO_TYPES = {
@@ -24,6 +31,14 @@ function escapeHtml(value) {
 
 function textValue(value, limit = 2000) {
   return typeof value === "string" ? value.slice(0, limit) : "";
+}
+
+function truncateAtWord(value, limit) {
+  const text = textValue(value, 2000).trim();
+  if (text.length <= limit) return text;
+  const cut = text.slice(0, limit);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim();
 }
 
 function validateManifest(manifest) {
@@ -104,6 +119,7 @@ function sceneHost(scene, index) {
     '" data-composition-src="compositions/', id, '.html"',
     '" data-start="', scene.start, '" data-duration="', scene.end - scene.start,
     '" data-track-index="', index + 1, '" data-track-kind="graphics"',
+    '" data-beat="', SCENE_BEATS[index], '"',
     '" data-width="', WIDTH, '" data-height="', HEIGHT, '"></div>'
   ].join("");
 }
@@ -131,14 +147,16 @@ function makeIndexHtml(duration, scenes, audioAssets) {
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=2160, height=3840">
   <title>MediaForge Creator Project</title>
 </head>
 <body>
-  <div id="root" data-composition-id="main" data-start="0" data-duration="${duration}" data-width="${WIDTH}" data-height="${HEIGHT}">
+  <div id="root" data-composition-id="main" data-start="0" data-duration="${duration}" data-width="${WIDTH}" data-height="${HEIGHT}" style="background:${PALETTES[0].ground}">
     ${hosts}
+    <div id="captions" data-composition-id="captions" data-composition-src="compositions/captions.html" data-start="0" data-duration="${duration}" data-track-index="70" data-track-kind="captions" data-width="${WIDTH}" data-height="${HEIGHT}"></div>
     ${voice}
     ${music}
+    <div id="transition-overlay" data-composition-id="transition-overlay" data-composition-src="compositions/transition-overlay.html" data-start="0" data-duration="${duration}" data-track-index="90" data-track-kind="graphics" data-width="${WIDTH}" data-height="${HEIGHT}"></div>
   </div>
   <script src="assets/gsap.min.js"></script>
   <script>
@@ -150,133 +168,249 @@ function makeIndexHtml(duration, scenes, audioAssets) {
 `;
 }
 
-function sceneHtml(scene, index, duration) {
+function sceneHtml(scene, index, duration, brief) {
   const id = SCENE_IDS[index];
-  const accent = ACCENTS[index];
-  const sceneSeconds = Number(duration);
-  const titleLimit = sceneSeconds <= 3.5 ? 44 : sceneSeconds <= 6 ? 64 : 96;
-  const captionLimit = sceneSeconds <= 3.5 ? 36 : sceneSeconds <= 6 ? 70 : 120;
+  const palette = PALETTES[index];
+  const seconds = Number(duration);
+  const titleLimit = seconds <= 3.5 ? 44 : seconds <= 6 ? 64 : 84;
   const fullTitle = textValue(scene.onscreen, 220).trim()
-    || (index === 0 ? textValue(scene.spoken, 120).trim() : scene.name);
-  const title = fullTitle.slice(0, titleLimit);
-  const fullCaption = textValue(scene.spoken, 280).trim();
-  const caption = fullCaption.slice(0, captionLimit);
-  const kicker = "MEDIAFORGE / " + String(index + 1).padStart(2, "0") + " — " + textValue(scene.name, 50).toUpperCase();
+    || (index === 0 ? textValue(brief.chosenHook || scene.spoken, 120).trim() : scene.name);
+  const title = truncateAtWord(fullTitle, titleLimit);
+  const words = title.split(/\s+/).filter(Boolean);
+  const accentWord = words.pop() || title;
+  const prefix = words.join(" ");
+  const safePrefix = escapeHtml(prefix);
+  const safeAccentWord = escapeHtml(accentWord);
   const variables = escapeHtml(JSON.stringify([
-    { id: "headline", type: "string", label: "Texto principal", default: title, maxLength: 220 },
-    { id: "accent", type: "color", label: "Cor de destaque", default: accent }
+    { id: "headlinePrefix", type: "string", label: "Texto principal", default: prefix, maxLength: 220 },
+    { id: "headlineAccent", type: "string", label: "Palavra de destaque", default: accentWord, maxLength: 80 },
+    { id: "ground", type: "color", label: "Fundo", default: palette.ground },
+    { id: "ink", type: "color", label: "Texto", default: palette.ink },
+    { id: "accent", type: "color", label: "Destaque", default: palette.accent }
   ]));
-  const safeTitle = escapeHtml(title);
-  const safeKicker = escapeHtml(kicker);
-  const safeCaption = escapeHtml(caption);
   const safeDuration = Number(duration).toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
-  const openingMotion = [
-    `tl.fromTo("#${id}-orb", { rotation: -18, scale: 0.78, opacity: 0.12 }, { rotation: 0, scale: 1, opacity: 0.42, duration: 0.72, ease: "power4.out" }, 0);`,
-    `tl.fromTo("#${id}-bar", { scaleX: 0, transformOrigin: "left center" }, { scaleX: 1, duration: 0.48, ease: "expo.out" }, 0.08);`,
-    `tl.fromTo("#${id}-orb", { scale: 0.62, rotation: 12, opacity: 0.08 }, { scale: 1, rotation: 0, opacity: 0.38, duration: 0.62, ease: "power3.out" }, 0);`,
-    `tl.fromTo("#${id}-bar", { y: 110, opacity: 0 }, { y: 0, opacity: 1, duration: 0.42, ease: "power4.out" }, 0.1);`,
-    `tl.fromTo("#${id}-orb", { scale: 1.24, rotation: -9, opacity: 0.08 }, { scale: 1, rotation: 0, opacity: 0.4, duration: 0.78, ease: "power2.out" }, 0);`
+  const slab = {
+    left: palette.slabLeft,
+    top: palette.slabTop,
+    width: palette.slabWidth,
+    height: palette.slabHeight
+  };
+  const titleLeft = palette.titleLeft;
+  const titleTop = palette.titleTop;
+  const opening = [
+    `tl.fromTo("#${id}-slab", { x: 260 }, { x: 0, duration: 0.56, ease: "expo.out" }, 0);`,
+    `tl.fromTo("#${id}-rule", { scaleX: 0, transformOrigin: "left center" }, { scaleX: 1, duration: 0.42, ease: "power4.out" }, 0.06);`,
+    `tl.fromTo("#${id}-title", { y: 0 }, { y: -4, duration: 0.3, ease: "none" }, 0);`
   ][index];
+  const titleMotion = [
+    "",
+    `tl.fromTo("#${id}-title", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.42, ease: "power4.out" }, 0.12);`,
+    `tl.fromTo("#${id}-title", { y: 86, opacity: 0 }, { y: 0, opacity: 1, duration: 0.38, ease: "power4.out" }, 0.1);`,
+    `tl.fromTo("#${id}-title", { clipPath: "inset(0 0 0 100%)" }, { clipPath: "inset(0 0 0 0)", duration: 0.4, ease: "power4.out" }, 0.14);`,
+    `tl.fromTo("#${id}-title", { scaleX: 0.9, opacity: 0, transformOrigin: "left center" }, { scaleX: 1, opacity: 1, duration: 0.34, ease: "expo.out" }, 0.08);`
+  ][index];
+  const openingMotion = index === 0
+    ? opening
+    : [
+        `tl.fromTo("#${id}-slab", { x: -260 }, { x: 0, duration: 0.58, ease: "power3.out" }, 0);`,
+        `tl.fromTo("#${id}-slab", { scaleY: 0.3, transformOrigin: "center top" }, { scaleY: 1, duration: 0.5, ease: "expo.out" }, 0);`,
+        `tl.fromTo("#${id}-slab", { y: 260 }, { y: 0, duration: 0.55, ease: "power3.out" }, 0);`,
+        `tl.fromTo("#${id}-slab", { x: 180 }, { x: 0, duration: 0.58, ease: "expo.out" }, 0);`
+      ][index - 1] + `\ntl.fromTo("#${id}-rule", { scaleX: 0, transformOrigin: "left center" }, { scaleX: 1, duration: 0.42, ease: "power4.out" }, 0.06);`;
+  const drift = [[-140, 60, 8], [110, -42, -10], [150, 30, 12], [-90, -54, -8], [-120, 44, 10], [80, -28, -8]];
   const motionBeats = [];
-  const drift = [
-    [-130, 72, 12], [105, -54, -17], [160, 38, 20], [-95, -66, -14],
-    [-145, 52, 16], [88, -34, -12], [125, 72, 18], [-110, -58, -16]
-  ];
-  for (let beat = 0, at = 1.35; at + 1.35 < duration; beat += 1, at += 2.45) {
+  for (let beat = 0, at = 1.65; at + 1.3 < seconds; beat += 1, at += 2.8) {
     const [x, y, rotation] = drift[(index + beat) % drift.length];
-    const scale = beat % 2 === 0 ? 1.075 : 0.94;
-    motionBeats.push(`tl.to("#${id}-orb", { x: ${x}, y: ${y}, rotation: ${rotation}, scale: ${scale}, duration: 1.35, ease: "power2.inOut" }, ${at.toFixed(2)});`);
+    motionBeats.push(`tl.to("#${id}-slab", { x: ${x}, y: ${y}, rotation: ${rotation}, duration: 1.3, ease: "power2.inOut" }, ${at.toFixed(2)});`);
   }
-  const motion = [openingMotion, ...motionBeats].join("\n");
-  const titleMotion = index === 0
-    ? `tl.fromTo("#${id}-title", { y: 0, scale: 1 }, { y: -10, scale: 1.015, duration: 0.42, ease: "power2.out" }, 0.05);`
-    : `tl.fromTo("#${id}-title", { y: 88, opacity: 0, filter: "blur(10px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.42, ease: "power4.out" }, 0.12);`;
-  const captionMotion = caption
-    ? `tl.fromTo("#${id}-caption", { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: "power3.out" }, 0.55);`
-    : "";
+  const titleScript = titleMotion ? titleMotion : "";
   return `<template>
   <style>
     #root {
       position: absolute;
       inset: 0;
       overflow: hidden;
-      color: #f7f8ff;
-      background:
-        radial-gradient(ellipse at 52% 42%, rgba(74, 91, 165, .36), transparent 56%),
-        linear-gradient(152deg, #080d18 0%, #101a2c 54%, #090e18 100%);
+      background: var(--ground);
+      color: var(--ink);
       font-family: Inter, Arial, sans-serif;
     }
-    #${id}-orb {
+    #${id}-slab {
       position: absolute;
-      width: 1580px;
-      height: 1580px;
-      left: 290px;
-      top: 820px;
-      border: 3px solid var(--accent);
-      border-radius: 50%;
-      box-shadow: 0 0 130px color-mix(in srgb, var(--accent) 22%, transparent);
-    }
-    #${id}-bar {
-      position: absolute;
-      left: 180px;
-      top: 790px;
-      width: 1800px;
-      height: 12px;
-      border-radius: 99px;
+      left: ${slab.left}px;
+      top: ${slab.top}px;
+      width: ${slab.width}px;
+      height: ${slab.height}px;
       background: var(--accent);
+      clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%);
+      z-index: 1;
     }
-    #${id}-kicker {
+    #${id}-rule {
       position: absolute;
-      top: 470px;
-      left: 180px;
-      right: 180px;
-      color: var(--accent);
-      font-size: 58px;
-      line-height: 1.2;
-      font-weight: 700;
-      letter-spacing: .18em;
+      left: 216px;
+      top: 900px;
+      width: 1728px;
+      height: 20px;
+      background: var(--ink);
+      z-index: 2;
     }
     #${id}-title {
       position: absolute;
-      top: 1040px;
-      left: 180px;
-      right: 180px;
+      left: ${titleLeft}px;
+      right: 216px;
+      top: ${titleTop}px;
+      max-width: 1728px;
       margin: 0;
-      font-size: 188px;
-      line-height: 1.06;
+      z-index: 3;
+      font-size: 292px;
+      line-height: 0.94;
       font-weight: 900;
-      letter-spacing: -.055em;
+      letter-spacing: -0.065em;
       overflow-wrap: anywhere;
       text-wrap: balance;
     }
-    #${id}-caption {
-      position: absolute;
-      top: 2180px;
-      left: 190px;
-      right: 190px;
-      color: #d2d9e8;
-      font-size: 66px;
-      line-height: 1.34;
-      font-weight: 500;
-      letter-spacing: -.02em;
-      overflow-wrap: anywhere;
-    }
-    .clip { position: absolute; }
+    #${id}-title-prefix { color: var(--ink); }
+    #${id}-title-accent { color: var(--accent); }
   </style>
   <div id="root" data-composition-id="${id}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}'>
-    <div id="${id}-orb" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="1"></div>
-    <div id="${id}-bar" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="2"></div>
-    <div id="${id}-kicker" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="3">${safeKicker}</div>
-    <h1 id="${id}-title" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="4" data-var-text="headline">${safeTitle}</h1>
-    ${caption ? `<p id="${id}-caption" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="5">${safeCaption}</p>` : ""}
+    <div id="${id}-slab" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="1"></div>
+    <div id="${id}-rule" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="2"></div>
+    <h1 id="${id}-title" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="3" data-beat="${SCENE_BEATS[index]}"><span id="${id}-title-prefix" data-var-text="headlinePrefix">${safePrefix}</span><span id="${id}-title-accent" data-var-text="headlineAccent">${safeAccentWord}</span></h1>
   </div>
   <script>
     const tl_${id.replaceAll("-", "_")} = gsap.timeline({ paused: true });
-    ${motion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
-    ${titleMotion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
-    ${captionMotion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
+    ${openingMotion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
+    ${titleScript.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
+    ${motionBeats.join("\n").replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
     window.__timelines = window.__timelines || {};
     window.__timelines["${id}"] = tl_${id.replaceAll("-", "_")};
+  </script>
+</template>
+`;
+}
+
+function makeCaptionsHtml(scenes, duration) {
+  const variables = [];
+  const entries = scenes.map((scene, index) => {
+    const seconds = scene.end - scene.start;
+    const limit = seconds <= 3.5 ? 28 : seconds <= 6 ? 44 : 72;
+    const caption = truncateAtWord(scene.spoken, limit);
+    const start = Math.min(scene.end - 0.4, scene.start + 0.25);
+    const clipDuration = Math.max(0.8, scene.end - start - 0.25);
+    const variableId = "caption" + String(index + 1).padStart(2, "0");
+    variables.push({ id: variableId, type: "string", label: "Legenda " + (index + 1), default: caption, maxLength: 280 });
+    return `<div id="caption-${index + 1}" class="clip" data-start="${start.toFixed(3)}" data-duration="${clipDuration.toFixed(3)}" data-track-index="${index + 1}" data-beat="${SCENE_BEATS[index]}"><span class="caption-text" data-var-text="${variableId}">${escapeHtml(caption)}</span></div>`;
+  }).join("\n    ");
+  const vars = escapeHtml(JSON.stringify(variables));
+  const tweens = scenes.map((scene, index) => {
+    const start = Math.min(scene.end - 0.4, scene.start + 0.25);
+    const end = Math.max(start + 0.5, scene.end - 0.25);
+    return `tl.fromTo("#caption-${index + 1} .caption-text", { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.24, ease: "power3.out" }, ${start.toFixed(3)});\ntl.to("#caption-${index + 1} .caption-text", { opacity: 0, duration: 0.16, ease: "power2.in" }, ${Math.max(start + 0.25, end - 0.16).toFixed(3)});`;
+  }).join("\n");
+  return `<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; font-family: Inter, Arial, sans-serif; }
+    #root > .clip {
+      position: absolute;
+      left: 216px;
+      right: 216px;
+      bottom: 460px;
+      padding: 32px 36px;
+      color: #fff;
+      background: rgba(17, 17, 17, .88);
+      border-left: 14px solid #F24E35;
+      font-size: 76px;
+      line-height: 1.18;
+      font-weight: 800;
+      letter-spacing: -.025em;
+      overflow-wrap: anywhere;
+    }
+    .caption-text { display: block; }
+  </style>
+  <div id="root" data-composition-id="captions" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${vars}'>
+    ${entries}
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    ${tweens}
+    window.__timelines = window.__timelines || {};
+    window.__timelines["captions"] = tl;
+  </script>
+</template>
+`;
+}
+
+function hash(seed) {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return (x - Math.floor(x)) * 2 - 1;
+}
+
+function wipePath(index, band, orientation, bands) {
+  const points = [];
+  if (orientation === "horizontal") {
+    const bandHeight = HEIGHT / bands;
+    const y0 = band * bandHeight + bandHeight / 2 + hash(index * 31 + band) * 26;
+    points.push([-120, y0 + hash(index * 37 + band) * 20]);
+    for (let i = 1; i <= 8; i += 1) {
+      const x = (WIDTH + 240) * (i / 8) - 120;
+      const y = y0 + (i % 2 ? -1 : 1) * bandHeight * 0.32 + hash(index * 43 + band * 17 + i) * 18;
+      points.push([x, y]);
+    }
+  } else {
+    const bandWidth = WIDTH / bands;
+    const x0 = band * bandWidth + bandWidth / 2 + hash(index * 41 + band) * 18;
+    points.push([x0 + hash(index * 53 + band) * 18, -160]);
+    for (let i = 1; i <= 8; i += 1) {
+      const y = (HEIGHT + 320) * (i / 8) - 160;
+      const x = x0 + (i % 2 ? -1 : 1) * bandWidth * 0.32 + hash(index * 59 + band * 13 + i) * 16;
+      points.push([x, y]);
+    }
+  }
+  return "M " + points.map(point => point[0].toFixed(1) + " " + point[1].toFixed(1)).join(" L ");
+}
+
+function makeTransitionOverlayHtml(scenes, duration) {
+  const bands = 7;
+  const orientations = ["horizontal", "vertical", "horizontal", "vertical"];
+  const transitionColors = [PALETTES[1].accent, PALETTES[2].accent, PALETTES[3].accent, PALETTES[4].accent];
+  const markup = [];
+  const tweens = [];
+  for (let index = 0; index < scenes.length - 1; index += 1) {
+    const seam = scenes[index].end;
+    const start = Math.max(0, seam - 1.1);
+    const color = transitionColors[index];
+    const orientation = orientations[index];
+    const group = "wipe-" + String(index + 1).padStart(2, "0");
+    const strokeWidth = orientation === "horizontal" ? HEIGHT / bands * 0.9 : WIDTH / bands * 0.9;
+    const paths = [];
+    for (let band = 0; band < bands; band += 1) {
+      const id = group + "-band-" + band;
+      const initial = band % 2 ? -1000 : 1000;
+      paths.push(`<path id="${id}" class="clip" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="${band + 1}" d="${wipePath(index + 1, band, orientation, bands)}" pathLength="1000" stroke="${color}" stroke-width="${strokeWidth.toFixed(1)}" stroke-dasharray="1000" stroke-dashoffset="${initial}"></path>`);
+      tweens.push(`tl.to("#${id}", { strokeDashoffset: 0, duration: 0.55, ease: "power2.in" }, ${(start + 0.04 * band).toFixed(3)});`);
+      tweens.push(`tl.to("#${id}", { strokeDashoffset: ${-initial}, duration: 0.5, ease: "power2.out" }, ${(start + 1.42 + 0.035 * band).toFixed(3)});`);
+    }
+    markup.push(`<div id="${group}" class="clip" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="${20 + index}" style="opacity:0"><svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none" data-layout-allow-overflow>${paths.join("")}</svg><div id="${group}-solid" class="clip" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="40" style="opacity:0;background:${color}"></div></div>`);
+    tweens.push(`tl.set("#${group}", { opacity: 1 }, ${start.toFixed(3)});`);
+    tweens.push(`tl.to("#${group}-solid", { opacity: 1, duration: 0.12, ease: "none" }, ${(start + 0.8).toFixed(3)});`);
+    tweens.push(`tl.to("#${group}-solid", { opacity: 0, duration: 0.15, ease: "none" }, ${(start + 1.42).toFixed(3)});`);
+    tweens.push(`tl.to("#${group}", { opacity: 0, duration: 0.01, ease: "none" }, ${(start + 2.17).toFixed(3)});`);
+  }
+  return `<template>
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .wipe-group { position: absolute; inset: 0; opacity: 0; }
+    .wipe-group svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .wipe-group path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .wipe-group > .clip:last-child { position: absolute; inset: 0; }
+  </style>
+  <div id="root" data-composition-id="transition-overlay" data-width="${WIDTH}" data-height="${HEIGHT}">
+    ${markup.join("\n    ")}
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    ${tweens.join("\n    ")}
+    window.__timelines = window.__timelines || {};
+    window.__timelines["transition-overlay"] = tl;
   </script>
 </template>
 `;
@@ -299,10 +433,20 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
     const scene = scenes[index];
     projectFiles.push({
       path: "compositions/" + SCENE_IDS[index] + ".html",
-      content: sceneHtml(scene, index, scene.end - scene.start),
+      content: sceneHtml(scene, index, scene.end - scene.start, manifest.brief),
       encoding: "utf8"
     });
   }
+  projectFiles.push({
+    path: "compositions/captions.html",
+    content: makeCaptionsHtml(scenes, duration),
+    encoding: "utf8"
+  });
+  projectFiles.push({
+    path: "compositions/transition-overlay.html",
+    content: makeTransitionOverlayHtml(scenes, duration),
+    encoding: "utf8"
+  });
   const gsap = await readFile(new URL("../assets/gsap.min.js", import.meta.url), "utf8");
   projectFiles.push({ path: "assets/gsap.min.js", content: gsap, encoding: "utf8" });
   if (voiceover) projectFiles.push({ path: voiceover.path, contentBase64: voiceover.contentBase64, encoding: "base64" });
@@ -322,13 +466,14 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   const blockers = [];
   const warnings = scenes.flatMap((scene, index) => {
     const seconds = scene.end - scene.start;
-    const titleLimit = seconds <= 3.5 ? 44 : seconds <= 6 ? 64 : 96;
-    const captionLimit = seconds <= 3.5 ? 36 : seconds <= 6 ? 70 : 120;
-    const title = textValue(scene.onscreen, 220).trim() || (index === 0 ? textValue(scene.spoken, 120).trim() : scene.name);
-    const caption = textValue(scene.spoken, 280).trim();
+    const titleLimit = seconds <= 3.5 ? 44 : seconds <= 6 ? 64 : 84;
+    const captionLimit = seconds <= 3.5 ? 28 : seconds <= 6 ? 44 : 72;
+    const fullTitle = textValue(scene.onscreen, 220).trim()
+      || (index === 0 ? textValue(manifest.brief.chosenHook || scene.spoken, 120).trim() : scene.name);
+    const fullCaption = textValue(scene.spoken, 280).trim();
     const result = [];
-    if (title.length > titleLimit) result.push("Cena " + (index + 1) + ": texto principal reduzido visualmente; o texto integral está em creator-storyboard.json.");
-    if (caption.length > captionLimit) result.push("Cena " + (index + 1) + ": legenda reduzida visualmente; o texto integral está em creator-storyboard.json.");
+    if (fullTitle.length > titleLimit) result.push("Cena " + (index + 1) + ": texto principal reduzido visualmente; o texto integral está em creator-storyboard.json.");
+    if (fullCaption.length > captionLimit) result.push("Cena " + (index + 1) + ": legenda reduzida visualmente; o texto integral está em creator-storyboard.json.");
     return result;
   });
   if (!voiceover) blockers.push("Narração ainda não foi anexada. Exporte uma voz do VoiceStudio ou anexe uma gravação WAV/MP3.");
@@ -336,7 +481,7 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   if (!music) blockers.push("Trilha musical ainda não foi anexada.");
   else if (music.durationSeconds < duration - 0.5) blockers.push("A trilha musical termina antes do vídeo; não haverá loop automático.");
   if (scenes.some(scene => textValue(scene.sound).trim())) blockers.push("As notas de som por cena ainda precisam ser resolvidas em efeitos sonoros reais e licenciados.");
-  blockers.push("As cenas usam tipografia cinética abstrata; faltam imagens ou vídeos específicos do assunto.");
+  blockers.push("As cenas ainda usam tipografia e blocos gráficos; faltam imagens ou vídeos específicos do assunto.");
   blockers.push("A composição precisa passar por HyperFrames check, preview e revisão visual no Worker antes de liberar a fila.");
 
   return {
@@ -361,8 +506,10 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
       warnings,
       blockers,
       notes: [
-        "A primeira cena mantém o gancho visível no frame zero.",
+        "O gancho fica visível no frame zero.",
         "Cada cena é uma subcomposição independente e editável.",
+        "As legendas estão em uma única faixa captions.",
+        "As transições de rabisco cobrem o corte antes de revelar a próxima cena.",
         "O texto do usuário é escapado antes de entrar no HTML.",
         "Arquivos de áudio são copiados para o pacote e nunca enviados à fila automaticamente."
       ]
