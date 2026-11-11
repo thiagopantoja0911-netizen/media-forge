@@ -7,7 +7,7 @@ import { buildCreatorComposition } from "../src/creator-composer.mjs";
 
 const draft = {
   version: 1,
-  title: "Creator Studio — composição de validação",
+  title: "Forge Midjourney — composição de validação",
   topic: "Teste de storyboard em cinco cenas",
   duration: "30",
   intent: "curiosidade",
