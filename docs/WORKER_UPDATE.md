@@ -7,7 +7,7 @@ ATUALIZADOR SILENCIOSO DO WORKER MEDIAFORGE
    %LOCALAPPDATA%\MediaForge-Staging
 5. Preserva .env.local e o token DPAPI, instala FFmpeg/FFprobe locais,
    reinicia somente a tarefa "MediaForge Worker - Staging" e verifica
-   quatro heartbeats consecutivos antes de declarar sucesso.
+   21 heartbeats consecutivos durante cinco minutos antes de declarar sucesso.
 6. Não desinstala nem desativa o worker antigo Videos Secrets e não apaga
    projetos, logs ou MP4s antigos.
 
