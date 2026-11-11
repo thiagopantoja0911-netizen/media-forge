@@ -83,7 +83,7 @@ Veja:
 - `docs/VIDEOS_SECRETS_BRIDGE.md`
 - `docs/VIDEOS_SECRETS_MIGRATION.md`
 - `docs/MEDIAFORGE_DEPLOYMENT.md`
-- `docs/UPSTREAM_UPDATES.md`\n- `docs/UPSTREAM_UPDATES.md`
+- `docs/UPSTREAM_UPDATES.md`
 
 ## Segurança operacional
 
