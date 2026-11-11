@@ -14,11 +14,11 @@ import { handlePanel, isAdminSession } from "./panel.mjs";
 import { handleRemoteWorker } from "./remote-worker-server.mjs";
 import { attachLocalGsap } from "./project-normalizer.mjs";
 import { readState } from "./state-store.mjs";
-import { resolveStoragePath, defaultDataDirectory } from "./storage-paths.mjs";
+import { resolveStoragePath, mediaForgeDataDirectory } from "./storage-paths.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
-const dataDir = resolveStoragePath(process.env.MEDIAFORGE_DATA_DIR ?? defaultDataDirectory());
+const dataDir = mediaForgeDataDirectory();
 const jobsDir = join(dataDir, "jobs");
 const workerStatusFile = join(dataDir, "worker-status.json");
 const projectsRoot = resolveStoragePath(process.env.MEDIAFORGE_PROJECTS_DIR ?? join(dataDir, "projects"));
