@@ -28,7 +28,8 @@ export async function handleStudioApi({ request, response, parseBody, isAdminSes
   try {
     const raw = await parseBody(request);
     const imported = importSalevoStudioDraft(raw);
-    const composition = await buildCreatorComposition(imported.manifest);
+    const mediaAssets = raw.mediaAssets && typeof raw.mediaAssets === "object" ? raw.mediaAssets : {};
+    const composition = await buildCreatorComposition(imported.manifest, mediaAssets);
     reply(response, 200, { ok: true, ...composition, warnings: imported.warnings });
   } catch (error) {
     reply(response, 400, { ok: false, error: error.message || "INVALID_CREATOR_PROJECT" });
