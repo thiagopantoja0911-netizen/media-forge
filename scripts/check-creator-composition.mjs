@@ -41,6 +41,16 @@ function runCli(cwd, args) {
   });
 }
 
+const registryDirectory = await mkdtemp(join(tmpdir(), "mediaforge-transition-registry-"));
+try {
+  const installed = await runCli(registryDirectory, ["add", "hw-scribble-transition", "--json"]);
+  process.stdout.write("Installed registry transition reference:\\n" + installed.stdout);
+  if (installed.stderr) process.stderr.write(installed.stderr);
+  if (installed.code !== 0) throw new Error("Could not install HyperFrames hw-scribble-transition reference");
+} finally {
+  await rm(registryDirectory, { recursive: true, force: true });
+}
+
 const directory = await mkdtemp(join(tmpdir(), "mediaforge-creator-check-"));
 try {
   const catalog = await runCli(directory, ["catalog", "--query", "editorial paper wipe color flood transition", "--type", "block", "--tag", "transition", "--json"]);
