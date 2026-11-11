@@ -69,6 +69,17 @@ test("authenticated ChatGPT -> API -> Windows remote worker handshake", async()=
     assert.match(Buffer.from(project.data.files[0].contentBase64,"base64").toString("utf8"),/MediaForge/);
     const heartbeat=await request(base,"/v1/worker/heartbeat",workerToken,"POST",{workerId:"windows-test",jobId:id,leaseId});
     assert.equal(heartbeat.status,200);
+    const progress=await request(base,"/v1/worker/jobs/"+id+"/progress",workerToken,"POST",{
+      leaseId,progress:47,message:"Renderizando em 4K60 High"
+    });
+    assert.equal(progress.status,200);
+    assert.equal(progress.data.progress,47);
+    const health=await fetch(base+"/health");
+    const healthData=await health.json();
+    assert.equal(healthData.worker.online,true);
+    const active=await request(base,"/v1/jobs/"+id,mcpToken);
+    assert.equal(active.data.job.progress,47);
+    assert.equal(active.data.job.progressMessage,"Renderizando em 4K60 High");
     const complete=await request(base,"/v1/worker/jobs/"+id+"/complete",workerToken,"POST",{
       leaseId,success:true,fileName:"test-4k60.mp4",size:2435,sha256:"c".repeat(64),
       outputPath:"C:\\MediaForge\\test-4k60.mp4",report:{fps:60,width:2160,height:3840}
