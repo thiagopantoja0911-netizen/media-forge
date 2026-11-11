@@ -1,7 +1,7 @@
 param(
-  [string]$InstallDir = "$env:LOCALAPPDATA\MediaForge",
+  [string]$InstallDir = "$env:LOCALAPPDATA\MediaForge-Staging",
   [string]$RepoUrl = "https://github.com/thiagopantoja0911-netizen/media-forge.git",
-  [string]$Branch = "migration/videos-secrets-to-mediaforge",
+  [string]$Branch = "feature/conexoes-mediaforge-primeiro",
   [ValidateSet("dry-run","hyperframes")]
   [string]$Renderer = "hyperframes"
 )
@@ -41,7 +41,7 @@ try {
     "MEDIAFORGE_WORKER_ID=$env:COMPUTERNAME"
   ) | Set-Content -Encoding utf8 ".env.local"
   Write-Host "MediaForge instalado em $InstallDir"
-  Write-Host "Inicie com: .\desktop\run-worker.ps1"
+  Write-Host "Instalação de testes criada. Configure a conexão remota com: .\desktop\connect-remote.ps1"
 } finally {
   Pop-Location
 }
