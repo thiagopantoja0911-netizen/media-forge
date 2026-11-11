@@ -28,6 +28,8 @@ jobs:
       - run: node --check src/renderers/hyperframes.mjs
       - run: node --test test/*.test.mjs
       - run: npm run validate
+      - name: Check generated Creator Studio composition with HyperFrames
+        run: node scripts/check-creator-composition.mjs
       - name: Verify public staging TLS, OAuth and access controls
         if: github.event_name == 'pull_request' && github.head_ref == 'feature/conexoes-mediaforge-primeiro'
         run: node scripts/staging-health.mjs
