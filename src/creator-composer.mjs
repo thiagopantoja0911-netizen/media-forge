@@ -76,10 +76,15 @@ function makeIndexHtml(duration, scenes) {
 function sceneHtml(scene, index, duration) {
   const id = SCENE_IDS[index];
   const accent = ACCENTS[index];
-  const title = textValue(scene.onscreen, 220).trim()
+  const sceneSeconds = Number(duration);
+  const titleLimit = sceneSeconds <= 3.5 ? 44 : sceneSeconds <= 6 ? 64 : 96;
+  const captionLimit = sceneSeconds <= 3.5 ? 36 : sceneSeconds <= 6 ? 70 : 120;
+  const fullTitle = textValue(scene.onscreen, 220).trim()
     || (index === 0 ? textValue(scene.spoken, 120).trim() : scene.name);
+  const title = fullTitle.slice(0, titleLimit);
+  const fullCaption = textValue(scene.spoken, 280).trim();
+  const caption = fullCaption.slice(0, captionLimit);
   const kicker = "MEDIAFORGE / " + String(index + 1).padStart(2, "0") + " — " + textValue(scene.name, 50).toUpperCase();
-  const caption = textValue(scene.spoken, 280).trim();
   const variables = escapeHtml(JSON.stringify([
     { id: "headline", type: "string", label: "Texto principal", default: title, maxLength: 220 },
     { id: "accent", type: "color", label: "Cor de destaque", default: accent }
@@ -149,7 +154,7 @@ function sceneHtml(scene, index, duration) {
       left: 180px;
       right: 180px;
       color: var(--accent);
-      font-size: 42px;
+      font-size: 58px;
       line-height: 1.2;
       font-weight: 700;
       letter-spacing: .18em;
@@ -179,14 +184,6 @@ function sceneHtml(scene, index, duration) {
       letter-spacing: -.02em;
       overflow-wrap: anywhere;
     }
-    #${id}-index {
-      position: absolute;
-      top: 3350px;
-      left: 180px;
-      color: rgba(235,242,255,.56);
-      font-size: 32px;
-      letter-spacing: .2em;
-    }
     .clip { position: absolute; }
   </style>
   <div id="root" data-composition-id="${id}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}'>
@@ -195,7 +192,6 @@ function sceneHtml(scene, index, duration) {
     <div id="${id}-kicker" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="3">${safeKicker}</div>
     <h1 id="${id}-title" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="4" data-var-text="headline">${safeTitle}</h1>
     ${caption ? `<p id="${id}-caption" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="5">${safeCaption}</p>` : ""}
-    <span id="${id}-index" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="6">0${index + 1} / 05</span>
   </div>
   <script>
     const tl_${id.replaceAll("-", "_")} = gsap.timeline({ paused: true });
@@ -246,6 +242,17 @@ export async function buildCreatorComposition(manifest) {
     projectFiles,
     readiness: {
       renderReady: false,
+      warnings: scenes.flatMap((scene, index) => {
+        const seconds = scene.end - scene.start;
+        const titleLimit = seconds <= 3.5 ? 44 : seconds <= 6 ? 64 : 96;
+        const captionLimit = seconds <= 3.5 ? 36 : seconds <= 6 ? 70 : 120;
+        const title = textValue(scene.onscreen, 220).trim() || (index === 0 ? textValue(scene.spoken, 120).trim() : scene.name);
+        const caption = textValue(scene.spoken, 280).trim();
+        const warnings = [];
+        if (title.length > titleLimit) warnings.push("Cena " + (index + 1) + ": texto principal reduzido visualmente para caber no tempo; o texto integral está em creator-storyboard.json.");
+        if (caption.length > captionLimit) warnings.push("Cena " + (index + 1) + ": legenda reduzida visualmente; o texto integral está em creator-storyboard.json.");
+        return warnings;
+      }),
       blockers: [
         "Narração ainda não foi gerada nem anexada como arquivo de áudio.",
         "Música e efeitos sonoros ainda não foram anexados.",
