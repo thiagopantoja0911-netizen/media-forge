@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { validateSceneMedia, sceneMediaReadiness } from "./creator-media.mjs";
 
 const WIDTH = 2160;
 const HEIGHT = 3840;
@@ -100,7 +101,8 @@ function validateAudioAsset(asset, role) {
   }
   const paths = {
     voiceover: "assets/audio/voiceover." + extension,
-    music: "assets/audio/music." + extension
+    music: "assets/audio/music." + extension,
+    ...Object.fromEntries(Array.from({ length: 5 }, (_, index) => ["sfx" + index, "assets/audio/sfx-" + (index + 1) + "." + extension]))
   };
   return {
     path: paths[role],
@@ -131,11 +133,12 @@ function audioTag(asset, id, index, duration, volume, fades = false) {
   ].join("");
 }
 
-function makeIndexHtml(duration, scenes, audioAssets) {
+function makeIndexHtml(duration, scenes, audioAssets, sfxAssets = []) {
   const hosts = scenes.map(sceneHost).join("\n    ");
   const voice = audioTag(audioAssets.voiceover, "voiceover", 10, duration, 1);
   const musicVolume = audioAssets.voiceover ? 0.14 : 0.9;
   const music = audioTag(audioAssets.music, "music", 11, duration, musicVolume, true);
+  const sfx = sfxAssets.map((asset, index) => asset ? `<audio id="sfx-${index + 1}" src="${asset.path}" data-start="${scenes[index].start}" data-duration="${Math.min(scenes[index].end - scenes[index].start, asset.durationSeconds).toFixed(3)}" data-track-index="${20 + index}" data-volume="0.5"></audio>` : "").join("\n    ");
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -149,6 +152,7 @@ function makeIndexHtml(duration, scenes, audioAssets) {
     <div id="captions" data-composition-id="captions" data-composition-src="compositions/captions.html" data-start="0" data-duration="${duration}" data-track-index="70" data-track-kind="captions" data-width="${WIDTH}" data-height="${HEIGHT}" style="z-index:80;pointer-events:none"></div>
     ${voice}
     ${music}
+    ${sfx}
     ${scenes.slice(0, -1).map((scene, index) => {
       const id = "transition-" + String(index + 1).padStart(2, "0");
       return '<div id="' + id + '" data-composition-id="' + id + '" data-composition-src="compositions/' + id + '.html" data-start="' + Math.max(0, scene.end - 1.1).toFixed(3) + '" data-duration="2.2" data-track-index="' + (90 + index) + '" data-track-kind="graphics" data-beat="transition" data-width="' + WIDTH + '" data-height="' + HEIGHT + '" style="z-index:' + (90 + index) + ';pointer-events:none"></div>';
@@ -164,7 +168,7 @@ function makeIndexHtml(duration, scenes, audioAssets) {
 `;
 }
 
-function sceneHtml(scene, index, duration, brief) {
+function sceneHtml(scene, index, duration, brief, sceneMedia = null) {
   const id = SCENE_IDS[index];
   const palette = PALETTES[index];
   const seconds = Number(duration);
@@ -188,6 +192,26 @@ function sceneHtml(scene, index, duration, brief) {
     { id: "accent", type: "color", label: "Bloco gráfico", default: palette.accent },
     { id: "accentText", type: "color", label: "Palavra destacada", default: palette.accentText }
   ]));
+  const sceneMediaHtml = sceneMedia
+    ? (sceneMedia.kind === "video"
+      ? `<video id="${id}-media" class="clip scene-media" data-start="0" data-duration="${Number(duration).toFixed(3)}" data-track-index="0" src="${sceneMedia.path}" muted playsinline preload="metadata"></video>`
+      : `<div id="${id}-media" class="clip scene-media" data-start="0" data-duration="${Number(duration).toFixed(3)}" data-track-index="0"><img id="${id}-media-image" src="${sceneMedia.path}" alt="" loading="eager"></div>`)
+    : "";
+  // A restrained camera plan follows each narrative beat rather than repeating one generic zoom.
+  const cameraPlans = [
+    [{ scale: 1.14, xPercent: -2, yPercent: 0 }, { scale: 1.22, xPercent: 1, yPercent: -1 }], // hook: close-in
+    [{ scale: 1.11, xPercent: -3.5, yPercent: -1 }, { scale: 1.11, xPercent: 3, yPercent: 1 }], // context: tracking
+    [{ scale: 1.04, xPercent: 1, yPercent: 0 }, { scale: 1.20, xPercent: -2, yPercent: -1 }], // proof: detail
+    [{ scale: 1.22, xPercent: 2, yPercent: -1 }, { scale: 1.06, xPercent: -1, yPercent: 0 }], // reveal: pull-back
+    [{ scale: 1.10, xPercent: 0, yPercent: -2 }, { scale: 1.06, xPercent: 0, yPercent: 2 }]  // payoff: settle
+  ];
+  const cue = String(scene.action || "").toLowerCase();
+  let [cameraFrom, cameraTo] = cameraPlans[index];
+  if (/aproxim|zoom.in|dolly.in|push.in/.test(cue)) [cameraFrom, cameraTo] = cameraPlans[2];
+  else if (/afasta|zoom.out|pull.back|revela|reveal/.test(cue)) [cameraFrom, cameraTo] = cameraPlans[3];
+  else if (/pan|lateral|travell|tracking/.test(cue)) [cameraFrom, cameraTo] = cameraPlans[1];
+  const selector = sceneMedia?.kind === "video" ? "#" + id + "-media" : "#" + id + "-media-image";
+  const mediaMotion = sceneMedia ? `tl.fromTo("${selector}", ${JSON.stringify(cameraFrom)}, { ...${JSON.stringify(cameraTo)}, duration: ${Math.max(0.5, Number(duration) - 0.05).toFixed(3)}, ease: "none" }, 0);` : "";
   const safeDuration = Number(duration).toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
   const slab = {
     left: palette.slabLeft,
@@ -235,6 +259,10 @@ function sceneHtml(scene, index, duration, brief) {
       color: var(--ink);
       font-family: Inter, Arial, sans-serif;
     }
+    .scene-media { position:absolute;inset:0;width:100%;height:100%;overflow:hidden;object-fit:cover;z-index:0; }
+    .scene-media img { width:100%;height:100%;object-fit:cover;display:block; }
+    #${id}-media-shade { position:absolute;inset:0;z-index:1;pointer-events:none;
+      background:linear-gradient(180deg,rgba(0,0,0,.29),rgba(0,0,0,.08) 35%,rgba(0,0,0,.68) 78%,rgba(0,0,0,.77)); }
     #${id}-slab {
       position: absolute;
       left: ${slab.left}px;
@@ -242,6 +270,7 @@ function sceneHtml(scene, index, duration, brief) {
       width: ${slab.width}px;
       height: ${slab.height}px;
       background: var(--accent);
+      opacity: ${sceneMedia ? "0.11" : "1"};
       clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%);
       z-index: 1;
     }
@@ -275,7 +304,8 @@ function sceneHtml(scene, index, duration, brief) {
       max-width: 1728px;
       margin: 0;
       z-index: 3;
-      font-size: 292px;
+      font-size: ${sceneMedia ? 196 : 292}px;
+      text-shadow: ${sceneMedia ? "0 12px 66px rgba(0,0,0,.72)" : "none"};
       line-height: 0.94;
       font-weight: 900;
       letter-spacing: -0.065em;
@@ -285,7 +315,9 @@ function sceneHtml(scene, index, duration, brief) {
     #${id}-title-prefix { color: var(--ink); }
     #${id}-title-accent { color: var(--accentText); }
   </style>
-  <div id="root" data-composition-id="${id}" data-start="0" data-duration="${safeDuration}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}' style="--ground:${palette.ground};--ink:${palette.ink};--accent:${palette.accent};--accentText:${palette.accentText}">
+  <div id="root" data-composition-id="${id}" data-start="0" data-duration="${safeDuration}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}' style="--ground:${sceneMedia ? "#070a11" : palette.ground};--ink:${sceneMedia ? "#fffaf1" : palette.ink};--accent:${palette.accent};--accentText:${sceneMedia ? "#d3fd80" : palette.accentText}">
+    ${sceneMediaHtml}
+    ${sceneMedia ? `<div id="${id}-media-shade"></div>` : ""}
     <div id="${id}-slab" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="1" data-layout-allow-overflow></div>
     <div id="${id}-rule" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="2"></div>
     <div id="${id}-kicker" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="3" data-var-text="sceneLabel">${safeLabel}</div>
@@ -297,6 +329,7 @@ function sceneHtml(scene, index, duration, brief) {
     ${kickerMotion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
     ${titleScript.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
     ${motionBeats.join("\n").replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
+    ${mediaMotion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
     window.__timelines = window.__timelines || {};
     window.__timelines["${id}"] = tl_${id.replaceAll("-", "_")};
   </script>
@@ -482,13 +515,18 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   const scenes = manifest.brief.scenes;
   const voiceover = validateAudioAsset(mediaInput.voiceover, "voiceover");
   const music = validateAudioAsset(mediaInput.music, "music");
-  const totalAudioBytes = (voiceover?.sizeBytes ?? 0) + (music?.sizeBytes ?? 0);
+  const sfxInput = mediaInput.sfx == null ? Array(5).fill(null) : mediaInput.sfx;
+  if (!Array.isArray(sfxInput) || sfxInput.length !== 5) throw new TypeError("Envie cinco posições para efeitos sonoros");
+  const sfxAssets = sfxInput.map((item, i) => validateAudioAsset(item, "sfx" + i));
+  const totalAudioBytes = (voiceover?.sizeBytes ?? 0) + (music?.sizeBytes ?? 0) + sfxAssets.reduce((sum, asset) => sum + (asset?.sizeBytes || 0), 0);
   if (totalAudioBytes > MAX_AUDIO_TOTAL_BYTES) {
     throw new TypeError("A soma dos arquivos de áudio deve ter no máximo 18 MB");
   }
   const audioAssets = { voiceover, music };
+  const sceneMedia = validateSceneMedia(mediaInput.scenes);
+  const testGate = sceneMediaReadiness(sceneMedia, audioAssets, duration, scenes, sfxAssets);
   const projectFiles = [
-    { path: "index.html", content: makeIndexHtml(duration, scenes, audioAssets), encoding: "utf8" }
+    { path: "index.html", content: makeIndexHtml(duration, scenes, audioAssets, sfxAssets), encoding: "utf8" }
   ];
   const motionAssertions = [];
   for (let index = 0; index < scenes.length; index += 1) {
@@ -496,7 +534,7 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
     const sceneId = SCENE_IDS[index];
     projectFiles.push({
       path: "compositions/" + sceneId + ".html",
-      content: sceneHtml(scene, index, scene.end - scene.start, manifest.brief),
+      content: sceneHtml(scene, index, scene.end - scene.start, manifest.brief, sceneMedia[index]),
       encoding: "utf8"
     });
     const titleBy = [0.05, 0.7, 0.58, 0.68, 0.58][index];
@@ -544,6 +582,12 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   projectFiles.push({ path: "assets/gsap.min.js", content: gsap, encoding: "utf8" });
   if (voiceover) projectFiles.push({ path: voiceover.path, contentBase64: voiceover.contentBase64, encoding: "base64" });
   if (music) projectFiles.push({ path: music.path, contentBase64: music.contentBase64, encoding: "base64" });
+  for (const sfx of sfxAssets) {
+    if (sfx) projectFiles.push({ path: sfx.path, contentBase64: sfx.contentBase64, encoding: "base64" });
+  }
+  for (const media of sceneMedia) {
+    if (media) projectFiles.push({ path: media.path, contentBase64: media.contentBase64, encoding: "base64" });
+  }
   projectFiles.push({
     path: "creator-storyboard.json",
     content: JSON.stringify({
@@ -573,8 +617,10 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   else if (Math.abs(voiceover.durationSeconds - duration) > 1.5) blockers.push("A narração tem " + voiceover.durationSeconds.toFixed(2) + " s e o vídeo " + duration + " s; ajustar a timeline e sincronizar as falas.");
   if (!music) blockers.push("Trilha musical ainda não foi anexada.");
   else if (music.durationSeconds < duration - 0.5) blockers.push("A trilha musical termina antes do vídeo; não haverá loop automático.");
-  if (scenes.some(scene => textValue(scene.sound).trim())) blockers.push("As notas de som por cena ainda precisam ser resolvidas em efeitos sonoros reais e licenciados.");
-  blockers.push("As cenas ainda usam tipografia e blocos gráficos; faltam imagens ou vídeos específicos do assunto.");
+  if (scenes.some((scene, index) => textValue(scene.sound).trim() && !sfxAssets[index])) blockers.push("As notas de som por cena ainda precisam ser resolvidas em efeitos sonoros reais e licenciados antes da entrega.");
+  if (sceneMedia.some(media => !media)) blockers.push("Há cenas sem mídia real; anexe imagens ou vídeos relevantes às cinco cenas.");
+  else warnings.push("Revisar se os arquivos de mídia representam fielmente as ações narradas.");
+  blockers.push(...testGate.blockers);
   blockers.push("A composição precisa passar por HyperFrames check, preview e revisão visual no Worker antes de liberar a fila.");
 
   return {
@@ -592,7 +638,12 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
     projectFiles,
     readiness: {
       renderReady: false,
+      testRenderReady: testGate.eligible,
+      testRenderBlockers: testGate.blockers,
+      testRenderWarnings: testGate.warnings,
+      media: { attachedScenes: sceneMedia.filter(Boolean).length, totalBytes: testGate.totalMediaBytes, sceneKinds: sceneMedia.map(media => media ? media.kind : null) },
       audio: {
+        sceneSfxAttached: sfxAssets.filter(Boolean).length,
         voiceover: voiceover ? { attached: true, durationSeconds: voiceover.durationSeconds } : { attached: false },
         music: music ? { attached: true, durationSeconds: music.durationSeconds } : { attached: false }
       },

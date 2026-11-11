@@ -7,6 +7,7 @@
   var project={version:VERSION,updatedAt:'',title:'',topic:'',intent:'curiosidade',duration:'45',audience:'',tone:'investigativo',style:'',cta:'',hookA:'',hookB:'',hookC:'',selectedHook:'hookA',scenes:[]};
   var active=0;
   var audioFiles={voiceover:null,music:null};
+  var sceneFiles=[null,null,null,null,null],sfxFiles=[null,null,null,null,null],jobPoll=null;
   function el(id){return document.getElementById(id);}
   function clean(s,max){return String(s==null?'':s).slice(0,max||2000);}
   function timestamp(s){var n=Math.max(0,Math.round(s));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');}
@@ -57,6 +58,7 @@
       {spoken:'Entregue a descoberta principal e explique por que ela importa.',onscreen:'A revelação',action:'Provar visualmente a descoberta, mudando escala, cenário ou perspectiva com transição causal.',sound:'Acento sonoro na revelação; continuidade musical.'},
       {spoken:cta||'Conclua com uma frase curta e memorável.',onscreen:cta||'A conclusão',action:'Encerrar com payoff visual e quadro final legível. Evitar segundo silencioso sem intenção.',sound:'Manter leito de som até o final; fade controlado.'}
     ];
+    sceneFiles=[null,null,null,null,null];sfxFiles=[null,null,null,null,null];
     project.scenes=starters.map(function(item,i){return Object.assign({name:names[i],start:a[i],end:a[i+1]},item);});
     active=0;persist();renderScenes();updatePreview();updateProgress();message('Estrutura criada. Personalize as cinco cenas antes de produzir.');
   }
@@ -74,7 +76,17 @@
         input.addEventListener('input',function(){project.scenes[i][pair[0]]=input.value;persist();updatePreview();updateProgress();});
         label.appendChild(input);grid.appendChild(label);
       });
-      card.appendChild(grid);list.appendChild(card);
+      card.appendChild(grid);
+      var attachments=make("div","scene-attachments");
+      var mediaLabel=make("label","media-field","Mídia da cena · imagem ou vídeo (até 5 MB)");
+      var mediaInput=make("input");mediaInput.type="file";mediaInput.accept=".jpg,.jpeg,.png,.webp,.mp4,.webm,image/jpeg,image/png,image/webp,video/mp4,video/webm";
+      mediaInput.addEventListener("change",function(e){chooseSceneMedia(i,e.target.files&&e.target.files[0]);});
+      mediaLabel.append(mediaInput,make("small","media-info",sceneFiles[i]?"Anexado: "+sceneFiles[i].file.name:"Sem arquivo. Anexe mídia que mostre a ação descrita."));
+      var sfxLabel=make("label","media-field","Efeito sonoro da cena · opcional (até 2 MB)");
+      var sfxInput=make("input");sfxInput.type="file";sfxInput.accept=".wav,.mp3,.m4a,.aac,.ogg,.opus,.webm,audio/*";
+      sfxInput.addEventListener("change",function(e){chooseSceneSfx(i,e.target.files&&e.target.files[0]);});
+      sfxLabel.append(sfxInput,make("small","media-info",sfxFiles[i]?"Anexado: "+sfxFiles[i].file.name:"Opcional: som sincronizado ao começo da cena."));
+      attachments.append(mediaLabel,sfxLabel);card.appendChild(attachments);list.appendChild(card);
     });
   }
   function updatePreview(){
@@ -157,13 +169,107 @@
     var data=exportText();try{await navigator.clipboard.writeText(data);message('Plano copiado. Cole o briefing no ChatGPT para continuar a criação.');}
     catch(e){download(data,safeFilename(project.title)+'.txt','text/plain;charset=utf-8');message('Cópia pelo navegador indisponível. Baixei o arquivo .txt.');}
   }
+
+  function getVideoDuration(file){
+    return new Promise(function(resolve,reject){
+      var url=URL.createObjectURL(file),video=document.createElement('video');
+      var done=false;
+      var timer=setTimeout(function(){finish(new Error('Tempo esgotado lendo o vídeo.'));},12000);
+      function finish(error,value){
+        if(done)return;done=true;clearTimeout(timer);
+        video.removeAttribute('src');video.load();URL.revokeObjectURL(url);
+        if(error)reject(error);else resolve(value);
+      }
+      video.preload='metadata';
+      video.onloadedmetadata=function(){
+        var length=Number(video.duration);
+        if(!Number.isFinite(length)||length<.5)finish(new Error('Não foi possível validar a duração do vídeo.'));
+        else finish(null,length);
+      };
+      video.onerror=function(){finish(new Error('Formato de vídeo não suportado pelo navegador.'));};
+      video.src=url;
+    });
+  }
+  async function chooseSceneMedia(index,file){
+    if(!file){sceneFiles[index]=null;renderScenes();message('Mídia da cena '+(index+1)+' retirada.');return;}
+    if(file.size>5*1048576){message('Cena '+(index+1)+': arquivo maior que 5 MB.');return;}
+    if(!/\.(jpe?g|png|webp|mp4|webm)$/i.test(file.name)){message('Use JPG, PNG, WEBP, MP4 ou WEBM.');return;}
+    try{
+      var video=/\.(mp4|webm)$/i.test(file.name),length=video?await getVideoDuration(file):null;
+      sceneFiles[index]={file:file,kind:video?'video':'image',durationSeconds:length};
+      renderScenes();message('Cena '+(index+1)+': mídia anexada ('+file.name+').');
+    }catch(error){message(error.message);}
+  }
+  async function chooseSceneSfx(index,file){
+    if(!file){sfxFiles[index]=null;renderScenes();message('Efeito da cena '+(index+1)+' retirado.');return;}
+    if(file.size>2*1048576 || !/\.(wav|mp3|m4a|aac|ogg|opus|webm)$/i.test(file.name)){
+      message('Cena '+(index+1)+': use um áudio até 2 MB.');return;
+    }
+    try{
+      var length=await audioDuration(file);
+      sfxFiles[index]={file:file,durationSeconds:length};
+      renderScenes();message('Cena '+(index+1)+': efeito anexado.');
+    }catch(error){message(error.message);}
+  }
+  async function gatherProjectPayload(){
+    formToProject();
+    if(project.scenes.length!==5)throw new Error('Monte as cinco cenas antes de continuar.');
+    var assets=sceneFiles.filter(Boolean).reduce(function(sum,item){return sum+item.file.size;},0);
+    assets+=sfxFiles.filter(Boolean).reduce(function(sum,item){return sum+item.file.size;},0);
+    assets+=audioFiles.voiceover?audioFiles.voiceover.file.size:0;
+    assets+=audioFiles.music?audioFiles.music.file.size:0;
+    if(assets>18*1048576)throw new Error('A soma de todas as mídias e áudios não pode ultrapassar 18 MB.');
+    var voiceover=await serializeAudio(audioFiles.voiceover);
+    var music=await serializeAudio(audioFiles.music);
+    var scenes=await Promise.all(sceneFiles.map(async function(item){
+      if(!item)return null;
+      return {
+        filename:item.file.name,mimeType:item.file.type||'application/octet-stream',
+        sizeBytes:item.file.size,durationSeconds:item.durationSeconds,
+        contentBase64:await fileBase64(item.file)
+      };
+    }));
+    var sfx=await Promise.all(sfxFiles.map(serializeAudio));
+    return Object.assign({},project,{mediaAssets:{voiceover:voiceover,music:music,scenes:scenes,sfx:sfx}});
+  }
+  function renderJobStatus(data){
+    var target=el('render-job');target.hidden=false;
+    var job=data.job||data;
+    var qa=job.result&&job.result.report&&job.result.report.technicalQA;
+    target.textContent='Job '+(job.id||data.jobId||'')+
+      ' · '+(job.status||'recebido')+
+      (job.progress!=null?' · '+job.progress+'%':'')+
+      (qa?' · QA técnico: '+qa.status:'')+
+      (job.result&&job.result.outputPath?' · MP4 salvo no Windows: '+job.result.outputPath:'')+
+      (job.error?' · Erro: '+(job.error.message||job.error):'')+
+      (qa&&qa.issues&&qa.issues.length?' · '+qa.issues.join('; '):'')+
+      '. Revisão artística sempre necessária antes de publicar.';
+  }
+  function pollJob(id){
+    if(jobPoll)clearInterval(jobPoll);
+    var path='/api/studio/jobs/'+id;
+    async function check(){
+      try{
+        var response=await fetch(path,{cache:'no-store'});
+        var data=await response.json();
+        if(!response.ok)throw new Error(data.error||'Erro consultando status do Worker.');
+        renderJobStatus(data);
+        if(data.job&&['completed','failed','cancelled'].includes(data.job.status)&&jobPoll){
+          clearInterval(jobPoll);jobPoll=null;
+        }
+      }catch(error){message('Não foi possível consultar job '+id+': '+error.message);}
+    }
+    check();jobPoll=setInterval(check,6000);
+  }
+
   function importData(file){
     if(!file)return;
     if(file.size>100000){message('JSON muito grande. Limite de 100 KB.');return;}
     var reader=new FileReader();reader.onload=function(){
       try{var raw=JSON.parse(reader.result);if(raw.version!==1||typeof raw.title!=='string'||!Array.isArray(raw.scenes))throw new Error('invalid');
         if(project.title&&!confirm('Substituir o rascunho atual pelo JSON importado?'))return;
-        project=sanitizedProject(raw);active=0;persist();projectToForm();message('Projeto importado. Confira as cenas e informações.');}
+        sceneFiles=[null,null,null,null,null];sfxFiles=[null,null,null,null,null];
+        project=sanitizedProject(raw);active=0;persist();projectToForm();message('Projeto importado. Anexe novamente os arquivos de mídia e áudio.');}
       catch(e){message('Arquivo inválido ou versão não suportada.');}};
     reader.onerror=function(){message('Erro ao ler o arquivo.');};reader.readAsText(file);
   }
@@ -179,24 +285,33 @@
     el('voiceover-file').addEventListener('change',function(e){selectAudio('voiceover',e.target.files&&e.target.files[0]);});
     el('music-file').addEventListener('change',function(e){selectAudio('music',e.target.files&&e.target.files[0]);});
     el('build-composition').addEventListener('click',async function(){
-      formToProject();
-      if(project.scenes.length!==5){message('Monte e revise as cinco cenas antes de gerar a composição.');return;}
-      message('Gerando pacote HyperFrames. Nenhum job será criado...');
+      message('Preparando o pacote HyperFrames para revisão; nenhum job será criado...');
       try{
-        var voiceover=await serializeAudio(audioFiles.voiceover);
-        var music=await serializeAudio(audioFiles.music);
-        var totalAudio=(audioFiles.voiceover?audioFiles.voiceover.file.size:0)+(audioFiles.music?audioFiles.music.file.size:0);
-        if(totalAudio>18*1024*1024)throw new Error('A soma dos áudios deve ter no máximo 18 MB.');
-        var payload=Object.assign({},project,{mediaAssets:{voiceover:voiceover,music:music}});
+        var payload=await gatherProjectPayload();
         var response=await fetch('/api/studio/compose',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
         var data=await response.json().catch(function(){return {};});
         if(!response.ok)throw new Error(data.error||'Não foi possível gerar a composição.');
         download(JSON.stringify(data,null,2),safeFilename(project.title)+'-hyperframes-package.json','application/json;charset=utf-8');
-        message('Pacote gerado e baixado. Não foi enviado à fila. Bloqueios: '+data.readiness.blockers.join(' '));
+        message('Pacote gerado. Teste liberado: '+(data.readiness.testRenderReady?'sim':'não')+
+          '. Pendências: '+(data.readiness.testRenderBlockers||[]).join(' '));
       }catch(error){message(error.message);}
     });
+    el('render-controlled').addEventListener('click',async function(){
+      if(!confirm('Enviar este projeto para renderização real de teste em 4K60 no Worker Windows? Isso usa processamento do computador. O resultado exigirá revisão visual antes de publicar.'))return;
+      var button=el('render-controlled');button.disabled=true;
+      try{
+        message('Validando mídias e enviando ao Worker Windows...');
+        var payload=await gatherProjectPayload();payload.confirmControlledRender=true;
+        var response=await fetch('/api/studio/render',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+        var data=await response.json().catch(function(){return {};});
+        if(!response.ok)throw new Error((data.blockers||[]).join(' ')||data.error||'Renderização recusada.');
+        renderJobStatus(data);message('Job enviado: '+data.jobId+'. Acompanhe o progresso abaixo.');
+        pollJob(data.jobId);
+      }catch(error){message('Teste não iniciado: '+error.message);}
+      finally{button.disabled=false;}
+    });
 
-    el('new-project').addEventListener('click',function(){if(!confirm('Criar um novo projeto? Exporte o atual antes de substituí-lo.'))return;try{localStorage.removeItem(STORAGE);}catch(e){}clearAudio('voiceover');clearAudio('music');el('voiceover-file').value='';el('music-file').value='';project=sanitizedProject({duration:'45',intent:'curiosidade',tone:'investigativo',scenes:[]});active=0;projectToForm();persist();message('Novo rascunho criado.');});
+    el('new-project').addEventListener('click',function(){if(!confirm('Criar um novo projeto? Exporte o atual antes de substituí-lo.'))return;try{localStorage.removeItem(STORAGE);}catch(e){}clearAudio('voiceover');clearAudio('music');el('voiceover-file').value='';el('music-file').value='';sceneFiles=[null,null,null,null,null];sfxFiles=[null,null,null,null,null];if(jobPoll){clearInterval(jobPoll);jobPoll=null;}el('render-job').hidden=true;project=sanitizedProject({duration:'45',intent:'curiosidade',tone:'investigativo',scenes:[]});active=0;projectToForm();persist();message('Novo rascunho criado.');});
     el('import-json').addEventListener('click',function(){el('import-file').click();});
     el('import-file').addEventListener('change',function(e){importData(e.target.files&&e.target.files[0]);e.target.value='';});
   });

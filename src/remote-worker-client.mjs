@@ -4,6 +4,7 @@ import { mkdir, stat, writeFile, access } from "node:fs/promises";
 import { resolve, join, relative, sep, basename } from "node:path";
 import { hostname } from "node:os";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
+import { inspectRenderedVideo } from "./video-qa.mjs";
 
 const url=String(process.env.MEDIAFORGE_REMOTE_URL||"").replace(/\/$/,"");
 const token=process.env.MEDIAFORGE_WORKER_TOKEN||"";
@@ -78,10 +79,20 @@ async function processRemote(job,leaseId) {
     const rendered=await renderWithHyperFrames(configured);
     const info=await stat(rendered.outputPath);
     if(!info.isFile()||info.size===0)throw new Error("Video artifact missing or empty");
+    const technicalQA=await inspectRenderedVideo(rendered.outputPath,configured.project,
+      configured.metadata?.expectsAudio===true);
+    if(technicalQA.status==="failed") {
+      const error=new Error("O MP4 falhou no QA técnico: "+technicalQA.issues.join("; "));
+      error.code="VIDEO_TECHNICAL_QA_FAILED";
+      throw error;
+    }
+    if(technicalQA.status==="unverified") {
+      console.warn("QA técnico não verificado:", technicalQA.issues.join("; "));
+    }
     await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
       leaseId,success:true,fileName:basename(rendered.outputPath),size:info.size,
       sha256:await hashFile(rendered.outputPath),outputPath:rendered.outputPath,
-      report:{outputName:basename(rendered.outputPath)}
+      report:{outputName:basename(rendered.outputPath),technicalQA,artisticQA:"pending-user-review"}
     });
     console.log("Remote job completed:",job.id);
   }catch(error){
