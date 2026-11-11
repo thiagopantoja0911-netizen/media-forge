@@ -105,7 +105,7 @@ function sceneHtml(scene, index, duration) {
     const scale = beat % 2 === 0 ? 1.075 : 0.94;
     motionBeats.push(`tl.to("#${id}-orb", { x: ${x}, y: ${y}, rotation: ${rotation}, scale: ${scale}, duration: 1.35, ease: "power2.inOut" }, ${at.toFixed(2)});`);
   }
-  const motion = [openingMotion, ...motionBeats].join("\\n");
+  const motion = [openingMotion, ...motionBeats].join("\n");
   const titleMotion = index === 0
     ? `tl.fromTo("#${id}-title", { y: 0, scale: 1 }, { y: -10, scale: 1.015, duration: 0.42, ease: "power2.out" }, 0.05);`
     : `tl.fromTo("#${id}-title", { y: 88, opacity: 0, filter: "blur(10px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.42, ease: "power4.out" }, 0.12);`;
