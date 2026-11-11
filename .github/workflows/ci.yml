@@ -20,6 +20,8 @@ jobs:
       - run: node --check src/studio.mjs
       - run: node --check src/studio-api.mjs
       - run: node --check scripts/import-salevo-studio.mjs
+      - run: node --check scripts/extract-creator-package.mjs
+      - run: node --check src/creator-package.mjs
       - run: node --check src/server.mjs
       - run: node --check src/remote-worker-server.mjs
       - run: node --check src/remote-worker-client.mjs
