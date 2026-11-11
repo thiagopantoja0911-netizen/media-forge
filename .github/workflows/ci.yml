@@ -2,9 +2,9 @@ name: MediaForge CI
 
 on:
   push:
-    branches: [main, feature/conexoes-mediaforge-primeiro]
+    branches: [main, feature/conexoes-mediaforge-primeiro, migration/creator-video-to-mediaforge]
   pull_request:
-    branches: [main, migration/videos-secrets-to-mediaforge]
+    branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro]
 
 jobs:
   validate:
@@ -21,6 +21,8 @@ jobs:
       - run: node --check src/videos-secrets-mcp.mjs
       - run: node --check src/worker.mjs
       - run: node --check src/renderers/hyperframes.mjs
+      - run: node --check src/renderers/verify-video.mjs
+      - run: node --check src/project-normalizer.mjs
       - run: node --test test/*.test.mjs
       - run: npm run validate
       - name: Verify public staging TLS, OAuth and access controls
@@ -39,7 +41,8 @@ jobs:
             "desktop/run-worker.ps1",
             "desktop/start-worker-background.ps1",
             "desktop/connect-remote.ps1",
-            "desktop/install-worker.ps1"
+            "desktop/install-worker.ps1",
+            "desktop/launch-installer.vbs"
           )
           foreach ($path in $paths) {
             $tokens = $null
