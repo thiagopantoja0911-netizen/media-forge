@@ -7,7 +7,10 @@ $runner = Join-Path $InstallDir "desktop\run-worker.ps1"
 if (-not (Test-Path -LiteralPath $runner)) { throw "Worker não encontrado: $runner" }
 $taskName = "MediaForge Worker - Staging"
 $userId = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-$powerShell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+$launcher = Join-Path $InstallDir "desktop\launch-worker-hidden.vbs"
+if (-not (Test-Path -LiteralPath $launcher)) { throw "Inicializador oculto do Worker não encontrado: $launcher" }
+$wscript = Join-Path $env:SystemRoot "System32\wscript.exe"
+if (-not (Test-Path -LiteralPath $wscript)) { throw "Windows Script Host não está disponível." }
 
 # Stop only the previous MediaForge-Staging runner and its child processes.
 $processes = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
@@ -30,8 +33,8 @@ foreach ($processId in $stopIds) {
   Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
 }
 
-$arguments = '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $runner + '" -InstallDir "' + $InstallDir + '"'
-$action = New-ScheduledTaskAction -Execute $powerShell -Argument $arguments -WorkingDirectory $InstallDir
+$arguments = '//B //Nologo "' + $launcher + '" "' + $runner + '" "' + $InstallDir + '"'
+$action = New-ScheduledTaskAction -Execute $wscript -Argument $arguments -WorkingDirectory $InstallDir
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $userId
 $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero)
