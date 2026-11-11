@@ -32,6 +32,9 @@ try {
     try {
       $protected = [Security.Cryptography.ProtectedData]::Protect($tokenBytes, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
       [IO.File]::WriteAllBytes($tokenFile, $protected)
+      $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+      & icacls $tokenFile /inheritance:r /grant:r ('*' + $sid + ':(F)') | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "Não foi possível restringir as permissões do token DPAPI." }
     } finally {
       [Array]::Clear($tokenBytes, 0, $tokenBytes.Length)
       Remove-Variable legacyToken -ErrorAction SilentlyContinue
