@@ -62,6 +62,10 @@ try {
   Add-Content -LiteralPath $logFile -Value ("[{0}] Iniciando worker remoto HyperFrames." -f (Get-Date -Format o))
   & node ".\src\remote-worker-client.mjs" *>> $logFile
   $exitCode = $LASTEXITCODE
+  if ($exitCode -eq 0) {
+    Add-Content -LiteralPath $logFile -Value ("[{0}] Worker saiu inesperadamente com código 0; solicitando reinício pelo Agendador." -f (Get-Date -Format o))
+    $exitCode = 1
+  }
   Add-Content -LiteralPath $logFile -Value ("[{0}] Worker encerrado. Código: {1}" -f (Get-Date -Format o),$exitCode)
 } catch {
   $exitCode = 1
