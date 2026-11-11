@@ -32,7 +32,7 @@ test("builds a five-scene editable HyperFrames package without creating a render
   assert.equal(built.project.resolution, "portrait-4k");
   assert.equal(built.project.fps, 60);
   assert.equal(built.readiness.renderReady, false);
-  assert.equal(built.projectFiles.length, 23);
+  assert.equal(built.projectFiles.length, 14);
   assert.equal(validateProjectFiles(built.projectFiles).ok, true);
   assert.equal(built.projectFiles[0].path, "index.html");
   assert.match(built.projectFiles[0].content, /data-duration="30"/);
@@ -43,16 +43,17 @@ test("builds a five-scene editable HyperFrames package without creating a render
   assert.match(captions, /class="clip caption-block"/);
   assert.match(captions, /bottom: 1200px/);
   assert.match(captions, /Abertura narrada/);
-  const captionMotion = JSON.parse(built.projectFiles.find(file => file.path === "compositions/captions.motion.json").content);
-  assert.equal(captionMotion.assertions.length, 5);
+  const motion = JSON.parse(built.projectFiles.find(file => file.path === "index.motion.json").content);
+  assert.equal(motion.assertions.length, 19);
+  assert.ok(motion.assertions.some(item => item.selector === "#caption-1"));
+  assert.ok(motion.assertions.some(item => item.selector === "#scene-01-title"));
   assert.match(built.projectFiles[0].content, /style="z-index:80;pointer-events:none"/);
   const transitionMarkers = ["fx-1-wash", "fx-2-solid", "fx-3-iris", "fx-4-whip"];
   for (let i = 1; i <= 4; i += 1) {
     const id = "transition-0" + i;
     const transition = built.projectFiles.find(file => file.path === "compositions/" + id + ".html").content;
     assert.match(transition, new RegExp(transitionMarkers[i - 1]));
-    const motion = JSON.parse(built.projectFiles.find(file => file.path === "compositions/" + id + ".motion.json").content);
-    assert.equal(motion.assertions[0].kind, "appearsBy");
+    assert.ok(motion.assertions.some(item => item.selector === "#" + ["fx-1-sweep", "fx-2-solid", "fx-3-iris", "fx-4-whip"][i - 1]));
     assert.match(built.projectFiles[0].content, new RegExp('data-composition-id="' + id + '"'));
     assert.match(built.projectFiles[0].content, new RegExp('z-index:' + (89 + i)));
   }
@@ -63,8 +64,7 @@ test("builds a five-scene editable HyperFrames package without creating a render
     assert.match(file.content, /class="clip" data-start="0" data-duration=/);
     assert.match(file.content, /window\.__timelines\["scene-0/);
     assert.match(file.content, /data-var-text="sceneLabel"/);
-    const motion = JSON.parse(built.projectFiles.find(item => item.path === "compositions/scene-0" + i + ".motion.json").content);
-    assert.equal(motion.assertions.length, 2);
+
   }
   assert.equal(built.projectFiles.some(item => item.path.endsWith(".mp3") || item.path.endsWith(".wav")), false);
 });
@@ -109,7 +109,7 @@ test("packages uploaded VoiceStudio narration and music as timed audio tracks", 
   };
   const built = await buildCreatorComposition(manifest, mediaAssets);
   const index = built.projectFiles.find(file => file.path === "index.html").content;
-  assert.equal(built.projectFiles.length, 25);
+  assert.equal(built.projectFiles.length, 16);
   assert.match(index, /<audio id="voiceover" src="assets\/audio\/voiceover\.wav"/);
   assert.match(index, /<audio id="music" src="assets\/audio\/music\.mp3"/);
   assert.match(index, /data-volume="0\.14"/);
