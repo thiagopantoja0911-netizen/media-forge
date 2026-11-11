@@ -490,6 +490,7 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   const projectFiles = [
     { path: "index.html", content: makeIndexHtml(duration, scenes, audioAssets), encoding: "utf8" }
   ];
+  const motionAssertions = [];
   for (let index = 0; index < scenes.length; index += 1) {
     const scene = scenes[index];
     const sceneId = SCENE_IDS[index];
@@ -499,30 +500,21 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
       encoding: "utf8"
     });
     const titleBy = [0.05, 0.7, 0.58, 0.68, 0.58][index];
-    projectFiles.push({
-      path: "compositions/" + sceneId + ".motion.json",
-      content: motionSpec([
-        { kind: "appearsBy", selector: "#" + sceneId + "-title", bySec: titleBy },
-        { kind: "appearsBy", selector: "#" + sceneId + "-kicker", bySec: 0.4 }
-      ]),
-      encoding: "utf8"
-    });
+    motionAssertions.push(
+      { kind: "appearsBy", selector: "#" + sceneId + "-title", bySec: scene.start + titleBy },
+      { kind: "appearsBy", selector: "#" + sceneId + "-kicker", bySec: scene.start + 0.4 }
+    );
   }
   projectFiles.push({
     path: "compositions/captions.html",
     content: makeCaptionsHtml(scenes, duration),
     encoding: "utf8"
   });
-  const captionAssertions = scenes.map((scene, index) => ({
+  motionAssertions.push(...scenes.map((scene, index) => ({
     kind: "appearsBy",
     selector: "#caption-" + (index + 1),
     bySec: Math.min(scene.end - 0.25, scene.start + 0.68)
-  }));
-  projectFiles.push({
-    path: "compositions/captions.motion.json",
-    content: motionSpec(captionAssertions),
-    encoding: "utf8"
-  });
+  })));
   const transitionTypes = ["flash", "scribble", "iris", "whip"];
   const transitionColors = PALETTES.slice(1).map(palette => palette.ground);
   for (let index = 0; index < scenes.length - 1; index += 1) {
@@ -537,12 +529,17 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
       : transitionTypes[index] === "scribble" ? "#" + group + "-solid"
       : transitionTypes[index] === "iris" ? "#" + group + "-iris"
       : "#" + group + "-whip";
-    projectFiles.push({
-      path: "compositions/" + id + ".motion.json",
-      content: motionSpec([{ kind: "appearsBy", selector, bySec: 1.08 }]),
-      encoding: "utf8"
+    motionAssertions.push({
+      kind: "appearsBy",
+      selector,
+      bySec: Math.max(0, scenes[index].end - 1.1) + 1.08
     });
   }
+  projectFiles.push({
+    path: "index.motion.json",
+    content: motionSpec(motionAssertions),
+    encoding: "utf8"
+  });
   const gsap = await readFile(new URL("../assets/gsap.min.js", import.meta.url), "utf8");
   projectFiles.push({ path: "assets/gsap.min.js", content: gsap, encoding: "utf8" });
   if (voiceover) projectFiles.push({ path: voiceover.path, contentBase64: voiceover.contentBase64, encoding: "base64" });
