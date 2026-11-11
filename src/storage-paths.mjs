@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
 export function resolveStoragePath(value, options = {}) {
   const home = options.home ?? homedir();
@@ -21,4 +21,9 @@ export function mediaForgeDataDirectory({
   cwd = process.cwd()
 } = {}) {
   return resolveStoragePath(configured || defaultDataDirectory({ production, home }), { home, cwd });
+}
+
+export function isPathInside(parent, target) {
+  const rel = relative(resolve(parent), resolve(target));
+  return rel === "" || (rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel));
 }
