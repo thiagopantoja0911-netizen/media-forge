@@ -78,3 +78,11 @@ O Worker remoto de produção só executa `hyperframes` e rejeita renderizadores
 - `salevo.site`: domínio pai com outros subdomínios. Não remover em lote.
 
 A lista de websites da Hostinger tinha 28 entradas na verificação. Apenas os recursos diretamente relacionados à migração estão documentados acima. Ver `docs/FINAL_CLEANUP_GATE.md` para os critérios e a lista protegida de recursos.
+
+## Áudio no Creator Studio
+
+O Creator Studio agora aceita arquivos opcionais de locução e trilha (WAV, MP3, M4A, AAC, OGG, OPUS ou WEBM), com metadados de duração lidos no navegador e limites de tamanho no servidor. Os binários não são salvos no localStorage. O pacote HyperFrames inclui os arquivos e cria faixas de áudio com ganho/fades básicos, mas continua `renderReady=false` até que os SFX anotados e os visuais específicos sejam adicionados e o Worker valide sincronismo, duração e mixagem.
+
+VoiceStudio é mantido como app/repositório separado (AGPL-3.0). A integração atual é por exportação manual do áudio e upload no Creator Studio; não copiamos o código do VoiceStudio nem presumimos que sua API local esteja instalada.
+
+O botão de pacote não cria job nem inicia renderização.
