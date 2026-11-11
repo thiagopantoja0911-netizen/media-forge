@@ -4,10 +4,11 @@
 
 `src/creator-composer.mjs` converts the MediaForge planning manifest into an editable 9:16 HyperFrames package:
 
-- one root `index.html` with five scene hosts;
-- five independent scene sub-compositions;
-- stable IDs, paused GSAP timelines, and timed clips;
-- per-scene editable headline/accent variables;
+- one root `index.html` with five scene hosts, one captions track, two optional audio tracks and one transition overlay;
+- five independent scene sub-compositions with distinct flat-color editorial layouts;
+- a dedicated captions composition with timed caption groups;
+- four deterministic scribble-wipe transitions, adapted from the registry's `hw-scribble-transition` pattern into one 4K multi-seam overlay;
+- stable IDs, paused GSAP timelines, timed clips and per-scene editable headline/color variables;
 - escaped user text and a `creator-storyboard.json` source record;
 - default delivery profile: 2160 × 3840, 60 FPS, High.
 
@@ -17,8 +18,8 @@ VoiceStudio is kept as an independent application/repository (AGPL-3.0). For now
 
 The composer returns `readiness.renderReady=false` and **does not create a job**. The current package is a kinetic-typography prototype, not a finished explainer. It still needs:
 - a generated/attached narration audio file (the Studio can package user-supplied WAV/MP3 and related formats);
-- music and specific sound effects;
-- subject-specific image/video assets;
-- HyperFrames CLI check and snapshot review on the target Worker.
+- music and specific sound effects (the Studio can attach a music bed; scene SFX are still pending);
+- subject-specific image/video assets; the current visual treatment is a typographic/color-block prototype;
+- current-revision HyperFrames CLI check, snapshot generation and visual review on the target Worker.
 
 Do not bypass these blockers by posting the package directly to `/v1/jobs`. The next integration step must attach verified media, inspect the preview, then require explicit approval before queue submission.
