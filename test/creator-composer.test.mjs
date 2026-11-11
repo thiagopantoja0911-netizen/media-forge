@@ -69,3 +69,69 @@ test("rejects malformed timelines and incomplete manifests", async () => {
   await assert.rejects(() => buildCreatorComposition(broken), /Timeline inválida/);
   await assert.rejects(() => buildCreatorComposition({ format: "wrong" }), /manifesto MediaForge/);
 });
+
+test("packages uploaded VoiceStudio narration and music as timed audio tracks", async () => {
+  const manifest = importSalevoStudioDraft(source).manifest;
+  const voiceBytes = Buffer.from("voice-test");
+  const musicBytes = Buffer.from("music-test");
+  const mediaAssets = {
+    voiceover: {
+      filename: "voiceover.wav", mimeType: "audio/wav",
+      contentBase64: voiceBytes.toString("base64"),
+      sizeBytes: voiceBytes.byteLength, durationSeconds: 30
+    },
+    music: {
+      filename: "music.mp3", mimeType: "audio/mpeg",
+      contentBase64: musicBytes.toString("base64"),
+      sizeBytes: musicBytes.byteLength, durationSeconds: 32
+    }
+  };
+  const built = await buildCreatorComposition(manifest, mediaAssets);
+  const index = built.projectFiles.find(file => file.path === "index.html").content;
+  assert.equal(built.projectFiles.length, 10);
+  assert.match(index, /<audio id="voiceover" src="assets\/audio\/voiceover\.wav"/);
+  assert.match(index, /<audio id="music" src="assets\/audio\/music\.mp3"/);
+  assert.match(index, /data-volume="0\.14"/);
+  assert.match(index, /data-fade-out=/);
+  assert.equal(built.projectFiles.find(file => file.path === "assets/audio/voiceover.wav").contentBase64, voiceBytes.toString("base64"));
+  assert.equal(built.readiness.audio.voiceover.attached, true);
+  assert.equal(built.readiness.audio.music.attached, true);
+  assert.equal(built.readiness.blockers.some(item => item.includes("Narração ainda não foi anexada")), false);
+  assert.equal(built.readiness.blockers.some(item => item.includes("Trilha musical ainda não foi anexada")), false);
+  assert.match(built.readiness.blockers.join(" "), /efeitos sonoros reais/);
+  assert.equal(built.readiness.renderReady, false);
+  assert.equal(validateProjectFiles(built.projectFiles).ok, true);
+});
+
+test("rejects unsupported audio types, MIME mismatches and false byte counts", async () => {
+  const manifest = importSalevoStudioDraft(source).manifest;
+  const valid = Buffer.from("audio");
+  const asset = {
+    filename: "voice.wav", mimeType: "audio/wav",
+    contentBase64: valid.toString("base64"), sizeBytes: valid.byteLength, durationSeconds: 30
+  };
+  await assert.rejects(() => buildCreatorComposition(manifest, {
+    voiceover: { ...asset, filename: "voice.exe" }
+  }), /Formato de áudio não suportado/);
+  await assert.rejects(() => buildCreatorComposition(manifest, {
+    voiceover: { ...asset, mimeType: "audio/mpeg" }
+  }), /Tipo MIME não corresponde/);
+  await assert.rejects(() => buildCreatorComposition(manifest, {
+    voiceover: { ...asset, sizeBytes: 999 }
+  }), /Tamanho declarado não corresponde/);
+});
+
+test("flags narration duration mismatch and short music without looping", async () => {
+  const manifest = importSalevoStudioDraft(source).manifest;
+  const bytes = Buffer.from("audio");
+  const base = {
+    contentBase64: bytes.toString("base64"), sizeBytes: bytes.byteLength,
+    durationSeconds: 12
+  };
+  const built = await buildCreatorComposition(manifest, {
+    voiceover: { ...base, filename: "voice.wav", mimeType: "audio/wav" },
+    music: { ...base, filename: "music.mp3", mimeType: "audio/mpeg" }
+  });
+  assert.match(built.readiness.blockers.join(" "), /ajustar a timeline/);
+  assert.match(built.readiness.blockers.join(" "), /trilha musical termina antes/);
+});
