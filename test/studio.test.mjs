@@ -62,7 +62,7 @@ test("Creator Studio is self-contained and isolated from external services", () 
   assert.match(script, /mediaforge_creator_studio_v1/);
   assert.match(script, /fetch\(['"]\/api\/studio\/compose/);
   assert.doesNotMatch(script, /fetch\(['"]https?:/);
-  assert.doesNotMatch(script, /XMLHttpRequest|WebSocket\s*\()/);
+  assert.doesNotMatch(script, /XMLHttpRequest|WebSocket\s*\(/);
   assert.doesNotMatch(page, /salevo\.site|plugins_6af35b6c46648191924c063620fe6e91/i);
   assert.match(dashboard, /href="\/studio"/);
 });
