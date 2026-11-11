@@ -146,12 +146,12 @@ function makeIndexHtml(duration, scenes, audioAssets) {
 <body>
   <div id="root" data-composition-id="main" data-start="0" data-duration="${duration}" data-width="${WIDTH}" data-height="${HEIGHT}" style="background:${PALETTES[0].ground}">
     ${hosts}
-    <div id="captions" data-composition-id="captions" data-composition-src="compositions/captions.html" data-start="0" data-duration="${duration}" data-track-index="70" data-track-kind="captions" data-width="${WIDTH}" data-height="${HEIGHT}"></div>
+    <div id="captions" data-composition-id="captions" data-composition-src="compositions/captions.html" data-start="0" data-duration="${duration}" data-track-index="70" data-track-kind="captions" data-width="${WIDTH}" data-height="${HEIGHT}" style="z-index:80;pointer-events:none"></div>
     ${voice}
     ${music}
     ${scenes.slice(0, -1).map((scene, index) => {
       const id = "transition-" + String(index + 1).padStart(2, "0");
-      return '<div id="' + id + '" data-composition-id="' + id + '" data-composition-src="compositions/' + id + '.html" data-start="' + Math.max(0, scene.end - 1.1).toFixed(3) + '" data-duration="2.2" data-track-index="' + (90 + index) + '" data-track-kind="graphics" data-beat="transition" data-width="' + WIDTH + '" data-height="' + HEIGHT + '"></div>';
+      return '<div id="' + id + '" data-composition-id="' + id + '" data-composition-src="compositions/' + id + '.html" data-start="' + Math.max(0, scene.end - 1.1).toFixed(3) + '" data-duration="2.2" data-track-index="' + (90 + index) + '" data-track-kind="graphics" data-beat="transition" data-width="' + WIDTH + '" data-height="' + HEIGHT + '" style="z-index:' + (90 + index) + ';pointer-events:none"></div>';
     }).join("\n    ")}
   </div>
   <script src="assets/gsap.min.js"></script>
@@ -175,11 +175,14 @@ function sceneHtml(scene, index, duration, brief) {
   const words = title.split(/\s+/).filter(Boolean);
   const accentWord = words.pop() || title;
   const prefix = words.join(" ");
+  const label = "MEDIAFORGE / " + String(index + 1).padStart(2, "0") + " — " + textValue(scene.name, 50).toUpperCase();
   const safePrefix = escapeHtml(prefix);
   const safeAccentWord = escapeHtml(accentWord);
+  const safeLabel = escapeHtml(label);
   const variables = escapeHtml(JSON.stringify([
     { id: "headlinePrefix", type: "string", label: "Texto principal", default: prefix, maxLength: 220 },
     { id: "headlineAccent", type: "string", label: "Palavra de destaque", default: accentWord, maxLength: 80 },
+    { id: "sceneLabel", type: "string", label: "Identificação da cena", default: label, maxLength: 100 },
     { id: "ground", type: "color", label: "Fundo", default: palette.ground },
     { id: "ink", type: "color", label: "Texto", default: palette.ink },
     { id: "accent", type: "color", label: "Bloco gráfico", default: palette.accent },
@@ -220,6 +223,7 @@ function sceneHtml(scene, index, duration, brief) {
     const [x, y, rotation] = drift[(index + beat) % drift.length];
     motionBeats.push(`tl.to("#${id}-slab", { x: ${x}, y: ${y}, rotation: ${rotation}, duration: 1.3, ease: "power2.inOut" }, ${at.toFixed(2)});`);
   }
+  const kickerMotion = `tl.fromTo("#${id}-kicker", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.22, ease: "power3.out" }, 0.05);`;
   const titleScript = titleMotion ? titleMotion : "";
   return `<template>
   <style>
@@ -240,6 +244,19 @@ function sceneHtml(scene, index, duration, brief) {
       background: var(--accent);
       clip-path: polygon(18% 0, 100% 0, 82% 100%, 0 100%);
       z-index: 1;
+    }
+    #${id}-kicker {
+      position: absolute;
+      left: 216px;
+      top: 460px;
+      right: 216px;
+      color: var(--ink);
+      font-size: 40px;
+      line-height: 1.2;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      z-index: 3;
     }
     #${id}-rule {
       position: absolute;
@@ -269,13 +286,15 @@ function sceneHtml(scene, index, duration, brief) {
     #${id}-title-accent { color: var(--accentText); }
   </style>
   <div id="root" data-composition-id="${id}" data-start="0" data-duration="${safeDuration}" data-width="${WIDTH}" data-height="${HEIGHT}" data-composition-variables='${variables}' style="--ground:${palette.ground};--ink:${palette.ink};--accent:${palette.accent};--accentText:${palette.accentText}">
-    <div id="${id}-slab" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="1"></div>
+    <div id="${id}-slab" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="1" data-layout-allow-overflow></div>
     <div id="${id}-rule" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="2"></div>
-    <h1 id="${id}-title" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="3" data-beat="${SCENE_BEATS[index]}"><span id="${id}-title-prefix" data-var-text="headlinePrefix">${safePrefix}</span> <span id="${id}-title-accent" data-var-text="headlineAccent">${safeAccentWord}</span></h1>
+    <div id="${id}-kicker" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="3" data-var-text="sceneLabel">${safeLabel}</div>
+    <h1 id="${id}-title" class="clip" data-start="0" data-duration="${safeDuration}" data-track-index="4" data-beat="${SCENE_BEATS[index]}"><span id="${id}-title-prefix" data-var-text="headlinePrefix">${safePrefix}</span> <span id="${id}-title-accent" data-var-text="headlineAccent">${safeAccentWord}</span></h1>
   </div>
   <script>
     const tl_${id.replaceAll("-", "_")} = gsap.timeline({ paused: true });
     ${openingMotion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
+    ${kickerMotion.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
     ${titleScript.replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
     ${motionBeats.join("\n").replaceAll("tl.", "tl_" + id.replaceAll("-", "_") + ".")}
     window.__timelines = window.__timelines || {};
@@ -292,17 +311,17 @@ function makeCaptionsHtml(scenes, duration) {
   for (let index = 0; index < scenes.length; index += 1) {
     const scene = scenes[index];
     const seconds = scene.end - scene.start;
-    const limit = seconds <= 3.5 ? 28 : seconds <= 6 ? 44 : 72;
+    const limit = seconds <= 3.5 ? 56 : seconds <= 6 ? 72 : 96;
     const caption = truncateAtWord(scene.spoken, limit);
     if (!caption) continue;
-    const start = Math.min(scene.end - 0.4, scene.start + 0.25);
-    const clipDuration = Math.max(0.8, scene.end - start - 0.25);
+    const start = Math.min(scene.end - 0.4, scene.start + 0.18);
+    const clipDuration = Math.max(0.8, scene.end - start - 0.16);
     const variableId = "caption" + String(index + 1).padStart(2, "0");
     variables.push({ id: variableId, type: "string", label: "Legenda " + (index + 1), default: caption, maxLength: 280 });
     entries.push(`<div id="caption-${index + 1}" class="clip caption-block" data-start="${start.toFixed(3)}" data-duration="${clipDuration.toFixed(3)}" data-track-index="${index + 1}" data-beat="${SCENE_BEATS[index]}"><span class="caption-text" data-var-text="${variableId}">${escapeHtml(caption)}</span></div>`);
-    const end = Math.max(start + 0.5, scene.end - 0.25);
-    tweens.push(`tl.fromTo("#caption-${index + 1}", { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.24, ease: "power3.out" }, ${start.toFixed(3)});`);
-    tweens.push(`tl.to("#caption-${index + 1}", { opacity: 0, duration: 0.16, ease: "power2.in" }, ${Math.max(start + 0.25, end - 0.16).toFixed(3)});`);
+    const end = Math.max(start + 0.5, scene.end - 0.12);
+    tweens.push(`tl.fromTo("#caption-${index + 1}", { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.22, ease: "power3.out" }, ${start.toFixed(3)});`);
+    tweens.push(`tl.to("#caption-${index + 1}", { opacity: 0, duration: 0.14, ease: "power2.in" }, ${Math.max(start + 0.25, end - 0.16).toFixed(3)});`);
   }
   const vars = escapeHtml(JSON.stringify(variables));
   const tweenScript = tweens.join("\n").replaceAll("tl.", "tl_captions.");
@@ -313,13 +332,13 @@ function makeCaptionsHtml(scenes, duration) {
       position: absolute;
       left: 216px;
       right: 216px;
-      bottom: 460px;
-      padding: 32px 36px;
+      bottom: 1200px;
+      padding: 26px 32px;
       color: #fff;
       background: rgba(17, 17, 17, .9);
       border-left: 14px solid var(--caption-accent);
-      font-size: 76px;
-      line-height: 1.18;
+      font-size: 68px;
+      line-height: 1.16;
       font-weight: 800;
       letter-spacing: -.025em;
       overflow-wrap: anywhere;
@@ -368,49 +387,90 @@ function wipePath(index, band, orientation, bands) {
   return "M " + points.map(point => point[0].toFixed(1) + " " + point[1].toFixed(1)).join(" L ");
 }
 
-function makeTransitionHtml(index, color, orientation) {
-  const bands = 7;
-  const group = "wipe";
-  const strokeWidth = orientation === "horizontal" ? HEIGHT / bands * 0.9 : WIDTH / bands * 0.9;
-  const paths = [];
-  const tweens = [];
-  for (let band = 0; band < bands; band += 1) {
-    const id = group + "-band-" + band;
-    const initial = band % 2 ? -1000 : 1000;
-    paths.push(`<path id="${id}" class="clip" data-start="0" data-duration="2.2" data-track-index="${band + 1}" d="${wipePath(index, band, orientation, bands)}" pathLength="1000" stroke="${color}" stroke-width="${strokeWidth.toFixed(1)}" stroke-dasharray="1000" stroke-dashoffset="${initial}"></path>`);
-    tweens.push(`tl.to("#${id}", { strokeDashoffset: 0, duration: 0.55, ease: "power2.in" }, ${(0.04 * band).toFixed(3)});`);
-    tweens.push(`tl.to("#${id}", { strokeDashoffset: ${initial}, duration: 0.5, ease: "power2.out" }, ${(1.42 + 0.035 * band).toFixed(3)});`);
-  }
+function makeTransitionHtml(index, color, type) {
   const compositionId = "transition-" + String(index).padStart(2, "0");
-  const script = [
-    'tl.set("#wipe", { opacity: 1 }, 0);',
-    'tl.to("#wipe-solid", { opacity: 1, duration: 0.12, ease: "none" }, 0.8);',
-    'tl.to("#wipe-solid", { opacity: 0, duration: 0.15, ease: "none" }, 1.42);',
-    'tl.to("#wipe", { opacity: 0, duration: 0.01, ease: "none" }, 2.17);',
-    ...tweens
-  ].join("\n").replaceAll("tl.", "tl_" + compositionId.replaceAll("-", "_") + ".");
-  return `<template>
-  <style>
-    #root { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-    .wipe-group { position: absolute; inset: 0; opacity: 0; }
-    .wipe-group > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-    .wipe-group path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-    .wipe-group > .clip:last-child { position: absolute; inset: 0; }
-  </style>
-  <div id="root" data-composition-id="${compositionId}" data-start="0" data-duration="2.2" data-width="${WIDTH}" data-height="${HEIGHT}">
-    <div id="wipe" class="clip wipe-group" data-start="0" data-duration="2.2" data-track-index="20" style="opacity:0">
-      <svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none" data-layout-allow-overflow>${paths.join("")}</svg>
-      <div id="wipe-solid" class="clip" data-start="0" data-duration="2.2" data-track-index="40" style="opacity:0;background:${color}"></div>
-    </div>
-  </div>
-  <script>
-    const tl_${compositionId.replaceAll("-", "_")} = gsap.timeline({ paused: true });
-    ${script}
-    window.__timelines = window.__timelines || {};
-    window.__timelines["${compositionId}"] = tl_${compositionId.replaceAll("-", "_")};
-  </script>
-</template>
-`;
+  const group = "fx-" + index;
+  let style = "#root{position:absolute;inset:0;overflow:hidden;pointer-events:none;}";
+  let markup = "";
+  const tweens = [];
+
+  if (type === "flash") {
+    style += ".fx-group{position:absolute;inset:0;opacity:0;overflow:hidden;}";
+    style += "#" + group + "-wash{position:absolute;inset:0;background:#fffaf0;opacity:0;z-index:2;}";
+    style += "#" + group + "-sweep{position:absolute;left:-40%;top:-8%;width:180%;height:116%;opacity:0;background:linear-gradient(100deg,transparent 16%," + color + " 42%,#fff 50%," + color + " 58%,transparent 84%);z-index:1;}";
+    markup = '<div id="' + group + '" class="clip fx-group" data-start="0" data-duration="2.2" data-track-index="20" style="opacity:0">' +
+      '<div id="' + group + '-sweep" class="clip" data-start="0" data-duration="2.2" data-track-index="21"></div>' +
+      '<div id="' + group + '-wash" class="clip" data-start="0" data-duration="2.2" data-track-index="22"></div>' +
+      '</div>';
+    tweens.push('tl.set("#' + group + '",{opacity:1},0);');
+    tweens.push('tl.fromTo("#' + group + '-sweep",{xPercent:-18,opacity:0},{xPercent:18,opacity:.92,duration:.42,ease:"power3.inOut"},.68);');
+    tweens.push('tl.fromTo("#' + group + '-wash",{opacity:0},{opacity:.96,duration:.06,ease:"power4.in"},1.04);');
+    tweens.push('tl.to("#' + group + '-wash",{opacity:0,duration:.24,ease:"power3.out"},1.1);');
+    tweens.push('tl.to("#' + group + '",{opacity:0,duration:.01},1.82);');
+  } else if (type === "iris") {
+    style += ".fx-group{position:absolute;inset:0;opacity:0;overflow:hidden;}";
+    style += "#" + group + "-iris{position:absolute;left:50%;top:50%;width:5200px;height:5200px;margin:-2600px 0 0 -2600px;border-radius:50%;background:" + color + ";transform:scale(.001);transform-origin:center center;}";
+    markup = '<div id="' + group + '" class="clip fx-group" data-start="0" data-duration="2.2" data-track-index="20" style="opacity:0">' +
+      '<div id="' + group + '-iris" class="clip" data-start="0" data-duration="2.2" data-track-index="21"></div>' +
+      '</div>';
+    tweens.push('tl.set("#' + group + '",{opacity:1},0);');
+    tweens.push('tl.fromTo("#' + group + '-iris",{scale:.001},{scale:1.12,duration:1.08,ease:"power3.in"},.02);');
+    tweens.push('tl.to("#' + group + '-iris",{opacity:0,duration:.28,ease:"power2.out"},1.12);');
+    tweens.push('tl.to("#' + group + '",{opacity:0,duration:.01},1.78);');
+  } else if (type === "scribble") {
+    const bands = 11;
+    const orientation = "horizontal";
+    const strokeWidth = HEIGHT / bands * 0.82;
+    const paths = [];
+    for (let band = 0; band < bands; band += 1) {
+      const pathId = group + "-band-" + band;
+      const initial = band % 2 ? -1000 : 1000;
+      paths.push('<path id="' + pathId + '" class="clip" data-start="0" data-duration="2.2" data-track-index="' + (band + 1) + '" d="' + wipePath(index, band, orientation, bands) + '" pathLength="1000" stroke="' + color + '" stroke-width="' + strokeWidth.toFixed(1) + '" stroke-dasharray="1000" stroke-dashoffset="' + initial + '"></path>');
+      tweens.push('tl.to("#' + pathId + '",{strokeDashoffset:0,duration:.5,ease:"power2.in"},' + (.05 + .025 * band).toFixed(3) + ');');
+      tweens.push('tl.to("#' + pathId + '",{strokeDashoffset:' + initial + ',duration:.48,ease:"power2.out"},1.43);');
+    }
+    style += ".fx-group{position:absolute;inset:0;opacity:0;overflow:hidden;}";
+    style += ".fx-group svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:1;}";
+    style += ".fx-group path{fill:none;stroke-linecap:round;stroke-linejoin:round;}";
+    style += "#" + group + "-solid{position:absolute;inset:0;background:" + color + ";opacity:0;z-index:2;}";
+    markup = '<div id="' + group + '" class="clip fx-group" data-start="0" data-duration="2.2" data-track-index="20" style="opacity:0">' +
+      '<svg viewBox="0 0 ' + WIDTH + ' ' + HEIGHT + '" preserveAspectRatio="none" data-layout-allow-overflow>' + paths.join("") + '</svg>' +
+      '<div id="' + group + '-solid" class="clip" data-start="0" data-duration="2.2" data-track-index="40"></div>' +
+      '</div>';
+    tweens.push('tl.set("#' + group + '",{opacity:1},0);');
+    tweens.push('tl.to("#' + group + '-solid",{opacity:1,duration:.1,ease:"none"},.86);');
+    tweens.push('tl.to("#' + group + '-solid",{opacity:0,duration:.16,ease:"none"},1.42);');
+    tweens.push('tl.to("#' + group + '",{opacity:0,duration:.01},2.12);');
+  } else {
+    style += ".fx-group{position:absolute;inset:0;opacity:0;overflow:hidden;}";
+    style += "#" + group + "-whip{position:absolute;left:-30%;top:0;width:160%;height:100%;background:linear-gradient(90deg," + color + " 0%," + color + " 72%,rgba(255,255,255,.98) 86%,transparent 100%);transform:translateX(-120%);}";
+    style += "#" + group + "-streak{position:absolute;left:-25%;top:0;width:150%;height:100%;background:linear-gradient(90deg,transparent 38%,rgba(255,255,255,.72) 49%,transparent 60%);opacity:0;}";
+    markup = '<div id="' + group + '" class="clip fx-group" data-start="0" data-duration="2.2" data-track-index="20" style="opacity:0">' +
+      '<div id="' + group + '-whip" class="clip" data-start="0" data-duration="2.2" data-track-index="21"></div>' +
+      '<div id="' + group + '-streak" class="clip" data-start="0" data-duration="2.2" data-track-index="22"></div>' +
+      '</div>';
+    tweens.push('tl.set("#' + group + '",{opacity:1},0);');
+    tweens.push('tl.fromTo("#' + group + '-whip",{xPercent:-120},{xPercent:0,duration:.38,ease:"power3.in"},.72);');
+    tweens.push('tl.to("#' + group + '-whip",{xPercent:120,duration:.4,ease:"power3.out"},1.1);');
+    tweens.push('tl.fromTo("#' + group + '-streak",{xPercent:-140,opacity:0},{xPercent:140,opacity:.8,duration:.36,ease:"power3.inOut"},.78);');
+    tweens.push('tl.to("#' + group + '",{opacity:0,duration:.01},1.82);');
+  }
+
+  const jsId = compositionId.replaceAll("-", "_");
+  const script = tweens.join("\n").replaceAll("tl.", "tl_" + jsId + ".");
+  return '<template>\n' +
+    '  <style>\n' + style + '\n' +
+    '  </style>\n' +
+    '  <div id="root" data-composition-id="' + compositionId + '" data-start="0" data-duration="2.2" data-width="' + WIDTH + '" data-height="' + HEIGHT + '">\n' +
+    '    ' + markup + '\n' +
+    '  </div>\n' +
+    '  <script>\n' +
+    '    const tl_' + jsId + ' = gsap.timeline({ paused: true });\n' +
+    '    ' + script + '\n' +
+    '    window.__timelines = window.__timelines || {};\n' +
+    '    window.__timelines["' + compositionId + '"] = tl_' + jsId + ';\n' +
+    '  </script>\n' +
+    '</template>\n';
 }
 
 export async function buildCreatorComposition(manifest, mediaInput = {}) {
@@ -439,13 +499,13 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
     content: makeCaptionsHtml(scenes, duration),
     encoding: "utf8"
   });
-  const orientations = ["horizontal", "vertical", "horizontal", "vertical"];
+  const transitionTypes = ["flash", "scribble", "iris", "whip"];
   const transitionColors = PALETTES.slice(1).map(palette => palette.ground);
   for (let index = 0; index < scenes.length - 1; index += 1) {
     const id = "transition-" + String(index + 1).padStart(2, "0");
     projectFiles.push({
       path: "compositions/" + id + ".html",
-      content: makeTransitionHtml(index + 1, transitionColors[index], orientations[index]),
+      content: makeTransitionHtml(index + 1, transitionColors[index], transitionTypes[index]),
       encoding: "utf8"
     });
   }
@@ -469,7 +529,7 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   const warnings = scenes.flatMap((scene, index) => {
     const seconds = scene.end - scene.start;
     const titleLimit = seconds <= 3.5 ? 44 : seconds <= 6 ? 64 : 84;
-    const captionLimit = seconds <= 3.5 ? 28 : seconds <= 6 ? 44 : 72;
+    const captionLimit = seconds <= 3.5 ? 56 : seconds <= 6 ? 72 : 96;
     const fullTitle = textValue(scene.onscreen, 220).trim()
       || (index === 0 ? textValue(manifest.brief.chosenHook || scene.spoken, 120).trim() : scene.name);
     const fullCaption = textValue(scene.spoken, 280).trim();
@@ -511,7 +571,7 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
         "O gancho fica visível no frame zero.",
         "Cada cena é uma subcomposição independente e editável.",
         "As legendas estão em uma única faixa captions.",
-        "As transições de rabisco cobrem o corte antes de revelar a próxima cena.",
+        "As transições alternam flash editorial, rabisco, íris e whip, cobrindo cada corte antes de revelar a próxima cena.",
         "O texto do usuário é escapado antes de entrar no HTML.",
         "Arquivos de áudio são copiados para o pacote e nunca enviados à fila automaticamente."
       ]
