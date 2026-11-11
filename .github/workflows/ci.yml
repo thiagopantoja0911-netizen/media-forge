@@ -16,6 +16,8 @@ jobs:
           node-version: 22
       - run: node --check src/job-schema.mjs
       - run: node --check src/legacy-studio.mjs
+      - run: node --check src/creator-media.mjs
+      - run: node --check src/video-qa.mjs
       - run: node --check src/creator-composer.mjs
       - run: node --check src/studio.mjs
       - run: node --check src/studio-api.mjs
@@ -56,7 +58,8 @@ jobs:
             "desktop/run-worker.ps1",
             "desktop/start-worker-background.ps1",
             "desktop/connect-remote.ps1",
-            "desktop/install-worker.ps1"
+            "desktop/install-worker.ps1",
+            "desktop/update-worker-safe.ps1"
           )
           foreach ($path in $paths) {
             $tokens = $null
