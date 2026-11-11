@@ -149,7 +149,10 @@ function makeIndexHtml(duration, scenes, audioAssets) {
     <div id="captions" data-composition-id="captions" data-composition-src="compositions/captions.html" data-start="0" data-duration="${duration}" data-track-index="70" data-track-kind="captions" data-width="${WIDTH}" data-height="${HEIGHT}"></div>
     ${voice}
     ${music}
-    <div id="transition-overlay" data-composition-id="transition-overlay" data-composition-src="compositions/transition-overlay.html" data-start="0" data-duration="${duration}" data-track-index="90" data-track-kind="graphics" data-width="${WIDTH}" data-height="${HEIGHT}"></div>
+    ${scenes.slice(0, -1).map((scene, index) => {
+      const id = "transition-" + String(index + 1).padStart(2, "0");
+      return '<div id="' + id + '" data-composition-id="' + id + '" data-composition-src="compositions/' + id + '.html" data-start="' + Math.max(0, scene.end - 1.1).toFixed(3) + '" data-duration="2.2" data-track-index="' + (90 + index) + '" data-track-kind="graphics" data-beat="transition" data-width="' + WIDTH + '" data-height="' + HEIGHT + '"></div>';
+    }).join("\n    ")}
   </div>
   <script src="assets/gsap.min.js"></script>
   <script>
@@ -364,33 +367,27 @@ function wipePath(index, band, orientation, bands) {
   return "M " + points.map(point => point[0].toFixed(1) + " " + point[1].toFixed(1)).join(" L ");
 }
 
-function makeTransitionOverlayHtml(scenes, duration) {
+function makeTransitionHtml(index, color, orientation) {
   const bands = 7;
-  const orientations = ["horizontal", "vertical", "horizontal", "vertical"];
-  const transitionColors = PALETTES.slice(1).map(palette => palette.ground);
-  const markup = [];
+  const group = "wipe";
+  const strokeWidth = orientation === "horizontal" ? HEIGHT / bands * 0.9 : WIDTH / bands * 0.9;
+  const paths = [];
   const tweens = [];
-  for (let index = 0; index < scenes.length - 1; index += 1) {
-    const seam = scenes[index].end;
-    const start = Math.max(0, seam - 1.1);
-    const color = transitionColors[index];
-    const orientation = orientations[index];
-    const group = "wipe-" + String(index + 1).padStart(2, "0");
-    const strokeWidth = orientation === "horizontal" ? HEIGHT / bands * 0.9 : WIDTH / bands * 0.9;
-    const paths = [];
-    for (let band = 0; band < bands; band += 1) {
-      const id = group + "-band-" + band;
-      const initial = band % 2 ? -1000 : 1000;
-      paths.push(`<path id="${id}" class="clip" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="${band + 1}" d="${wipePath(index + 1, band, orientation, bands)}" pathLength="1000" stroke="${color}" stroke-width="${strokeWidth.toFixed(1)}" stroke-dasharray="1000" stroke-dashoffset="${initial}"></path>`);
-      tweens.push(`tl.to("#${id}", { strokeDashoffset: 0, duration: 0.55, ease: "power2.in" }, ${(start + 0.04 * band).toFixed(3)});`);
-      tweens.push(`tl.to("#${id}", { strokeDashoffset: ${initial}, duration: 0.5, ease: "power2.out" }, ${(start + 1.42 + 0.035 * band).toFixed(3)});`);
-    }
-    markup.push(`<div id="${group}" class="clip wipe-group" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="${20 + index}" style="opacity:0"><svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none" data-layout-allow-overflow>${paths.join("")}</svg><div id="${group}-solid" class="clip" data-start="${start.toFixed(3)}" data-duration="2.2" data-track-index="40" style="opacity:0;background:${color}"></div></div>`);
-    tweens.push(`tl.set("#${group}", { opacity: 1 }, ${start.toFixed(3)});`);
-    tweens.push(`tl.to("#${group}-solid", { opacity: 1, duration: 0.12, ease: "none" }, ${(start + 0.8).toFixed(3)});`);
-    tweens.push(`tl.to("#${group}-solid", { opacity: 0, duration: 0.15, ease: "none" }, ${(start + 1.42).toFixed(3)});`);
-    tweens.push(`tl.to("#${group}", { opacity: 0, duration: 0.01, ease: "none" }, ${(start + 2.17).toFixed(3)});`);
+  for (let band = 0; band < bands; band += 1) {
+    const id = group + "-band-" + band;
+    const initial = band % 2 ? -1000 : 1000;
+    paths.push(`<path id="${id}" class="clip" data-start="0" data-duration="2.2" data-track-index="${band + 1}" d="${wipePath(index, band, orientation, bands)}" pathLength="1000" stroke="${color}" stroke-width="${strokeWidth.toFixed(1)}" stroke-dasharray="1000" stroke-dashoffset="${initial}"></path>`);
+    tweens.push(`tl.to("#${id}", { strokeDashoffset: 0, duration: 0.55, ease: "power2.in" }, ${(0.04 * band).toFixed(3)});`);
+    tweens.push(`tl.to("#${id}", { strokeDashoffset: ${initial}, duration: 0.5, ease: "power2.out" }, ${(1.42 + 0.035 * band).toFixed(3)});`);
   }
+  const compositionId = "transition-" + String(index).padStart(2, "0");
+  const script = [
+    'tl.set("#wipe", { opacity: 1 }, 0);',
+    'tl.to("#wipe-solid", { opacity: 1, duration: 0.12, ease: "none" }, 0.8);',
+    'tl.to("#wipe-solid", { opacity: 0, duration: 0.15, ease: "none" }, 1.42);',
+    'tl.to("#wipe", { opacity: 0, duration: 0.01, ease: "none" }, 2.17);',
+    ...tweens
+  ].join("\n").replaceAll("tl.", "tl_" + compositionId.replaceAll("-", "_") + ".");
   return `<template>
   <style>
     #root { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
@@ -398,18 +395,18 @@ function makeTransitionOverlayHtml(scenes, duration) {
     .wipe-group > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
     .wipe-group path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
     .wipe-group > .clip:last-child { position: absolute; inset: 0; }
-    .wipe-group svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-    .wipe-group path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-    .wipe-group > .clip:last-child { position: absolute; inset: 0; }
   </style>
-  <div id="root" data-composition-id="transition-overlay" data-start="0" data-duration="${duration}" data-width="${WIDTH}" data-height="${HEIGHT}">
-    ${markup.join("\n    ")}
+  <div id="root" data-composition-id="${compositionId}" data-start="0" data-duration="2.2" data-width="${WIDTH}" data-height="${HEIGHT}">
+    <div id="wipe" class="clip wipe-group" data-start="0" data-duration="2.2" data-track-index="20" style="opacity:0">
+      <svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none" data-layout-allow-overflow>${paths.join("")}</svg>
+      <div id="wipe-solid" class="clip" data-start="0" data-duration="2.2" data-track-index="40" style="opacity:0;background:${color}"></div>
+    </div>
   </div>
   <script>
-    const tl_transition_overlay = gsap.timeline({ paused: true });
-    ${tweens.join("\n    ").replaceAll("tl.", "tl_transition_overlay.")}
+    const tl_${compositionId.replaceAll("-", "_")} = gsap.timeline({ paused: true });
+    ${script}
     window.__timelines = window.__timelines || {};
-    window.__timelines["transition-overlay"] = tl_transition_overlay;
+    window.__timelines["${compositionId}"] = tl_${compositionId.replaceAll("-", "_")};
   </script>
 </template>
 `;
@@ -441,11 +438,16 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
     content: makeCaptionsHtml(scenes, duration),
     encoding: "utf8"
   });
-  projectFiles.push({
-    path: "compositions/transition-overlay.html",
-    content: makeTransitionOverlayHtml(scenes, duration),
-    encoding: "utf8"
-  });
+  const orientations = ["horizontal", "vertical", "horizontal", "vertical"];
+  const transitionColors = PALETTES.slice(1).map(palette => palette.ground);
+  for (let index = 0; index < scenes.length - 1; index += 1) {
+    const id = "transition-" + String(index + 1).padStart(2, "0");
+    projectFiles.push({
+      path: "compositions/" + id + ".html",
+      content: makeTransitionHtml(index + 1, transitionColors[index], orientations[index]),
+      encoding: "utf8"
+    });
+  }
   const gsap = await readFile(new URL("../assets/gsap.min.js", import.meta.url), "utf8");
   projectFiles.push({ path: "assets/gsap.min.js", content: gsap, encoding: "utf8" });
   if (voiceover) projectFiles.push({ path: voiceover.path, contentBase64: voiceover.contentBase64, encoding: "base64" });
