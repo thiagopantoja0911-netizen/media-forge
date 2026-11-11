@@ -12,6 +12,7 @@ import { handleVideosSecretsMcp } from "./videos-secrets-mcp.mjs";
 import { authenticateBearer, handleOAuth } from "./oauth.mjs";
 import { handlePanel, isAdminSession } from "./panel.mjs";
 import { handleStudio } from "./studio.mjs";
+import { handleStudioApi } from "./studio-api.mjs";
 import { handleRemoteWorker } from "./remote-worker-server.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
@@ -286,6 +287,8 @@ const server = createServer(async (request, response) => {
         isAdminSession
       });
     }
+
+    if (await handleStudioApi({ request, response, parseBody, isAdminSession })) return;
 
     if (url.pathname === "/studio" || url.pathname.startsWith("/studio/")) {
       return handleStudio({ request, response, isAdminSession });
