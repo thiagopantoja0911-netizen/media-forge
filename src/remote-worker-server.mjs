@@ -141,7 +141,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           const progress=Number(body.progress);
           job.progress=Number.isFinite(progress)?Math.max(0,Math.min(99,Math.floor(progress))):job.progress;
           job.progressMessage=String(body.message||"Renderizando").replace(/[\r\n]+/g," ").slice(0,255);
-          await saveJob(job);return job;
+          await saveJob(jobsDir,job);return job;
         });
         if(!result){reply(response,409,{ok:false,error:"LEASE_INVALID"});return true;}
         reply(response,200,{ok:true,id,progress:result.progress,message:result.progressMessage});return true;
