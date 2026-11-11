@@ -14,6 +14,15 @@ for(let i=0;i<8;i++){
     const auth=await check("/.well-known/oauth-authorization-server",undefined,200);
     const cfg=await auth.json();
     if(cfg.issuer!==base)throw new Error("OAuth issuer mismatch: "+cfg.issuer);
+    const resource=await check("/.well-known/oauth-protected-resource/mcp",undefined,200);
+    const resourceMeta=await resource.json();
+    if(resourceMeta.resource!==base+"/mcp")throw new Error("MCP protected resource mismatch");
+    const denied=await fetch(base+"/mcp",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({jsonrpc:"2.0",id:1,method:"initialize",params:{protocolVersion:"2025-06-18"}}),
+      signal:AbortSignal.timeout(12000)});
+    if(denied.status!==401)throw new Error("MCP authentication absent: "+denied.status);
+    if(!String(denied.headers.get("www-authenticate")).includes("resource_metadata="))
+      throw new Error("MCP OAuth challenge missing resource_metadata");
     await check("/v1/jobs",undefined,401);
     await check("/v1/worker/claim",{method:"POST",headers:{"content-type":"application/json"},body:"{}"},401);
     console.log("PASS: host, TLS, OAuth, REST auth and worker auth");
