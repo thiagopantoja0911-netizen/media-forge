@@ -64,10 +64,33 @@ function run(command, args, cwd) {
 }
 
 function cliArgs(command, action, ...args) {
-  if (command.toLowerCase().endsWith("hyperframes") || command.toLowerCase().endsWith("hyperframes.cmd")) {
+  const lower = command.toLowerCase();
+  const isNpx = /(?:^|[\\/])npx(?:\.cmd)?$/.test(lower);
+  if (isNpx) {
+    const version = process.env.HYPERFRAMES_VERSION?.trim();
+    const packageSpec = version ? "hyperframes@" + version : "hyperframes";
+    return ["--yes", packageSpec, action, ...args];
+  }
+  if (lower.endsWith("hyperframes") || lower.endsWith("hyperframes.cmd")) {
     return [action, ...args];
   }
   return ["hyperframes", action, ...args];
+}
+
+function addOption(args, name, value) {
+  if (value === undefined || value === null || value === "") return;
+  args.push("--" + name, String(value));
+}
+
+function renderArgs(job, outputPath) {
+  const args = ["render", "-o", outputPath];
+  addOption(args, "resolution", job.project.resolution);
+  addOption(args, "fps", job.project.fps);
+  addOption(args, "quality", job.project.quality);
+  addOption(args, "workers", job.project.workers);
+  if (job.project.browserGpu === false) args.push("--no-browser-gpu");
+  if (job.project.browserGpu === true) args.push("--browser-gpu");
+  return args;
 }
 
 export async function renderWithHyperFrames(job) {
@@ -98,13 +121,15 @@ export async function renderWithHyperFrames(job) {
   const outputPath = join(outputRoot, outputName);
   const command = commandForPlatform();
 
-  const lint = await run(command, cliArgs(command, "lint", projectDir, "--json"), projectDir);
-  const render = await run(command, cliArgs(command, "render", "-o", outputPath), projectDir);
+  const preflight = job.project.preflight !== false
+    ? await run(command, cliArgs(command, "check", projectDir, "--json", "--no-craft"), projectDir)
+    : null;
+  const render = await run(command, cliArgs(command, ...renderArgs(job, outputPath)), projectDir);
 
   return {
     mode: "hyperframes-cli",
     outputPath,
-    lint: lint.stdout.trim() || null,
+    preflight: preflight?.stdout.trim() || null,
     renderLog: render.stdout.trim() || null
   };
 }
