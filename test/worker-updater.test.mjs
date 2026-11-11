@@ -7,6 +7,7 @@ test("silent updater works without a local Git clone and preserves MediaForge co
   const launcher=await readFile(new URL("../desktop/launch-update-worker.vbs",import.meta.url),"utf8");
   assert.ok(script.includes("api.github.com/repos/thiagopantoja0911-netizen/media-forge/commits"));
   assert.ok(script.includes("https://codeload.github.com/thiagopantoja0911-netizen/media-forge/zip/"));
+  assert.ok(script.includes("$commitItems = @($latest)"));
   assert.ok(script.includes("Expand-Archive"));
   assert.ok(script.includes("robocopy"));
   assert.ok(script.includes(".env.local"));
