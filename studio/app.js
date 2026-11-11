@@ -135,6 +135,19 @@
     el('copy-brief').addEventListener('click',copy);
     el('download-json').addEventListener('click',function(){persist();download(JSON.stringify(project,null,2),safeFilename(project.title)+'.json','application/json;charset=utf-8');message('JSON exportado para o seu dispositivo.');});
     el('download-txt').addEventListener('click',function(){download(exportText(),safeFilename(project.title)+'.txt','text/plain;charset=utf-8');message('Roteiro exportado.');});
+    el('build-composition').addEventListener('click',async function(){
+      formToProject();
+      if(project.scenes.length!==5){message('Monte e revise as cinco cenas antes de gerar a composição.');return;}
+      message('Gerando pacote HyperFrames. Nenhum job será criado...');
+      try{
+        var response=await fetch('/api/studio/compose',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(project)});
+        var data=await response.json().catch(function(){return {};});
+        if(!response.ok)throw new Error(data.error||'Não foi possível gerar a composição.');
+        download(JSON.stringify(data,null,2),safeFilename(project.title)+'-hyperframes-package.json','application/json;charset=utf-8');
+        message('Pacote gerado e baixado. Não foi enviado à fila. Bloqueios: '+data.readiness.blockers.join(' '));
+      }catch(error){message(error.message);}
+    });
+
     el('new-project').addEventListener('click',function(){if(!confirm('Criar um novo projeto? Exporte o atual antes de substituí-lo.'))return;try{localStorage.removeItem(STORAGE);}catch(e){}project=sanitizedProject({duration:'45',intent:'curiosidade',tone:'investigativo',scenes:[]});active=0;projectToForm();persist();message('Novo rascunho criado.');});
     el('import-json').addEventListener('click',function(){el('import-file').click();});
     el('import-file').addEventListener('change',function(e){importData(e.target.files&&e.target.files[0]);e.target.value='';});
