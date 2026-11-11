@@ -30,9 +30,9 @@ jobs:
       - run: node --check src/renderers/hyperframes.mjs
       - run: node --test test/*.test.mjs
       - run: npm run validate
-      - name: Check generated Creator Studio composition with HyperFrames
+      - name: Check generated Forge Midjourney composition with HyperFrames
         run: node scripts/check-creator-composition.mjs
-      - name: Upload Creator Studio review snapshots
+      - name: Upload Forge Midjourney review snapshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
