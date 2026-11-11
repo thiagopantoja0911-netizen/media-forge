@@ -286,7 +286,7 @@ const server = createServer(async (request, response) => {
       });
     }
 
-    if (url.pathname === "/" || url.pathname === "/dashboard"
+    if (url.pathname === "/" || url.pathname === "/dashboard" || url.pathname === "/admin-reset"
       || url.pathname.startsWith("/api/")) {
       return handlePanel({
         request,
