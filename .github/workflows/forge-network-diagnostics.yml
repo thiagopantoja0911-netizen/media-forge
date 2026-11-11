@@ -1,0 +1,28 @@
+name: Forge staging DNS and HTTPS diagnostics
+
+on:
+  push:
+    branches: [qa/forge-midjourney-15s-4k60-20261111]
+    paths: [.github/workflows/forge-network-diagnostics.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  network:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Resolve staging hostname and CDN
+        shell: bash
+        run: |
+          echo '--- NS ---'; dig +short NS salevo.site || true
+          echo '--- A ---'; dig +short A forge-preview.salevo.site || true
+          echo '--- AAAA ---'; dig +short AAAA forge-preview.salevo.site || true
+          echo '--- CNAME ---'; dig +short CNAME forge-preview.salevo.site || true
+          echo '--- HTTPS IPv4 ---'
+          curl -4 --silent --show-error --verbose --connect-timeout 7 --max-time 13 -D - https://forge-preview.salevo.site/health -o /tmp/forge-health.txt || true
+          echo '--- Response body (if any) ---'
+          head -c 400 /tmp/forge-health.txt 2>/dev/null || true
+          echo
