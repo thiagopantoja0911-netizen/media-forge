@@ -221,3 +221,14 @@ h2{font-family:var(--display);font-size:clamp(23px,2.5vw,32px);line-height:1.15;
  .sidebar{display:block}.guidance{margin-top:16px}.screen{width:min(100%,275px)}.export-panel .button-row{gap:9px}
  .export-panel .button-row .button{flex:1 1 45%}.export-panel .button-row .button.primary{flex:1 1 100%}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.screen-shine{animation:none!important}*,*:before,*:after{transition:none!important;animation:none!important}}
+
+/* Render-workflow controls: retain the current panel, add no new layout system. */
+.scene-attachments{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.media-field{display:flex;flex-direction:column;gap:8px;background:#0a1118;border:1px dashed #465346;border-radius:9px;padding:12px;color:#d9e9d2;font-size:11px;font-weight:700}
+.media-field input[type=file]{width:100%;font-size:10px;color:#b5c7b2;max-width:100%}
+.media-field input[type=file]::file-selector-button{border:1px solid #3e5341;background:#1d2a22;color:#d3fd80;border-radius:7px;padding:7px 8px;margin-right:6px;cursor:pointer}
+.media-info{font:400 10px/1.5 ui-monospace,monospace;color:#acb7ae;word-break:break-word}
+.render-job{margin-top:15px;padding:14px;border:1px solid #567457;background:#131f18;border-radius:9px;color:#ddf1cf;font:500 11px/1.85 ui-monospace,monospace;overflow-wrap:anywhere}
+.render-job[hidden]{display:none}
+#render-controlled:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:680px){.scene-attachments{grid-template-columns:1fr}}
