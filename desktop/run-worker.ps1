@@ -16,7 +16,11 @@ try {
       }
     }
   }
-  & npm run worker
+  if ($env:MEDIAFORGE_REMOTE_URL -and $env:MEDIAFORGE_WORKER_TOKEN) {
+    & npm run worker:remote
+  } else {
+    & npm run worker
+  }
 } finally {
   Pop-Location
 }
