@@ -23,7 +23,7 @@ Hostinger inventory contained 28 websites at the 2026-11-11 review. The table li
 
 - [ ] Creator Studio is deployed from the reviewed `media-forge` repository behind MediaForge admin authentication.
 - [ ] Existing exported Studio v1 JSON files import without losing briefing, hooks, scene text, action or sound notes.
-- [x] Generated five-scene HyperFrames package passes the pinned CLI `check --json` structural/motion/contrast checks. Current expected warning: the validation fixture has no audio.
+- [ ] Generated five-scene HyperFrames package passes the pinned CLI `check --json` after the latest audio-package changes. The no-audio validation fixture may report the expected `film_silent` warning.
 - [ ] HyperFrames review snapshots are generated and visually inspected; text safe areas, timing, first frame and transitions pass.
 - [ ] Voice/narration is attached, synchronized and audible in the rendered output.
 - [ ] Music and sound effects are attached and normalized; true peak and integrated loudness are measured.
