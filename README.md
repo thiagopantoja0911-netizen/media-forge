@@ -100,3 +100,7 @@ O Creator Studio está disponível em `/studio` após autenticação no painel. 
 A importação do JSON v1 legado é compatível com os rascunhos exportados manualmente de `video.salevo.site/studio/`. O armazenamento local novo usa uma chave separada para não sobrescrever dados do domínio antigo.
 
 **Limite atual:** gera uma composição tipográfica HyperFrames de protótipo, mas ainda não inclui mídia específica, voz, música ou efeitos. O pacote é marcado `renderReady=false` e não pode ser enviado diretamente à fila. A geração de mídia só será ativada depois da validação de áudio e QA no Worker Windows. Consulte `docs/CREATOR_STUDIO.md` e `docs/MIGRATION_SALEVO_CREATOR.md`.
+
+## Limpeza final da migração
+
+A remoção do hub antigo e de integrações do Secrets só poderá acontecer depois dos testes e backups definidos em `docs/FINAL_CLEANUP_GATE.md`. O Browser MCP, o domínio pai `salevo.site` e o portal `secretssystem.online` são recursos independentes e ficam fora da limpeza do Creator Video.
