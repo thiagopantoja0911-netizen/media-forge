@@ -28,8 +28,8 @@ async function authenticated(request) {
   const token=String(request.headers.authorization||"").match(/^Bearer\s+(.+)$/i)?.[1]||"";
   if (!token) return false;
   const state=await readState();
-  return verifySecret(token,state.settings.workerTokenHash)
-    || tokenMatches(token,process.env.MEDIAFORGE_WORKER_TOKEN);
+  if (state.settings.workerTokenHash) return verifySecret(token,state.settings.workerTokenHash);
+  return tokenMatches(token,process.env.MEDIAFORGE_WORKER_TOKEN);
 }
 async function saveJob(jobsDir,job) {
   job.updatedAt=new Date().toISOString();
