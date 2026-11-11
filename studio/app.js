@@ -5,7 +5,7 @@
   var names=['Gancho','Contexto','Prova visual','Revelação','Fechamento'];
   var fields=['spoken','onscreen','action','sound'];
   var project={version:VERSION,updatedAt:'',title:'',topic:'',intent:'curiosidade',duration:'45',audience:'',tone:'investigativo',style:'',cta:'',hookA:'',hookB:'',hookC:'',selectedHook:'hookA',scenes:[]};
-  var active=0;
+  var active=0;\n  var audioFiles={voiceover:null,music:null};
   function el(id){return document.getElementById(id);}
   function clean(s,max){return String(s==null?'':s).slice(0,max||2000);}
   function timestamp(s){var n=Math.max(0,Math.round(s));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');}
@@ -103,6 +103,36 @@
       'Nenhuma publicação é automática. Renderização técnica não substitui a revisão artística do vídeo.');
     return lines.join('\n');
   }
+  function audioDuration(file){
+    return new Promise(function(resolve,reject){
+      var url=URL.createObjectURL(file),audio=new Audio();audio.preload='metadata';
+      audio.onloadedmetadata=function(){var duration=audio.duration;URL.revokeObjectURL(url);if(Number.isFinite(duration)&&duration>0)resolve(duration);else reject(new Error('Não consegui ler a duração deste áudio.'));};
+      audio.onerror=function(){URL.revokeObjectURL(url);reject(new Error('Formato de áudio não reconhecido pelo navegador.'));};
+      audio.src=url;
+    });
+  }
+  async function selectAudio(kind,file){
+    if(!file){audioFiles[kind]=null;return;}
+    if(file.size>12*1024*1024){message('Cada arquivo de áudio pode ter no máximo 12 MB.');return;}
+    if(!/\\.(wav|mp3|m4a|aac|ogg|opus|webm)$/i.test(file.name)){message('Use WAV, MP3, M4A, AAC, OGG, OPUS ou WEBM.');return;}
+    try{
+      var duration=await audioDuration(file);
+      audioFiles[kind]={file:file,durationSeconds:duration};
+      message((kind==='voiceover'?'Locução':'Trilha')+' anexada · '+duration.toFixed(1)+' s · '+(file.size/1048576).toFixed(1)+' MB.');
+    }catch(error){audioFiles[kind]=null;message(error.message);}
+  }
+  function fileBase64(file){
+    return new Promise(function(resolve,reject){
+      var reader=new FileReader();
+      reader.onload=function(){var value=String(reader.result||'');var comma=value.indexOf(',');if(comma<0){reject(new Error('Falha ao ler áudio.'));return;}resolve(value.slice(comma+1));};
+      reader.onerror=function(){reject(new Error('Falha ao ler áudio.'));};
+      reader.readAsDataURL(file);
+    });
+  }
+  async function serializeAudio(entry){
+    if(!entry)return null;
+    return {filename:entry.file.name,mimeType:entry.file.type||'application/octet-stream',sizeBytes:entry.file.size,durationSeconds:entry.durationSeconds,contentBase64:await fileBase64(entry.file)};
+  }
   function download(data,name,type){var blob=new Blob([data],{type:type});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);}
   function suggest(){
     var topic=project.topic.trim()||project.title.trim();
@@ -135,12 +165,19 @@
     el('copy-brief').addEventListener('click',copy);
     el('download-json').addEventListener('click',function(){persist();download(JSON.stringify(project,null,2),safeFilename(project.title)+'.json','application/json;charset=utf-8');message('JSON exportado para o seu dispositivo.');});
     el('download-txt').addEventListener('click',function(){download(exportText(),safeFilename(project.title)+'.txt','text/plain;charset=utf-8');message('Roteiro exportado.');});
+    el('voiceover-file').addEventListener('change',function(e){selectAudio('voiceover',e.target.files&&e.target.files[0]);});
+    el('music-file').addEventListener('change',function(e){selectAudio('music',e.target.files&&e.target.files[0]);});
     el('build-composition').addEventListener('click',async function(){
       formToProject();
       if(project.scenes.length!==5){message('Monte e revise as cinco cenas antes de gerar a composição.');return;}
       message('Gerando pacote HyperFrames. Nenhum job será criado...');
       try{
-        var response=await fetch('/api/studio/compose',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(project)});
+        var voiceover=await serializeAudio(audioFiles.voiceover);
+        var music=await serializeAudio(audioFiles.music);
+        var totalAudio=(audioFiles.voiceover?audioFiles.voiceover.file.size:0)+(audioFiles.music?audioFiles.music.file.size:0);
+        if(totalAudio>18*1024*1024)throw new Error('A soma dos áudios deve ter no máximo 18 MB.');
+        var payload=Object.assign({},project,{mediaAssets:{voiceover:voiceover,music:music}});
+        var response=await fetch('/api/studio/compose',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
         var data=await response.json().catch(function(){return {};});
         if(!response.ok)throw new Error(data.error||'Não foi possível gerar a composição.');
         download(JSON.stringify(data,null,2),safeFilename(project.title)+'-hyperframes-package.json','application/json;charset=utf-8');
@@ -148,7 +185,7 @@
       }catch(error){message(error.message);}
     });
 
-    el('new-project').addEventListener('click',function(){if(!confirm('Criar um novo projeto? Exporte o atual antes de substituí-lo.'))return;try{localStorage.removeItem(STORAGE);}catch(e){}project=sanitizedProject({duration:'45',intent:'curiosidade',tone:'investigativo',scenes:[]});active=0;projectToForm();persist();message('Novo rascunho criado.');});
+    el('new-project').addEventListener('click',function(){if(!confirm('Criar um novo projeto? Exporte o atual antes de substituí-lo.'))return;try{localStorage.removeItem(STORAGE);}catch(e){}audioFiles={voiceover:null,music:null};el('voiceover-file').value='';el('music-file').value='';project=sanitizedProject({duration:'45',intent:'curiosidade',tone:'investigativo',scenes:[]});active=0;projectToForm();persist();message('Novo rascunho criado.');});
     el('import-json').addEventListener('click',function(){el('import-file').click();});
     el('import-file').addEventListener('change',function(e){importData(e.target.files&&e.target.files[0]);e.target.value='';});
   });
