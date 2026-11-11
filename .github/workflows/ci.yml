@@ -18,6 +18,7 @@ jobs:
       - run: node --check src/server.mjs
       - run: node --check src/remote-worker-server.mjs
       - run: node --check src/remote-worker-client.mjs
+      - run: node --check src/worker-heartbeat.mjs
       - run: node --check src/videos-secrets-mcp.mjs
       - run: node --check src/worker.mjs
       - run: node --check src/renderers/hyperframes.mjs
