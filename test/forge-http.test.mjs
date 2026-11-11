@@ -125,6 +125,13 @@ test("Forge Midjourney flows through real HTTP, session, composition export and 
     assert.equal(page.status, 200);
     assert.match(await page.text(), /Forge Midjourney/);
 
+    const stylesheet = await call("/studio/studio.css", { headers: authHeaders });
+    assert.equal(stylesheet.status, 200, "CSS must load from the authenticated studio route");
+    assert.match(stylesheet.headers.get("content-type") ?? "", /text\\/css/);
+    const cssText = await stylesheet.text();
+    assert.match(cssText, /--bg:#07090e/);
+    assert.match(cssText, /\\.workflow-bar/);
+
     const script = await call("/studio/app.js", { headers: authHeaders });
     assert.equal(script.status, 200);
     assert.match(await script.text(), /build-composition/);
