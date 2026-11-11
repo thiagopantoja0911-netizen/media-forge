@@ -36,7 +36,7 @@ test("authenticated compose endpoint returns a package but never creates a rende
   assert.equal(response.headers["cache-control"], "no-store");
   assert.equal(body.ok, true);
   assert.equal(body.readiness.renderReady, false);
-  assert.equal(body.projectFiles.length, 10);
+  assert.equal(body.projectFiles.length, 13);
   assert.equal(body.projectFiles[0].path, "index.html");
   assert.equal(body.projectFiles.some(file => file.path.endsWith(".mp3")), false);
   assert.equal(body.job, undefined);
