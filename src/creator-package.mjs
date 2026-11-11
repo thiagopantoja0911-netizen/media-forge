@@ -4,7 +4,7 @@ import { validateProjectFiles, isSafeRelativePath } from "./job-schema.mjs";
 
 export async function extractCreatorPackage(bundle, outputDirectory) {
   if (!bundle || typeof bundle !== "object" || !Array.isArray(bundle.projectFiles)) {
-    throw new TypeError("Pacote Creator Studio inválido.");
+    throw new TypeError("Pacote Forge Midjourney inválido.");
   }
   const validation = validateProjectFiles(bundle.projectFiles);
   if (!validation.ok) throw new TypeError(validation.errors.join("; "));
