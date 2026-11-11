@@ -80,3 +80,54 @@ test("unknown routes are left to the main router and methods are rejected", asyn
   });
   assert.equal(method.status, 405);
 });
+
+test("rejects browser cross-site compose calls even with an authenticated session", async () => {
+  let parsed = false;
+  const response = responseHarness();
+  await handleStudioApi({
+    request: {
+      method: "POST", url: "/api/studio/compose",
+      headers: { "sec-fetch-site": "cross-site", "content-type": "application/json" }
+    },
+    response,
+    parseBody: async () => { parsed = true; return draft; },
+    isAdminSession: async () => true
+  });
+  assert.equal(response.status, 403);
+  assert.equal(JSON.parse(response.body).error, "CROSS_ORIGIN_REQUEST");
+  assert.equal(parsed, false);
+});
+
+test("rejects foreign Origin and incorrect content type before parsing", async () => {
+  for (const headers of [
+    { origin: "https://example.net", host: "mediaforge.salevo.site", "content-type": "application/json" },
+    { "content-type": "text/plain" }
+  ]) {
+    const response = responseHarness();
+    let parsed = false;
+    await handleStudioApi({
+      request: { method: "POST", url: "/api/studio/compose", headers },
+      response,
+      parseBody: async () => { parsed = true; return draft; },
+      isAdminSession: async () => true
+    });
+    assert.equal(response.status, headers.origin ? 403 : 415);
+    assert.equal(parsed, false);
+  }
+});
+
+test("accepts same-origin browser compose request", async () => {
+  const response = responseHarness();
+  await handleStudioApi({
+    request: {
+      method: "POST", url: "/api/studio/compose",
+      headers: {
+        host: "mediaforge.salevo.site", origin: "https://mediaforge.salevo.site",
+        "sec-fetch-site": "same-origin", "content-type": "application/json; charset=utf-8"
+      }
+    },
+    response, parseBody: async () => draft, isAdminSession: async () => true
+  });
+  assert.equal(response.status, 200);
+  assert.equal(JSON.parse(response.body).readiness.renderReady, false);
+});
