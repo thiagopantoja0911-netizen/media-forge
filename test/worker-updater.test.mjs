@@ -13,6 +13,7 @@ test("silent updater preserves connection secrets and validates continuous worke
   assert.match(script,/desktop\\worker/);
   assert.match(script,/MediaForge Worker - Staging/);
   assert.match(script,/stableCount -ge 21/);
+  assert.match(script,/icacls \$backupDir \/inheritance:r/);
   assert.match(script,/worker-session-utf8\.log/);
   assert.match(launcher,/shell\.Run command,\s*0,\s*False/i);
   assert.doesNotMatch(launcher,/cmd\.exe/i);
