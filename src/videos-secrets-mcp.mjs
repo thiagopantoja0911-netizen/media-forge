@@ -221,7 +221,7 @@ export async function handleVideosSecretsMcp({
         prompt: args.prompt,
         duration_seconds: args.duration_seconds,
         aspect_ratio: args.aspect_ratio,
-        resolution: args.resolution ?? "portrait-4k",
+        resolution: args.resolution ?? (args.aspect_ratio === "16:9" ? "landscape-4k" : args.aspect_ratio === "1:1" ? "square-4k" : "portrait-4k"),
         fps: args.fps ?? 60,
         quality: args.quality ?? "high",
         workers: args.workers,
