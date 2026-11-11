@@ -102,6 +102,7 @@ export async function handleStudioApi({ request, response, parseBody, isAdminSes
         source: "forge-midjourney-studio",
         mode: "controlled-test",
         qaStatus: "pending-technical-and-artistic-review",
+        expectsAudio: Boolean(composition.readiness.audio.voiceover.attached),
         approvedBy: "authenticated-admin-confirmation"
       }
     });
