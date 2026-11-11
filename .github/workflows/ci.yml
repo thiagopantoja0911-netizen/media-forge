@@ -26,7 +26,9 @@ jobs:
       - run: node --test test/*.test.mjs
       - run: npm run validate
       - name: Verify public staging TLS, OAuth and access controls
-        if: github.event_name == 'pull_request' && github.head_ref == 'feature/conexoes-mediaforge-primeiro'
+        if: github.event_name == 'pull_request' && (github.head_ref == 'feature/conexoes-mediaforge-primeiro' || github.head_ref == 'migration/creator-video-to-mediaforge')
+        env:
+          MEDIAFORGE_EXPECT_WORKER: 'true'
         run: node scripts/staging-health.mjs
 
 
