@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, cp, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
@@ -25,9 +25,9 @@ const draft = {
   ]
 };
 
-function runCheck(cwd) {
+function runCli(cwd, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn("npx", ["--yes", "hyperframes@0.9.25", "check", "--json"], {
+    const child = spawn("npx", ["--yes", "hyperframes@0.9.25", ...args], {
       cwd,
       env: { ...process.env, CI: "1" },
       windowsHide: true,
@@ -49,13 +49,30 @@ try {
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, file.content, "utf8");
   }
-  const result = await runCheck(directory);
+  const result = await runCli(directory, ["check", "--json"]);
   process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
   if (result.code !== 0) {
     throw new Error("HyperFrames check failed with exit code " + result.code);
   }
-  process.stdout.write("\nHyperFrames check completed. Audio/media readiness remains false by design.\n");
+
+  const snapshot = await runCli(directory, ["snapshot", "--review"]);
+  process.stdout.write(snapshot.stdout);
+  if (snapshot.stderr) process.stderr.write(snapshot.stderr);
+  if (snapshot.code !== 0) {
+    throw new Error("HyperFrames snapshot --review failed with exit code " + snapshot.code);
+  }
+
+  const sourceSnapshots = join(directory, ".hyperframes", "artifacts", "snapshots");
+  const snapshotFiles = await readdir(sourceSnapshots, { recursive: true });
+  if (!snapshotFiles.length) throw new Error("HyperFrames did not produce review snapshots");
+  if (process.env.RUNNER_TEMP) {
+    const targetSnapshots = join(process.env.RUNNER_TEMP, "mediaforge-creator-snapshots");
+    await rm(targetSnapshots, { recursive: true, force: true });
+    await cp(sourceSnapshots, targetSnapshots, { recursive: true });
+    process.stdout.write("Review snapshots copied to CI artifact directory.\\n");
+  }
+  process.stdout.write("HyperFrames check and review snapshots completed. Audio/media readiness remains false by design.\\n");
 } finally {
   await rm(directory, { recursive: true, force: true });
 }
