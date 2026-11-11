@@ -37,10 +37,8 @@ Write-Output "Repositorio confirmado: $expected"
 Write-Output "Commit anterior: $previousCommit"
 Write-Output ".env.local e .mediaforge preservados (nao sao alterados pelo script)."
 $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-if ($task -and $task.State -eq "Running") {
-  Stop-ScheduledTask -TaskName $taskName
-  Start-Sleep -Seconds 3
-}
+# Do not stop a working process before fetch and syntax validation.
+# The existing MediaForge background launcher owns the process-tree restart.
 try {
   & git -C $InstallDir fetch --prune origin $Branch
   if ($LASTEXITCODE -ne 0) { throw "Falhou o git fetch" }
@@ -57,12 +55,14 @@ try {
   } else {
     Write-Warning "FFprobe nao encontrado no PATH. MP4 sera marcado QA=unverified ate instalar FFmpeg/FFprobe."
   }
-} finally {
   if ($task) {
-    Start-ScheduledTask -TaskName $taskName
-    Start-Sleep -Seconds 2
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $InstallDir "desktop\start-worker-background.ps1") -InstallDir $InstallDir
+    if ($LASTEXITCODE -ne 0) { throw "Falhou a reinicializacao segura da tarefa MediaForge." }
     Write-Output ("Tarefa MediaForge: " + (Get-ScheduledTask -TaskName $taskName).State)
   } else {
-    Write-Warning "Tarefa '$taskName' nao existe. Reinicie manualmente o processo Worker que usa este clone."
+    Write-Warning "Tarefa '$taskName' nao existe. Reinicie manualmente o Worker que utiliza este clone."
   }
+} catch {
+  Write-Warning "Atualizacao ou reinicializacao interrompida. Os arquivos .env.local e .mediaforge nao foram modificados."
+  throw
 }
