@@ -38,6 +38,18 @@ Hostinger inventory contained 28 websites at the 2026-11-11 review. The table li
 - [ ] Rollback to `video.salevo.site` is tested before final retirement.
 - [ ] Production deploy source, secrets and runtime storage are confirmed separate from the Secrets System.
 
+## Legacy code cleanup performed — 2026-11-11
+
+The owner explicitly instructed **do not touch Nexora Workspace / Media Editor** in Secrets and authorized cleanup of legacy Salevo Video code in `paginadevendas`.
+
+- Full original `deploy/video-salevo-hub` repository contents archived at `archive/video-salevo-hub-before-removal-20261111`, commit `b6a0e3a8c05ff4554f68f11e1efeed3b076caba6`.
+- Hostinger Git auto-deploy disabled for `video.salevo.site`; the site content remained in place.
+- In `paginadevendas` branch `deploy/video-salevo-hub`, all 23 video site/API/Studio/deployment files were removed. Only a retirement `README.md` remains; latest commit `ff642ef9d8a788aa353e104b8f1786f647c5d4f8`.
+- `paginadevendas` main snapshot archived at `archive/paginadevendas-before-videosai-cleanup-20261111` (commit `ad54b3cfc057e7756e32527712402f7ec3224775`).
+- Old `paginas/videosai/`, deployment workflow, dispatch option, and `deploy/pages.json` entry removed from `paginadevendas` main via PR #33, merged at `fdad8c8a65fd1bae61f0e0cfb526db9c19939f6e`. Existing sales/checkout mappings preserved.
+- `video.salevo.site` hosting was **not** deleted. The old PHP API uses persistent `salevo-private` directory OUTSIDE `public_html` which is not backed up by Git. Website deletion in Hostinger is irreversible and removes website files, configuration and potentially jobs/tokens outside version control. Require informed confirmation and a full data disposition/backup before deleting the website.
+- **Nexora / Media Editor, KRYVIA, Secrets System, Browser MCP, current MediaForge production branch and Windows Worker were not modified in this cleanup.**
+
 ## Potential retirement candidates after approval
 
 1. Legacy `video.salevo.site` domain/site and its PHP API, only after no client or OAuth connection depends on it.
