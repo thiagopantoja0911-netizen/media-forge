@@ -1,4 +1,5 @@
 import { hashSecret, hashPassword, randomToken, readState, updateState, verifyPassword, verifySecret, createSession, verifySession } from "./state-store.mjs";
+import { TEST_COMPOSITION_HTML } from "./test-composition.mjs";
 
 const SESSION_COOKIE = "mf_session";
 const SESSION_TTL = 8 * 60 * 60;
@@ -204,8 +205,11 @@ export async function handlePanel({ request, response, parseBody, createJob, lis
       prompt: "Teste controlado de composição HyperFrames.",
       duration_seconds: 10,
       aspect_ratio: "16:9",
+      resolution: "4k",
+      fps: 60,
+      quality: "high",
       project_files: [
-        { path: "index.html", content: "<!doctype html><html><body><div id='root' data-composition-id='main'></div></body></html>", encoding: "utf8" }
+        { path: "index.html", content: TEST_COMPOSITION_HTML, encoding: "utf8" }
       ]
     });
     return send(response, 202, { id: job.id, status: job.status });
