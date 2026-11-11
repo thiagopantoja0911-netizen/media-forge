@@ -75,7 +75,7 @@ export function validateSceneMedia(input) {
   });
 }
 
-export function sceneMediaReadiness(sceneMedia, audio, durationSeconds, scenes) {
+export function sceneMediaReadiness(sceneMedia, audio, durationSeconds, scenes, sfxAssets = []) {
   const blockers = [], warnings = [];
   const supplied = sceneMedia.filter(Boolean);
   if (supplied.length !== 5) blockers.push("Associe uma imagem ou vídeo real a cada uma das cinco cenas (" + supplied.length + "/5).");
@@ -88,8 +88,9 @@ export function sceneMediaReadiness(sceneMedia, audio, durationSeconds, scenes) 
     blockers.push("A trilha termina antes do vídeo.");
   }
   const total = supplied.reduce((sum, item) => sum + item.sizeBytes, 0) +
-      (audio.voiceover?.sizeBytes || 0) + (audio.music?.sizeBytes || 0);
+      (audio.voiceover?.sizeBytes || 0) + (audio.music?.sizeBytes || 0) + sfxAssets.reduce((sum, item) => sum + (item?.sizeBytes || 0), 0);
   if (total > MAX_MEDIA_TOTAL_BYTES) blockers.push("Áudio + mídia excedem 18 MB por requisição.");
+  scenes.forEach((scene, index) => { if (scene.sound && !sfxAssets[index]) warnings.push("Cena " + (index + 1) + ": efeito sonoro descrito, mas sem arquivo anexado."); });
   supplied.forEach((item, index) => {
     if (item.kind !== "video") return;
     const sceneSeconds = scenes[index].end - scenes[index].start;
