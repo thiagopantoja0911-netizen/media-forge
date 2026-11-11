@@ -31,6 +31,8 @@ test("MediaForge smoke-test root mounts a valid HyperFrames subcomposition", () 
   assert.match(scene, /font-size: 64px/);
   assert.match(scene, /Pipeline de renderização/);
   assert.match(scene, /HyperFrames · composição, timeline e render/);
+  // The visible title must be present at t=0 rather than leaving a blank thumbnail.
+  assert.match(scene, /timeline\.fromTo\("#test-title-text",[\s\S]*?\{ opacity: 1, y: 0, scale: 1 \},[\s\S]*?\n      0\n/);
   assert.match(scene, /window\.__timelines\["test-scene"\] = timeline/);
   assert.ok(scene.indexOf('window.__timelines["test-scene"] = timeline')
     > scene.lastIndexOf("timeline.fromTo("),
