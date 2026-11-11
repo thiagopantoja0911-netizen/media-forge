@@ -251,7 +251,7 @@ function sceneHtml(scene, index, duration, brief) {
       top: 460px;
       right: 216px;
       color: var(--ink);
-      font-size: 40px;
+      font-size: 56px;
       line-height: 1.2;
       font-weight: 800;
       letter-spacing: .16em;
@@ -302,6 +302,10 @@ function sceneHtml(scene, index, duration, brief) {
   </script>
 </template>
 `;
+}
+
+function motionSpec(assertions) {
+  return JSON.stringify({ assertions }, null, 2) + "\n";
 }
 
 function makeCaptionsHtml(scenes, duration) {
@@ -488,15 +492,35 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   ];
   for (let index = 0; index < scenes.length; index += 1) {
     const scene = scenes[index];
+    const sceneId = SCENE_IDS[index];
     projectFiles.push({
-      path: "compositions/" + SCENE_IDS[index] + ".html",
+      path: "compositions/" + sceneId + ".html",
       content: sceneHtml(scene, index, scene.end - scene.start, manifest.brief),
+      encoding: "utf8"
+    });
+    const titleBy = [0.05, 0.7, 0.58, 0.68, 0.58][index];
+    projectFiles.push({
+      path: "compositions/" + sceneId + ".motion.json",
+      content: motionSpec([
+        { kind: "appearsBy", selector: "#" + sceneId + "-title", bySec: titleBy },
+        { kind: "appearsBy", selector: "#" + sceneId + "-kicker", bySec: 0.4 }
+      ]),
       encoding: "utf8"
     });
   }
   projectFiles.push({
     path: "compositions/captions.html",
     content: makeCaptionsHtml(scenes, duration),
+    encoding: "utf8"
+  });
+  const captionAssertions = scenes.map((scene, index) => ({
+    kind: "appearsBy",
+    selector: "#caption-" + (index + 1),
+    bySec: Math.min(scene.end - 0.25, scene.start + 0.68)
+  }));
+  projectFiles.push({
+    path: "compositions/captions.motion.json",
+    content: motionSpec(captionAssertions),
     encoding: "utf8"
   });
   const transitionTypes = ["flash", "scribble", "iris", "whip"];
@@ -506,6 +530,16 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
     projectFiles.push({
       path: "compositions/" + id + ".html",
       content: makeTransitionHtml(index + 1, transitionColors[index], transitionTypes[index]),
+      encoding: "utf8"
+    });
+    const group = "fx-" + (index + 1);
+    const selector = transitionTypes[index] === "flash" ? "#" + group + "-sweep"
+      : transitionTypes[index] === "scribble" ? "#" + group + "-solid"
+      : transitionTypes[index] === "iris" ? "#" + group + "-iris"
+      : "#" + group + "-whip";
+    projectFiles.push({
+      path: "compositions/" + id + ".motion.json",
+      content: motionSpec([{ kind: "appearsBy", selector, bySec: 1.08 }]),
       encoding: "utf8"
     });
   }
