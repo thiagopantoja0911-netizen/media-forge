@@ -112,7 +112,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
       });
       reply(response,200,{ok:true,job:job?{...job,workerLease:undefined}:null,leaseId:job?.workerLease?.id||null});return true;
     }
-    const match=/^\/v1\/worker\/jobs\/([a-f0-9]{32})\/(project|complete)$/.exec(path);
+    const match=/^\/v1\/worker\/jobs\/([a-f0-9]{32})\/(project|progress|complete)$/.exec(path);
     if(match) {
       const id=match[1],action=match[2];
       if(action==="project"&&request.method==="GET"){
@@ -132,6 +132,21 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           files.push({path,contentBase64:data.toString("base64"),sha256:createHash("sha256").update(data).digest("hex")});
         }
         reply(response,200,{ok:true,files});return true;
+      }
+      if(action==="progress"&&request.method==="POST"){
+        const body=await parseBody(request,100_000);
+        const result=await updateState(async()=>{
+          const job=await loadJob(jobsDir,id);
+          if(!validLease(job,body.leaseId))return null;
+          const progress=Number(body.progress);
+          job.progress=Number.isFinite(progress)
+            ?Math.max(0,Math.min(99,Math.floor(progress))):job.progress;
+          job.progressMessage=String(body.message||"Renderizando").replace(/[\r\n]+/g," ").slice(0,255);
+          await saveJob(jobsDir,job);
+          return job;
+        });
+        if(!result){reply(response,409,{ok:false,error:"LEASE_INVALID"});return true;}
+        reply(response,200,{ok:true,id,progress:result.progress,message:result.progressMessage});return true;
       }
       if(action==="complete"&&request.method==="POST"){
         const body=await parseBody(request,100_000);
