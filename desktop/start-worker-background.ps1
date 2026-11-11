@@ -7,11 +7,14 @@ $runner = Join-Path $InstallDir "desktop\run-worker.ps1"
 if (-not (Test-Path -LiteralPath $runner)) { throw "Worker não encontrado: $runner" }
 $taskName = "MediaForge Worker - Staging"
 $userId = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-$powerShell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+$launcher = Join-Path $InstallDir "desktop\launch-worker-hidden.vbs"
+if (-not (Test-Path -LiteralPath $launcher)) { throw "Inicializador oculto do Worker não encontrado: $launcher" }
+$wscript = Join-Path $env:SystemRoot "System32\wscript.exe"
+if (-not (Test-Path -LiteralPath $wscript)) { throw "Windows Script Host não está disponível." }
 
 # Build and validate the complete task definition before touching the current worker.
-$arguments = '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $runner + '" -InstallDir "' + $InstallDir + '"'
-$action = New-ScheduledTaskAction -Execute $powerShell -Argument $arguments -WorkingDirectory $InstallDir
+$arguments = '//B //Nologo "' + $launcher + '" "' + $runner + '" "' + $InstallDir + '"'
+$action = New-ScheduledTaskAction -Execute $wscript -Argument $arguments -WorkingDirectory $InstallDir
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $userId
 $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -RunLevel Limited
 # Task Scheduler requires a repetition/restart interval of at least one minute.
