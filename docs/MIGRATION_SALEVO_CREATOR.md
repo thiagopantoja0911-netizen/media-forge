@@ -86,3 +86,8 @@ O Creator Studio agora aceita arquivos opcionais de locução e trilha (WAV, MP3
 VoiceStudio é mantido como app/repositório separado (AGPL-3.0). A integração atual é por exportação manual do áudio e upload no Creator Studio; não copiamos o código do VoiceStudio nem presumimos que sua API local esteja instalada.
 
 O botão de pacote não cria job nem inicia renderização.
+
+
+## Revisão editorial da composição (2026-11-11)
+
+A revisão da versão anterior encontrou legendas muito próximas da borda inferior e repetição do mesmo wipe em todas as cenas. A implementação foi atualizada para posicionar as legendas em `bottom: 1200px` (2160 × 3840), adicionar o rótulo editável de cada cena e alternar quatro transições determinísticas: flash editorial, rabisco, íris e whip. A versão atual continua sendo um protótipo tipográfico; a revisão visual final e a renderização 4K/60 FPS no Worker ainda são gates pendentes.
