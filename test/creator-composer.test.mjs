@@ -32,12 +32,17 @@ test("builds a five-scene editable HyperFrames package without creating a render
   assert.equal(built.project.resolution, "portrait-4k");
   assert.equal(built.project.fps, 60);
   assert.equal(built.readiness.renderReady, false);
-  assert.equal(built.projectFiles.length, 8);
+  assert.equal(built.projectFiles.length, 10);
   assert.equal(validateProjectFiles(built.projectFiles).ok, true);
   assert.equal(built.projectFiles[0].path, "index.html");
   assert.match(built.projectFiles[0].content, /data-duration="30"/);
   assert.match(built.projectFiles[0].content, /data-width="2160"/);
   assert.match(built.projectFiles[0].content, /data-height="3840"/);
+  assert.match(built.projectFiles[0].content, /data-track-kind="captions"/);
+  const captions = built.projectFiles.find(file => file.path === "compositions/captions.html").content;
+  assert.match(captions, /class="clip caption-block"/);
+  const transitions = built.projectFiles.find(file => file.path === "compositions/transition-overlay.html").content;
+  for (let i = 1; i <= 4; i += 1) assert.match(transitions, new RegExp("wipe-0" + i));
   for (let i = 1; i <= 5; i += 1) {
     const file = built.projectFiles.find(item => item.path === `compositions/scene-0${i}.html`);
     assert.ok(file);
@@ -88,7 +93,7 @@ test("packages uploaded VoiceStudio narration and music as timed audio tracks", 
   };
   const built = await buildCreatorComposition(manifest, mediaAssets);
   const index = built.projectFiles.find(file => file.path === "index.html").content;
-  assert.equal(built.projectFiles.length, 10);
+  assert.equal(built.projectFiles.length, 12);
   assert.match(index, /<audio id="voiceover" src="assets\/audio\/voiceover\.wav"/);
   assert.match(index, /<audio id="music" src="assets\/audio\/music\.mp3"/);
   assert.match(index, /data-volume="0\.14"/);
