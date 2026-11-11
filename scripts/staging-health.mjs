@@ -16,6 +16,12 @@ for(let i=0;i<8;i++){
       throw new Error("Windows HyperFrames worker is not online in the live staging health endpoint");
     if(process.env.MEDIAFORGE_EXPECT_WORKER==="true" && data.worker?.renderer!=="hyperframes")
       throw new Error("Live staging worker renderer is not HyperFrames");
+    if(data.storage) {
+      console.log("Live storage persistence:",JSON.stringify(data.storage));
+      if(process.env.MEDIAFORGE_EXPECT_PERSISTENT_STORAGE==="true"
+        && (data.storage.dataDirectoryPersistent!==true || data.storage.projectsDirectoryPersistent!==true))
+        throw new Error("MediaForge data/projects storage is still inside the versioned release directory");
+    }
     const auth=await check("/.well-known/oauth-authorization-server",undefined,200);
     const cfg=await auth.json();
     if(cfg.issuer!==base)throw new Error("OAuth issuer mismatch: "+cfg.issuer);
