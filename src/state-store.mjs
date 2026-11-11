@@ -1,8 +1,9 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { mediaForgeDataDirectory } from "./storage-paths.mjs";
 
-const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
+const dataDir = mediaForgeDataDirectory();
 const statePath = join(dataDir, "state.json");
 const lockPath = join(dataDir, "state.lock");
 
