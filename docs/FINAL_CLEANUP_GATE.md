@@ -13,7 +13,7 @@ A green completion status must not be shown until every required technical gate 
 | Hostinger `mediaforge.salevo.site` | MediaForge Node.js 22 app | Keep |
 | Hostinger `video.salevo.site` | Legacy Creator Video/Salevo Video hub | Candidate for retirement only after all gates pass |
 | Hostinger `mcpbrowser.salevo.site` | Browser MCP Relay v0.5.0, deployed from its own archive | Keep independent; never merge into MediaForge |
-| Hostinger `secretssystem.online` | Secrets System Next.js portal, deployed from `Secretssysten` | Keep; unrelated tools remain there |
+| Hostinger `secretssystem.online` | Secrets System Next.js portal; KRYVIA runs as a private loopback child at `/kryvia` | Keep the domain and portal; retire only Nexora/Media Editor routes/menu after migration |
 | Hostinger `salevo.site` | Parent website with other subdomains | Keep; do not bulk-delete |
 | Other Salevo/Vempra websites | Separate active services | Out of scope |
 
@@ -41,14 +41,15 @@ Hostinger inventory contained 28 websites at the 2026-11-11 review. The table li
 ## Potential retirement candidates after approval
 
 1. Legacy `video.salevo.site` domain/site and its PHP API, only after no client or OAuth connection depends on it.
-2. Legacy Creator Video endpoints and compatibility bridge code in MediaForge, only after no caller uses the old protocol.
-3. Old setup/pairing artifacts proven unused after the replacement Worker passes reconnect and recovery tests.
+2. Nexora Workspace/Media Editor module inside `secretssystem.online/kryvia`: `nexora-workspace.tsx`, `media-editor.tsx`, `media-editor-engine.ts`, `nexora-captions.ts`, portable-project support, the `/api/media` proxy and `/api/media-editor/transcribe` route. Retire only after MediaForge replaces editing, storage, transcription and projects.
+3. Legacy Creator Video endpoints and compatibility bridge code in MediaForge, only after no caller uses the old protocol.
+4. Old setup/pairing artifacts proven unused after the replacement Worker passes reconnect and recovery tests.
 
 ## Protected resources — not part of this cleanup
 
 - `mediaforge.salevo.site`;
 - `mcpbrowser.salevo.site` and its relay archive/configuration;
-- `secretssystem.online` and the `Secretssysten` repository;
+- the `secretssystem.online` domain, the `Secretssysten` repository, SecretTrack, Offers, Ads Finder, KRYVIA distribution/publishing, Creator Hub and Creator Brain; only the Nexora/Media Editor module is in the migration scope;
 - the `VoiceStudio` repository/application and its user data;
 - `salevo.site` parent domain and its other subdomains;
 - the MediaForge Windows Worker, scheduled task, local projects, output folders, OAuth state and current credentials.
