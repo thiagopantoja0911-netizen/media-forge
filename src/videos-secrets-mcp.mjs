@@ -87,11 +87,11 @@ async function requireBearer(request, authenticateBearer) {
   if (!required) return { scopes: ["videos:read", "videos:write", "offline_access"], legacy: true };
   const authState = await readState();
   const allowBootstrapToken = !authState.settings.pluginTokenHash || process.env.MEDIAFORGE_ALLOW_STATIC_MCP_TOKEN === "true";
-  if (!expected || !allowBootstrapToken) {
+  if (!expected) {
     const error = new Error("MEDIAFORGE_MCP_TOKEN is required when MCP authentication is enabled");
     error.code = "MCP_AUTH_NOT_CONFIGURED"; error.status = 500; throw error;
   }
-  if (!tokenMatches(token, expected)) {
+  if (!allowBootstrapToken || !tokenMatches(token, expected)) {
     const error = new Error("MCP authentication required");
     error.code = "MCP_AUTH_REQUIRED"; error.status = 401; throw error;
   }
