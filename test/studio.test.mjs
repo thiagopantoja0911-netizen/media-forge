@@ -56,8 +56,8 @@ function responseHarness() {
 }
 
 test("Forge Midjourney loads CSS and JS through canonical studio routes", () => {
-  assert.match(page, /href="\\/studio\\/studio\\.css"/);
-  assert.match(page, /src="\\/studio\\/app\\.js"/);
+  assert.ok(page.includes('href="/studio/studio.css"'));
+  assert.ok(page.includes('src="/studio/app.js"'));
   assert.match(page, /class="workflow-bar"/);
   assert.match(page, /id="build-composition"/);
   assert.match(page, /id="preview-text"/);
