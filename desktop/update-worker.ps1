@@ -84,7 +84,7 @@ try {
 
   $stableCount = 0
   $lastHealth = $null
-  for ($attempt = 1; $attempt -le 20; $attempt++) {
+  for ($attempt = 1; $attempt -le 40; $attempt++) {
     try {
       $lastHealth = Invoke-RestMethod -Uri ($ServerUrl.TrimEnd("/") + "/health") -TimeoutSec 15
       $seen = $null
@@ -92,8 +92,8 @@ try {
       $fresh = $seen -and (([DateTime]::UtcNow - $seen).TotalSeconds -lt 45)
       if ($lastHealth.worker.online -eq $true -and $lastHealth.worker.renderer -eq "hyperframes" -and $fresh) {
         $stableCount++
-        Add-Report ("Heartbeat confirmado " + $stableCount + "/4; último sinal: " + $lastHealth.worker.last_seen)
-        if ($stableCount -ge 4) { break }
+        Add-Report ("Heartbeat confirmado " + $stableCount + "/21; último sinal: " + $lastHealth.worker.last_seen)
+        if ($stableCount -ge 21) { break }
       } else {
         $stableCount = 0
         Add-Report ("Aguardando heartbeat estável; online=" + $lastHealth.worker.online + "; last_seen=" + $lastHealth.worker.last_seen)
@@ -104,10 +104,10 @@ try {
     }
     Start-Sleep -Seconds 15
   }
-  if ($stableCount -lt 4) { throw "O worker não manteve quatro heartbeats consecutivos. Consulte worker-session-utf8.log." }
+  if ($stableCount -lt 21) { throw "O worker não manteve 21 heartbeats consecutivos em cinco minutos. Consulte worker-session-utf8.log." }
   $taskAfter = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
   Add-Report ("Tarefa após atualização: " + $(if ($taskAfter) { $taskAfter.State } else { "não encontrada" }))
-  Add-Report "RESULTADO: worker atualizado e heartbeat estável por pelo menos 45 segundos."
+  Add-Report "RESULTADO: worker atualizado e heartbeat estável por pelo menos cinco minutos."
 } catch {
   Add-Report ("ERRO: " + $_.Exception.Message)
   if ($taskStopped) {
