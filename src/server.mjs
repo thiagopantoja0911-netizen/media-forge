@@ -200,7 +200,7 @@ async function rendererStatus() {
     // No heartbeat means the local worker is offline.
   }
   const lastSeen = worker?.lastSeen ?? null;
-  const online = Boolean(lastSeen && Date.now() - Date.parse(lastSeen) < 5000);
+  const online = Boolean(lastSeen && Date.now() - Date.parse(lastSeen) < 45_000);
   const jobs = await listJobs(200);
   const queued = jobs.filter((job) => job.status === "queued").length;
   const processing = jobs.filter((job) => job.status === "processing").length;
@@ -299,6 +299,7 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && url.pathname === "/health") {
+      response.setHeader("cache-control", "no-store, max-age=0");
       return send(response, 200, {
         ok: true,
         service: "mediaforge-orchestrator",
