@@ -55,6 +55,14 @@ function responseHarness() {
   };
 }
 
+test("Forge Midjourney loads CSS and JS through canonical studio routes", () => {
+  assert.match(page, /href="\\/studio\\/studio\\.css"/);
+  assert.match(page, /src="\\/studio\\/app\\.js"/);
+  assert.match(page, /class="workflow-bar"/);
+  assert.match(page, /id="build-composition"/);
+  assert.match(page, /id="preview-text"/);
+});
+
 test("Forge Midjourney is self-contained and isolated from external services", () => {
   assert.match(page, /Content-Security-Policy/);
   assert.match(page, /Forge Midjourney/);
