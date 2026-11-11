@@ -113,6 +113,7 @@ test("requires an authenticated MediaForge session for studio and assets", async
   assert.equal(auth.status, 200);
   assert.match(auth.headers["content-type"], /javascript/);
   assert.match(auth.headers["content-security-policy"], /connect-src 'self'/);
+  assert.match(auth.headers["content-security-policy"], /media-src 'self' blob:/);
   assert.match(String(auth.body), /mediaforge_creator_studio_v1/);
 });
 
