@@ -6,7 +6,7 @@
  <meta name="theme-color" content="#080d17">
  <meta name="description" content="Planeje vídeos com briefing, ganchos, storyboard por cena e exportação para o MediaForge.">
  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
- <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+ 
  <link rel="stylesheet" href="./studio.css">
  <title>Studio de Reels — MediaForge Creator Studio</title>
  <script defer src="./app.js"></script>
@@ -16,7 +16,7 @@
  <header class="top"><div class="container top-inner">
   <a class="brand" href="/dashboard"><span class="brand-icon">▶</span>MediaForge <span class="muted-brand">Creator Studio</span></a>
   <span class="top-status"><i aria-hidden="true"></i> Studio de criação</span>
-  <a class="top-link" href="/dashboard" target="_blank" rel="noopener noreferrer">Motion Studio ↗</a>
+  <a class="top-link" href="/dashboard">Painel MediaForge ↗</a>
  </div></header>
  <main id="conteudo" class="container">
   <section class="masthead">
@@ -55,7 +55,7 @@
       <p class="help">Copie o briefing para continuar o desenvolvimento ou salve o JSON no seu dispositivo. A conexão autenticada com a fila de renderização ainda não está habilitada.</p>
       <div class="button-row"><button type="button" id="copy-brief" class="button primary">Copiar briefing</button><button type="button" id="download-json" class="button secondary">Baixar JSON</button><button type="button" id="download-txt" class="button secondary">Baixar roteiro .txt</button></div>
       <div class="button-row secondary-actions"><a class="button ghost" href="https://chatgpt.com/plugins/plugins_6af35b6c46648191924c063620fe6e91" target="_blank" rel="noopener noreferrer">Abrir painel MediaForge ↗</a><a class="button ghost" href="/">Voltar ao painel MediaForge ↗</a></div>
-      <p class="privacy">Armazenamento local: os dados não são enviados ao servidor Salevo. Nenhum job será enviado à fila nesta etapa.</p>
+      <p class="privacy">Armazenamento local: os dados permanecem neste navegador. Nenhum job será enviado à fila nesta etapa.</p>
       <div class="button-row utility"><button type="button" id="new-project" class="mini-button">Novo projeto</button><button type="button" id="import-json" class="mini-button">Importar JSON</button><input type="file" accept=".json,application/json" id="import-file" hidden></div>
       <p id="notice" role="status" aria-live="polite"></p>
      </section>
@@ -75,6 +75,6 @@
    </aside>
   </div>
  </main>
- <footer class="footer"><div class="container"><span>© 2026 Salevo Video · Studio de criação</span><a href="/">Voltar ao painel</a></div></footer>
+ <footer class="footer"><div class="container"><span>© 2026 MediaForge · Creator Studio</span><a href="/dashboard">Voltar ao painel</a></div></footer>
 </body>
 </html>
