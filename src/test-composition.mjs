@@ -1,1 +1,185 @@
-export const TEST_COMPOSITION_HTML = "<!doctype html>\n<html lang=\"pt-BR\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>MediaForge — HyperFrames Render Test</title>\n  <style>\n    * { box-sizing: border-box; }\n    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }\n    body { background: #090d18; color: #f7f8ff; font-family: Inter, Arial, sans-serif; }\n    #root {\n      position: relative;\n      width: 100%;\n      height: 100%;\n      overflow: hidden;\n      background:\n        radial-gradient(ellipse at 50% 42%, rgba(67, 83, 160, .38), transparent 58%),\n        linear-gradient(135deg, #090d18 0%, #111a31 55%, #090d18 100%);\n    }\n    #test-content {\n      position: absolute;\n      inset: 0;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n      padding: 160px;\n      text-align: center;\n    }\n    #test-eyebrow {\n      color: #a8b8ff;\n      font-size: 48px;\n      font-weight: 700;\n      letter-spacing: .24em;\n      text-transform: uppercase;\n    }\n    #test-title {\n      margin: 52px 0 24px;\n      font-size: 224px;\n      line-height: 1;\n      font-weight: 900;\n      letter-spacing: -.055em;\n    }\n    #test-subtitle {\n      margin: 0;\n      color: #c2cbe0;\n      font-size: 64px;\n      line-height: 1.35;\n    }\n    #test-progress {\n      width: 1120px;\n      height: 16px;\n      margin-top: 108px;\n      overflow: hidden;\n      border-radius: 999px;\n      background: rgba(255,255,255,.16);\n    }\n    #test-progress-fill {\n      width: 100%;\n      height: 100%;\n      border-radius: inherit;\n      background: linear-gradient(90deg, #879bff, #71e6d1);\n      /* Initial transform is set by the paused GSAP timeline. */\n      transform-origin: left center;\n    }\n  </style>\n</head>\n<body>\n  <div id=\"root\"\n       data-composition-id=\"main\"\n       data-start=\"0\"\n       data-duration=\"10\"\n       data-width=\"3840\"\n       data-height=\"2160\">\n    <main id=\"test-content\" class=\"clip\" data-start=\"0\" data-duration=\"10\" data-track-index=\"1\">\n      <div id=\"test-eyebrow\">Pipeline de renderização</div>\n      <h1 id=\"test-title\">MediaForge</h1>\n      <p id=\"test-subtitle\">HyperFrames · composição, timeline e render</p>\n      <div id=\"test-progress\"><div id=\"test-progress-fill\"></div></div>\n    </main>\n  </div>\n  <script>\n    const timeline = gsap.timeline({ paused: true });\n    timeline.fromTo(\"#test-eyebrow\",\n      { opacity: 0, y: 24 },\n      { opacity: 1, y: 0, duration: 0.6, ease: \"power3.out\" },\n      0.3\n    );\n    timeline.fromTo(\"#test-title\",\n      { opacity: 0, y: 48, scale: 0.96 },\n      { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: \"power4.out\" },\n      0.55\n    );\n    timeline.fromTo(\"#test-subtitle\",\n      { opacity: 0, y: 20 },\n      { opacity: 1, y: 0, duration: 0.7, ease: \"power3.out\" },\n      1.2\n    );\n    timeline.fromTo(\"#test-progress-fill\",\n      { scaleX: 0 },\n      { scaleX: 1, duration: 7, ease: \"none\" },\n      2\n    );\n    window.__timelines = window.__timelines || {};\n    window.__timelines[\"main\"] = timeline;\n  </script>\n</body>\n</html>\n";
+import { readFile } from "node:fs/promises";
+
+export const TEST_COMPOSITION_INDEX_HTML = `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MediaForge — HyperFrames Render Test</title>
+</head>
+<body>
+  <div id="root"
+       data-composition-id="main"
+       data-start="0"
+       data-duration="10"
+       data-width="3840"
+       data-height="2160">
+    <div id="test-scene"
+         data-composition-id="test-scene"
+         data-composition-src="compositions/test-scene.html"
+         data-start="0"
+         data-duration="10"
+         data-track-index="1"
+         data-width="3840"
+         data-height="2160"></div>
+  </div>
+
+  <script src="assets/gsap.min.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    window.__timelines["main"] = gsap.timeline({ paused: true });
+  </script>
+</body>
+</html>
+`;
+
+export const TEST_COMPOSITION_SCENE_HTML = `<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 50% 42%, rgba(67, 83, 160, .38), transparent 58%),
+        linear-gradient(135deg, #090d18 0%, #111a31 55%, #090d18 100%);
+      color: #f7f8ff;
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    #test-eyebrow {
+      position: absolute;
+      top: 650px;
+      left: 0;
+      width: 100%;
+      color: #a8b8ff;
+      text-align: center;
+      font-size: 64px;
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    #test-eyebrow-text,
+    #test-title-text,
+    #test-subtitle-text {
+      display: inline-block;
+    }
+
+    #test-title {
+      position: absolute;
+      top: 790px;
+      left: 0;
+      width: 100%;
+      margin: 0;
+      text-align: center;
+      font-size: 224px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: -.055em;
+    }
+
+    #test-subtitle {
+      position: absolute;
+      top: 1090px;
+      left: 0;
+      width: 100%;
+      margin: 0;
+      color: #c2cbe0;
+      text-align: center;
+      font-size: 64px;
+      line-height: 1.35;
+    }
+
+    #test-progress {
+      position: absolute;
+      top: 1450px;
+      left: 1360px;
+      width: 1120px;
+      height: 16px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,.16);
+    }
+
+    #test-progress-clip {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    #test-progress-fill {
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #879bff, #71e6d1);
+      transform-origin: left center;
+    }
+  </style>
+
+  <div id="root"
+       data-composition-id="test-scene"
+       data-width="3840"
+       data-height="2160">
+    <div id="test-eyebrow" class="clip" data-start="0" data-duration="10" data-track-index="1">
+      <span id="test-eyebrow-text">Pipeline de renderização</span>
+    </div>
+
+    <h1 id="test-title" class="clip" data-start="0" data-duration="10" data-track-index="2">
+      <span id="test-title-text">MediaForge</span>
+    </h1>
+
+    <p id="test-subtitle" class="clip" data-start="0" data-duration="10" data-track-index="3">
+      <span id="test-subtitle-text">HyperFrames · composição, timeline e render</span>
+    </p>
+
+    <div id="test-progress">
+      <div id="test-progress-clip" class="clip" data-start="2" data-duration="7" data-track-index="4">
+        <div id="test-progress-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const timeline = gsap.timeline({ paused: true });
+
+    timeline.fromTo("#test-eyebrow-text",
+      { opacity: 0, y: 24 },
+      { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" },
+      0.3
+    );
+
+    timeline.fromTo("#test-title-text",
+      { opacity: 0, y: 48, scale: 0.96 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: "power4.out" },
+      0.55
+    );
+
+    timeline.fromTo("#test-subtitle-text",
+      { opacity: 0, y: 20 },
+      { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" },
+      1.2
+    );
+
+    timeline.fromTo("#test-progress-fill",
+      { scaleX: 0 },
+      { scaleX: 1, duration: 7, ease: "none" },
+      2
+    );
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines["test-scene"] = timeline;
+  </script>
+</template>
+`;
+
+export async function getTestCompositionFiles() {
+  const gsap = await readFile(new URL("../assets/gsap.min.js", import.meta.url), "utf8");
+  return [
+    { path: "index.html", content: TEST_COMPOSITION_INDEX_HTML, encoding: "utf8" },
+    { path: "compositions/test-scene.html", content: TEST_COMPOSITION_SCENE_HTML, encoding: "utf8" },
+    { path: "assets/gsap.min.js", content: gsap, encoding: "utf8" }
+  ];
+}
