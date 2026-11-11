@@ -12,13 +12,41 @@ Push-Location $InstallDir
 try {
   $envFile = Join-Path $InstallDir ".env.local"
   if (-not (Test-Path -LiteralPath $envFile)) { throw "Arquivo .env.local não encontrado." }
+  $remainingSettings = New-Object System.Collections.Generic.List[string]
+  $legacyToken = $null
   Get-Content -LiteralPath $envFile | ForEach-Object {
     if ($_ -match "^\s*([^#=\s]+)=(.*)$") {
-      [Environment]::SetEnvironmentVariable($matches[1], $matches[2], "Process")
+      $key = $matches[1]
+      $value = $matches[2]
+      if ($key -eq "MEDIAFORGE_WORKER_TOKEN") { $legacyToken = $value }
+      else {
+        [Environment]::SetEnvironmentVariable($key, $value, "Process")
+        $remainingSettings.Add($_)
+      }
+    } else { $remainingSettings.Add($_) }
+  }
+  Add-Type -AssemblyName System.Security
+  $tokenFile = Join-Path $InstallDir ".worker-token.dpapi"
+  if ($legacyToken) {
+    $tokenBytes = [Text.Encoding]::UTF8.GetBytes($legacyToken)
+    try {
+      $protected = [Security.Cryptography.ProtectedData]::Protect($tokenBytes, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
+      [IO.File]::WriteAllBytes($tokenFile, $protected)
+    } finally {
+      [Array]::Clear($tokenBytes, 0, $tokenBytes.Length)
+      Remove-Variable legacyToken -ErrorAction SilentlyContinue
     }
+    [IO.File]::WriteAllLines($envFile, [string[]]$remainingSettings, ([Text.UTF8Encoding]::new($false)))
+    Add-Content -LiteralPath $logFile -Value ("[{0}] Token migrado para DPAPI CurrentUser." -f (Get-Date -Format o))
+  }
+  if (Test-Path -LiteralPath $tokenFile) {
+    $encrypted = [IO.File]::ReadAllBytes($tokenFile)
+    $clear = [Security.Cryptography.ProtectedData]::Unprotect($encrypted, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser)
+    try { $env:MEDIAFORGE_WORKER_TOKEN = [Text.Encoding]::UTF8.GetString($clear) }
+    finally { [Array]::Clear($clear, 0, $clear.Length) }
   }
   if (-not $env:MEDIAFORGE_REMOTE_URL -or -not $env:MEDIAFORGE_WORKER_TOKEN) {
-    throw "Conexão remota incompleta. Verifique MEDIAFORGE_REMOTE_URL e MEDIAFORGE_WORKER_TOKEN."
+    throw "Conexão remota incompleta. Verifique o endereço do servidor e o token DPAPI."
   }
   $workerDeps = Join-Path $InstallDir "desktop\worker"
   $ffmpegPackage = Join-Path $workerDeps "node_modules\ffmpeg-static\package.json"
