@@ -605,7 +605,7 @@ export async function buildCreatorComposition(manifest, mediaInput = {}) {
   else if (Math.abs(voiceover.durationSeconds - duration) > 1.5) blockers.push("A narração tem " + voiceover.durationSeconds.toFixed(2) + " s e o vídeo " + duration + " s; ajustar a timeline e sincronizar as falas.");
   if (!music) blockers.push("Trilha musical ainda não foi anexada.");
   else if (music.durationSeconds < duration - 0.5) blockers.push("A trilha musical termina antes do vídeo; não haverá loop automático.");
-  if (scenes.some((scene, index) => textValue(scene.sound).trim() && !sfxAssets[index])) warnings.push("Algumas cenas descrevem efeitos sonoros sem arquivos; revisar na montagem final.");
+  if (scenes.some((scene, index) => textValue(scene.sound).trim() && !sfxAssets[index])) blockers.push("As notas de som por cena ainda precisam ser resolvidas em efeitos sonoros reais e licenciados antes da entrega.");
   if (sceneMedia.some(media => !media)) blockers.push("Há cenas sem mídia real; anexe imagens ou vídeos relevantes às cinco cenas.");
   else warnings.push("Revisar se os arquivos de mídia representam fielmente as ações narradas.");
   blockers.push(...testGate.blockers);
