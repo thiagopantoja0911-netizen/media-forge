@@ -11,12 +11,11 @@ try{$token=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)}
 finally{[Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)}
 if($token.Length -lt 32){throw "Token inválido. O token deve conter pelo menos 32 caracteres"}
 $envPath=Join-Path $InstallDir ".env.local"
-$lines=if(Test-Path $envPath){@(Get-Content -LiteralPath $envPath)}else{@()}
-$lines=@($lines | Where-Object {$_ -notmatch '^(MEDIAFORGE_REMOTE_URL|MEDIAFORGE_WORKER_TOKEN)='})
+$lines=if(Test-Path $envPath){@(Get-Content -LiteralPath $envPath | Where-Object {$_ -notmatch '^(MEDIAFORGE_REMOTE_URL|MEDIAFORGE_WORKER_TOKEN)='})}else{@()}
 $lines+=@("MEDIAFORGE_REMOTE_URL=$ServerUrl","MEDIAFORGE_WORKER_TOKEN=$token")
-$lines | Set-Content -LiteralPath $envPath -Encoding utf8
+[IO.File]::WriteAllLines($envPath,[string[]]$lines,(New-Object System.Text.UTF8Encoding($false)))
 $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 & icacls $envPath /inheritance:r /grant:r ('*'+$sid+':(F)') | Out-Null
+if($LASTEXITCODE -ne 0){throw "Não foi possível restringir as permissões do arquivo de conexão."}
 Remove-Variable token
-Write-Host "Conexão remota configurada. Inicie: powershell -ExecutionPolicy Bypass -File .\desktop\run-worker.ps1 -InstallDir '$InstallDir'"
-Write-Host "Mantenha o worker antigo Salevo em funcionamento durante os testes."
+& (Join-Path $PSScriptRoot "start-worker-background.ps1") -InstallDir $InstallDir
