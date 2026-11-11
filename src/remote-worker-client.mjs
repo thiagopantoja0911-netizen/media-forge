@@ -6,6 +6,7 @@ import { resolve, join, relative, sep, basename } from "node:path";
 import { hostname } from "node:os";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
 import { verifyVideoArtifact } from "./renderers/verify-video.mjs";
+import { startHeartbeatLoop } from "./worker-heartbeat.mjs";
 
 const workerRequire = createRequire(new URL("../desktop/worker/package.json", import.meta.url));
 const ffmpegPath = process.env.MEDIAFORGE_FFMPEG_PATH || workerRequire("ffmpeg-static");
@@ -38,9 +39,9 @@ function inside(root,target) {
   const r=relative(root,target);
   return r && r!==".." && !r.startsWith(".."+sep) && !/^(?:[\\/]|[A-Za-z]:)/.test(r);
 }
-async function call(path, method="GET", body, leaseId) {
+async function call(path, method="GET", body, leaseId, timeoutMs=45_000) {
   const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),45_000);
+  const timeout=setTimeout(()=>controller.abort(),timeoutMs);
   try{
     const res=await fetch(url+path,{method,headers:{
       authorization:"Bearer "+token,
@@ -56,7 +57,7 @@ async function sendHeartbeat(active) {
   return call("/v1/worker/heartbeat","POST",{
     workerId,renderer:"hyperframes",
     jobId:active?.id,leaseId:active?.leaseId
-  });
+  },undefined,10_000);
 }
 async function downloadProject(id,leaseId){
   const result=await call("/v1/worker/jobs/"+id+"/project","GET",undefined,leaseId);
@@ -91,9 +92,6 @@ async function hashFile(path) {
   return hash.digest("hex");
 }
 async function processRemote(job,leaseId) {
-  const active={id:job.id,leaseId};
-  const interval=setInterval(()=>sendHeartbeat(active).catch((error)=>
-    console.error("Heartbeat failed:",error.message)),15000);
   try{
     await reportProgress(job,leaseId,12,"Baixando e verificando os arquivos do projeto");
     await downloadProject(job.id,leaseId);
@@ -123,16 +121,29 @@ async function processRemote(job,leaseId) {
     try{await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
       leaseId,success:false,error:String(error.stack||error.message).slice(0,15000)
     });}catch(e){console.error("Could not report failure:",e.message);}
-  }finally{clearInterval(interval);}
+  }
 }
 await mkdir(projectsRoot,{recursive:true});
 console.log("MediaForge remote Windows worker connecting to",url);
+let activeLease=null;
+startHeartbeatLoop(
+  () => sendHeartbeat(activeLease),
+  {
+    intervalMs:15_000,
+    onError:(error)=>console.error("["+new Date().toISOString()+"] Heartbeat failed:",error.message)
+  }
+);
+try { await sendHeartbeat(activeLease); }
+catch(error) { console.error("Initial heartbeat failed:",error.message); }
 while(true){
   try{
-    await sendHeartbeat();
     const next=await call("/v1/worker/claim","POST",{workerId});
-    if(next.job)await processRemote(next.job,next.leaseId);
-  }catch(error){console.error("Remote connection error:",error.message);}
+    if(next.job){
+      activeLease={id:next.job.id,leaseId:next.leaseId};
+      await processRemote(next.job,next.leaseId);
+      activeLease=null;
+    }
+  }catch(error){console.error("["+new Date().toISOString()+"] Remote connection error:",error.message);}
   if(process.argv.includes("--once"))break;
   await new Promise(r=>setTimeout(r,pollMs));
 }
