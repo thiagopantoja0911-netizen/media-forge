@@ -61,6 +61,8 @@ test("Creator Studio is self-contained and isolated from external services", () 
   assert.match(page, /o pacote não será enviado à fila/);
   assert.match(page, /id="voiceover-file"/);
   assert.match(page, /id="music-file"/);
+  assert.match(page, /id="voiceover-preview"/);
+  assert.match(page, /id="music-preview"/);
   assert.match(page, /VoiceStudio/);
   assert.match(script, /readAsDataURL/);
   assert.match(script, /mediaforge_creator_studio_v1/);
