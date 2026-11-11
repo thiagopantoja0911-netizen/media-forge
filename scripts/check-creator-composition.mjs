@@ -80,6 +80,14 @@ try {
     throw new Error("HyperFrames snapshot --review failed with exit code " + snapshot.code);
   }
 
+  for (let index = 1; index <= 4; index += 1) {
+    const composition = "transition-0" + index;
+    const review = await runCli(directory, ["snapshot", "--review", "--composition", composition]);
+    process.stdout.write("Transition review " + composition + ":\\n" + review.stdout);
+    if (review.stderr) process.stderr.write(review.stderr);
+    if (review.code !== 0) throw new Error("HyperFrames transition review failed for " + composition);
+  }
+
   const sourceSnapshots = join(directory, ".hyperframes", "artifacts", "snapshots");
   const snapshotFiles = await readdir(sourceSnapshots, { recursive: true });
   if (!snapshotFiles.length) throw new Error("HyperFrames did not produce review snapshots");
