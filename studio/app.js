@@ -5,7 +5,8 @@
   var names=['Gancho','Contexto','Prova visual','Revelação','Fechamento'];
   var fields=['spoken','onscreen','action','sound'];
   var project={version:VERSION,updatedAt:'',title:'',topic:'',intent:'curiosidade',duration:'45',audience:'',tone:'investigativo',style:'',cta:'',hookA:'',hookB:'',hookC:'',selectedHook:'hookA',scenes:[]};
-  var active=0;\n  var audioFiles={voiceover:null,music:null};
+  var active=0;
+  var audioFiles={voiceover:null,music:null};
   function el(id){return document.getElementById(id);}
   function clean(s,max){return String(s==null?'':s).slice(0,max||2000);}
   function timestamp(s){var n=Math.max(0,Math.round(s));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');}
