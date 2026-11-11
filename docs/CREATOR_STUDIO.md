@@ -9,7 +9,7 @@ O Creator Studio é a interface de planejamento de vídeos do repositório Media
 - Storyboard de cinco cenas com tempos estimados.
 - Campos por cena para narração, texto na tela, ação/câmera e som.
 - Prévia ilustrativa do storyboard.
-- Identificação editorial de cada cena e legendas em uma faixa separada, dentro da área segura vertical.
+- Identificação editorial de cada cena (56 px no canvas 4K) e legendas em uma faixa separada, dentro da área segura vertical.
 - Quatro transições distintas entre cenas: flash editorial, rabisco, íris e whip.
 - Upload opcional de locução e trilha, com prévia local antes de gerar o pacote.
 - Salvamento local no navegador e importação/exportação JSON/TXT.
