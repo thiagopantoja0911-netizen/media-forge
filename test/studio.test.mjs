@@ -59,6 +59,10 @@ test("Creator Studio is self-contained and isolated from external services", () 
   assert.match(page, /Content-Security-Policy/);
   assert.match(page, /MediaForge Creator Studio/);
   assert.match(page, /O pacote gerado não será enviado à fila nesta etapa/);
+  assert.match(page, /id="voiceover-file"/);
+  assert.match(page, /id="music-file"/);
+  assert.match(page, /VoiceStudio/);
+  assert.match(script, /readAsDataURL/);
   assert.match(script, /mediaforge_creator_studio_v1/);
   assert.match(script, /fetch\(['"]\/api\/studio\/compose/);
   assert.doesNotMatch(script, /fetch\(['"]https?:/);
