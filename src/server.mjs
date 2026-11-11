@@ -288,7 +288,7 @@ const server = createServer(async (request, response) => {
       });
     }
 
-    if (await handleStudioApi({ request, response, parseBody, isAdminSession })) return;
+    if (await handleStudioApi({ request, response, parseBody, isAdminSession, createJob, getJob: async (id) => { try { return await loadJob(id); } catch (error) { if (error.code === "ENOENT") return null; throw error; } } })) return;
 
     if (url.pathname === "/studio" || url.pathname.startsWith("/studio/")) {
       return handleStudio({ request, response, isAdminSession });
