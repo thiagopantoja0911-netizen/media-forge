@@ -48,7 +48,10 @@ Por padrão, a API escuta em http://127.0.0.1:8787.
 Para ativar o renderer real:
 
     set MEDIAFORGE_RENDERER=hyperframes
+    set HYPERFRAMES_VERSION=0.9.25
     npm run worker
+
+O job pode definir `resolution` (`1080p`, `1440p`, `4k` ou presets por orientação), `fps` (1–240 ou racional como `30000/1001`), `quality` (`draft`, `looks`, `standard`, `high` ou `delivery`), `workers`, `browserGpu` e `preflight`. O worker executa `hyperframes check --json --no-craft` antes do render por padrão.
 
 Para habilitar o MCP em uma máquina exposta, configure:
 
@@ -79,7 +82,8 @@ Veja:
 
 - `docs/VIDEOS_SECRETS_BRIDGE.md`
 - `docs/VIDEOS_SECRETS_MIGRATION.md`
-- `docs/MEDIAFORGE_DEPLOYMENT.md`\n- `docs/UPSTREAM_UPDATES.md`
+- `docs/MEDIAFORGE_DEPLOYMENT.md`
+- `docs/UPSTREAM_UPDATES.md`\n- `docs/UPSTREAM_UPDATES.md`
 
 ## Segurança operacional
 
