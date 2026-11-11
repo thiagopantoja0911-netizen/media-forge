@@ -91,8 +91,8 @@ export function sceneMediaReadiness(sceneMedia, audio, durationSeconds, scenes, 
       (audio.voiceover?.sizeBytes || 0) + (audio.music?.sizeBytes || 0) + sfxAssets.reduce((sum, item) => sum + (item?.sizeBytes || 0), 0);
   if (total > MAX_MEDIA_TOTAL_BYTES) blockers.push("Áudio + mídia excedem 18 MB por requisição.");
   scenes.forEach((scene, index) => { if (scene.sound && !sfxAssets[index]) warnings.push("Cena " + (index + 1) + ": efeito sonoro descrito, mas sem arquivo anexado."); });
-  supplied.forEach((item, index) => {
-    if (item.kind !== "video") return;
+  sceneMedia.forEach((item, index) => {
+    if (!item || item.kind !== "video") return;
     const sceneSeconds = scenes[index].end - scenes[index].start;
     if (item.durationSeconds + 0.1 < sceneSeconds) blockers.push("O vídeo da cena " + (index + 1) + " é mais curto que a cena.");
   });
