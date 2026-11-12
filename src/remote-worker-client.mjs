@@ -79,8 +79,8 @@ async function processRemote(job,leaseId) {
     const rendered=await renderWithHyperFrames(configured);
     const info=await stat(rendered.outputPath);
     if(!info.isFile()||info.size===0)throw new Error("Video artifact missing or empty");
-    const technicalQA=await inspectRenderedVideo(rendered.outputPath,configured.project,
-      configured.metadata?.expectsAudio===true);
+    const technicalQA=await inspectRenderedVideo(rendered.outputPath,{...configured.project,width:rendered.motionReview?.width,height:rendered.motionReview?.height},
+      configured.metadata?.expectsAudio===true || rendered.motionReview?.expectsAudio===true);
     if(technicalQA.status==="failed") {
       const error=new Error("O MP4 falhou no QA técnico: "+technicalQA.issues.join("; "));
       error.code="VIDEO_TECHNICAL_QA_FAILED";
@@ -92,7 +92,7 @@ async function processRemote(job,leaseId) {
     await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
       leaseId,success:true,fileName:basename(rendered.outputPath),size:info.size,
       sha256:await hashFile(rendered.outputPath),outputPath:rendered.outputPath,
-      report:{outputName:basename(rendered.outputPath),technicalQA,artisticQA:"pending-user-review"}
+      report:{outputName:basename(rendered.outputPath),technicalQA,motionReview:rendered.motionReview??null,diagnosticsDir:rendered.diagnosticsDir,artisticQA:"pending-user-review"}
     });
     console.log("Remote job completed:",job.id);
   }catch(error){

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { fpsValue } from "./motion/plan.mjs";
 
 /**
  * Technical verification only. This is NOT an artistic approval.
@@ -9,15 +10,23 @@ export function evaluateVideoProbe(data, project, expectsAudio = false) {
   const video = streams.find(s => s.codec_type === "video");
   const audio = streams.find(s => s.codec_type === "audio");
   const issues = [];
-  const expected = { "portrait-4k": [2160, 3840], "4k": [3840, 2160], "1080p": [1920, 1080] };
-  const target = expected[project.resolution] || null;
+  const expected = {
+    "portrait": [1080,1920], "landscape": [1920,1080], "square": [1080,1080],
+    "portrait-4k": [2160,3840], "landscape-4k": [3840,2160], "square-4k": [2160,2160],
+    "4k": [3840,2160], "uhd": [3840,2160], "1080p": [1920,1080],
+    "landscape-1440p": [2560,1440], "portrait-1440p": [1440,2560], "square-1440p": [1440,1440],
+    "1440p": [2560,1440], "qhd": [2560,1440], "1080p-square": [1080,1080],
+    "square-1080p": [1080,1080], "4k-square": [2160,2160],
+    "1440p-portrait": [1440,2560], "1440p-square": [1440,1440]
+  };
+  const target = expected[project.resolution] || (project.width && project.height ? [project.width,project.height] : null);
   if (!video) issues.push("MP4 sem stream de vídeo");
   if (target && video && (Number(video.width) !== target[0] || Number(video.height) !== target[1])) {
     issues.push("Resolução diferente de " + target.join("x"));
   }
   const fpsParts = String(video?.avg_frame_rate || "0/1").split("/");
   const fps = Number(fpsParts[0]) / Number(fpsParts[1] || 1);
-  const expectedFps = Number(project.fps) || 60;
+  const expectedFps = fpsValue(project.fps ?? 60);
   if (!Number.isFinite(fps) || fps < 1 || Math.abs(fps - expectedFps) > 0.65) {
     issues.push("FPS incorreto: " + (Number.isFinite(fps) ? fps.toFixed(2) : "desconhecido"));
   }

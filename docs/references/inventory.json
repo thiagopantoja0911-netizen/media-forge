@@ -1,0 +1,515 @@
+[
+  {
+    "id": "7521798862521060630",
+    "filename": "A little widget animation. #widget #animation #satisfyingvideos #asmr... [7521798862521060630].mp4",
+    "sha256": "ba842e9e9dd0ffe7c599e05b74743a4f580c0326b0c4a700bbe0bb1fea1ec217",
+    "duration": 16.8,
+    "width": 1080,
+    "height": 1920,
+    "fps": "60/1",
+    "audioStreams": [
+      {
+        "codec": "aac",
+        "sampleRate": "44100",
+        "channels": 2
+      }
+    ],
+    "loudness": {
+      "input_i": "-17.56",
+      "input_tp": "0.40",
+      "input_lra": "15.60",
+      "input_thresh": "-28.97",
+      "output_i": "-24.11",
+      "output_tp": "-5.93",
+      "output_lra": "6.10",
+      "output_thresh": "-35.15",
+      "normalization_type": "dynamic",
+      "target_offset": "0.11"
+    },
+    "cutCandidates": [
+      15.566667
+    ],
+    "microSampleAt": 15.566667,
+    "atlasSampleTimes": [
+      0.7000000000000001,
+      2.1,
+      3.5,
+      4.9,
+      6.300000000000001,
+      7.7,
+      9.1,
+      10.5,
+      11.9,
+      13.299999999999999,
+      14.700000000000001,
+      16.1
+    ]
+  },
+  {
+    "id": "7685009464457465109",
+    "filename": "caso precise de uma edição de vídeo, entre em contato comigo pela bio... [7685009464457465109].mp4",
+    "sha256": "a7b55e66d41259f55986745bd9bfc5f09695a613681197043a95c80ff42b0d90",
+    "duration": 71.733333,
+    "width": 576,
+    "height": 1024,
+    "fps": "30/1",
+    "audioStreams": [
+      {
+        "codec": "aac",
+        "sampleRate": "44100",
+        "channels": 2
+      }
+    ],
+    "loudness": {
+      "input_i": "-21.89",
+      "input_tp": "0.15",
+      "input_lra": "6.90",
+      "input_thresh": "-32.00",
+      "output_i": "-24.86",
+      "output_tp": "-2.85",
+      "output_lra": "5.20",
+      "output_thresh": "-34.88",
+      "normalization_type": "dynamic",
+      "target_offset": "0.86"
+    },
+    "cutCandidates": [
+      8.333333,
+      9.166667,
+      9.466667,
+      11.966667,
+      13.133333,
+      19.133333,
+      19.9,
+      19.933333,
+      23.0,
+      23.166667,
+      26.0,
+      26.033333,
+      29.166667,
+      29.2,
+      30.5,
+      30.666667,
+      31.066667,
+      32.133333
+    ],
+    "microSampleAt": 8.333333,
+    "atlasSampleTimes": [
+      2.9888888750000002,
+      8.966666625,
+      14.944444375000002,
+      20.922222125,
+      26.899999875000002,
+      32.877777625,
+      38.855555375,
+      44.833333125,
+      50.811110875,
+      56.788888625,
+      62.766666375,
+      68.744444125
+    ]
+  },
+  {
+    "id": "7693603336481803542",
+    "filename": "Do you want a tutorial _⬇️ #motion #motiongraphics #claude #aftereffe... [7693603336481803542].mp4",
+    "sha256": "04b9449ebf85c1cb1423100baf248effa791c27f50a6830f3e26e83d2fd8c33d",
+    "duration": 14.333333,
+    "width": 1080,
+    "height": 1920,
+    "fps": "1293/43",
+    "audioStreams": [
+      {
+        "codec": "aac",
+        "sampleRate": "44100",
+        "channels": 2
+      }
+    ],
+    "loudness": {
+      "input_i": "-13.68",
+      "input_tp": "1.10",
+      "input_lra": "2.70",
+      "input_thresh": "-24.19",
+      "output_i": "-23.61",
+      "output_tp": "-8.25",
+      "output_lra": "2.50",
+      "output_thresh": "-33.67",
+      "normalization_type": "dynamic",
+      "target_offset": "-0.39"
+    },
+    "cutCandidates": [],
+    "microSampleAt": 2,
+    "atlasSampleTimes": [
+      0.5972222083333333,
+      1.7916666250000002,
+      2.9861110416666663,
+      4.180555458333333,
+      5.374999875,
+      6.569444291666667,
+      7.763888708333333,
+      8.958333125,
+      10.152777541666667,
+      11.347221958333334,
+      12.541666375,
+      13.736110791666666
+    ]
+  },
+  {
+    "id": "7624546375375588615",
+    "filename": "E se a @Nubank me contratasse para a próxima campanha_ 👀 @oto criativ... [7624546375375588615].mp4",
+    "sha256": "41399fc930709c77307516be085ad9b8c45dd44284f63dadecdfb99e1b37d478",
+    "duration": 10.533333,
+    "width": 1080,
+    "height": 1920,
+    "fps": "30/1",
+    "audioStreams": [
+      {
+        "codec": "aac",
+        "sampleRate": "44100",
+        "channels": 2
+      }
+    ],
+    "loudness": {
+      "input_i": "-15.89",
+      "input_tp": "-3.06",
+      "input_lra": "19.60",
+      "input_thresh": "-28.25",
+      "output_i": "-23.42",
+      "output_tp": "-10.08",
+      "output_lra": "7.60",
+      "output_thresh": "-34.87",
+      "normalization_type": "dynamic",
+      "target_offset": "-0.58"
+    },
+    "cutCandidates": [
+      6.8
+    ],
+    "microSampleAt": 6.8,
+    "atlasSampleTimes": [
+      0.438888875,
+      1.316666625,
+      2.1944443750000002,
+      3.072222125,
+      3.949999875,
+      4.827777625,
+      5.705555375,
+      6.583333125,
+      7.461110875,
+      8.338888625000001,
+      9.216666375,
+      10.094444125
+    ]
+  },
+  {
+    "id": "7657700630282112277",
+    "filename": "Feito totalmente no AlightMotion, eai o que acharam_ #alightmotion #m... [7657700630282112277].mp4",
+    "sha256": "284f00d718ec1910f12670274559b49d6a3ef811e5d9511a49861f4a41ff123b",
+    "duration": 35.9,
+    "width": 576,
+    "height": 1024,
+    "fps": "30/1",
+    "audioStreams": [
+      {
+        "codec": "aac",
+        "sampleRate": "44100",
+        "channels": 2
+      }
+    ],
+    "loudness": {
+      "input_i": "-15.96",
+      "input_tp": "-0.57",
+      "input_lra": "2.60",
+      "input_thresh": "-25.96",
+      "output_i": "-24.12",
+      "output_tp": "-8.70",
+      "output_lra": "2.40",
+      "output_thresh": "-34.12",
+      "normalization_type": "dynamic",
+      "target_offset": "0.12"
+    },
+    "cutCandidates": [
+      5.333333,
+      5.366667,
+      6.233333,
+      6.3,
+      8.133333,
+      8.166667,
+      12.966667,
+      20.966667,
+      21.0
+    ],
+    "microSampleAt": 5.333333,
+    "atlasSampleTimes": [
+      1.4958333333333333,
+      4.4875,
+      7.479166666666667,
+      10.470833333333333,
+      13.462499999999999,
+      16.454166666666666,
+      19.445833333333333,
+      22.4375,
+      25.429166666666664,
+      28.420833333333334,
+      31.412499999999998,
+      34.40416666666666
+    ]
+  },
+  {
+    "id": "7687130048331058445",
+    "filename": "meaningful love (scrap)  __   ib_ chocographix . . . #visual #motiong... [7687130048331058445].mp4",
+    "sha256": "bfc604c7abc09e9e5b8ec4933b98c7eab91d3fb12ba648d14b1210578ee8dfbd",
+    "duration": 8.5,
+    "width": 1920,
+    "height": 1080,
+    "fps": "24/1",
+    "audioStreams": [
+      {
+        "codec": "aac",
+        "sampleRate": "44100",
+        "channels": 2
+      }
+    ],
+    "loudness": {
+      "input_i": "-15.66",
+      "input_tp": "-4.19",
+      "input_lra": "1.10",
+      "input_thresh": "-25.74",
+      "output_i": "-23.96",
+      "output_tp": "-12.45",
+      "output_lra": "1.10",
+      "output_thresh": "-34.07",
+      "normalization_type": "dynamic",
+      "target_offset": "-0.04"
+    },
+    "cutCandidates": [
+      1.125,
+      2.333333,
+      3.625,
+      3.666667,
+      5.375,
+      5.416667,
+      6.041667,
+      6.083333,
+      6.125
+    ],
+    "microSampleAt": 1.125,
+    "atlasSampleTimes": [
+      0.3541666666666667,
+      1.0625,
+      1.7708333333333333,
+      2.4791666666666665,
+      3.1875,
+      3.8958333333333335,
+      4.604166666666667,
+      5.3125,
+      6.020833333333333,
+      6.729166666666667,
+      7.4375,
+      8.145833333333334
+    ]
+  },
+  {
+    "id": "7564569795048312084",
+    "filename": "Motion design é o que transforma um vídeo comum em algo que prende o ... [7564569795048312084].mp4",
+    "sha256": "caca0498bfd740ef287ddfe8da9868b900b61dbb41c6e07ec55eac749133bca1",
+    "duration": 22.933333,
+    "width": 720,
+    "height": 1280,
+    "fps": "30/1",
+    "audioStreams": [
+      {
+        "codec": "aac",
+        "sampleRate": "44100",
+        "channels": 2
+      }
+    ],
+    "loudness": {
+      "input_i": "-17.53",
+      "input_tp": "0.10",
+      "input_lra": "2.60",
+      "input_thresh": "-27.53",
+      "output_i": "-23.60",
+      "output_tp": "-6.63",
+      "output_lra": "2.70",
+      "output_thresh": "-33.60",
+      "normalization_type": "dynamic",
+      "target_offset": "-0.40"
+    },
+    "cutCandidates": [
+      1.933333,
+      1.966667,
+      5.466667,
+      6.9,
+      10.8,
+      12.933333,
+      20.166667
+    ],
+    "microSampleAt": 1.933333,
+    "atlasSampleTimes": [
+      0.9555555416666667,
+      2.866666625,
+      4.777777708333334,
+      6.688888791666667,
+      8.599999875,
+      10.511110958333335,
+      12.422222041666666,
+      14.333333125000001,
+      16.244444208333334,
+      18.15555529166667,
+      20.066666375,
+      21.977777458333335
+    ]
+  },
+  {
+    "id": "7588613309767650580",
+    "filename": "primeiro tutorial !! espero que dê pra entender #foryoupage #editor #... [7588613309767650580].mp4",
+    "sha256": "50c0a15243dc671a1441b601ee2131bc8709c0b26d7373f3adf665debd8266fa",
+    "duration": 28.283333,
+    "width": 1080,
+    "height": 1920,
+    "fps": "60/1",
+    "audioStreams": [
+      {
+        "codec": "aac",
+        "sampleRate": "44100",
+        "channels": 2
+      }
+    ],
+    "loudness": {
+      "input_i": "-12.42",
+      "input_tp": "0.38",
+      "input_lra": "2.30",
+      "input_thresh": "-22.42",
+      "output_i": "-23.97",
+      "output_tp": "-11.26",
+      "output_lra": "2.00",
+      "output_thresh": "-33.97",
+      "normalization_type": "dynamic",
+      "target_offset": "-0.03"
+    },
+    "cutCandidates": [
+      9.083333,
+      15.05,
+      17.666667,
+      21.216667
+    ],
+    "microSampleAt": 9.083333,
+    "atlasSampleTimes": [
+      1.1784722083333332,
+      3.535416625,
+      5.892361041666667,
+      8.249305458333334,
+      10.606249875,
+      12.963194291666667,
+      15.320138708333332,
+      17.677083125,
+      20.034027541666664,
+      22.390971958333335,
+      24.747916375,
+      27.104860791666667
+    ]
+  },
+  {
+    "id": "7676866948541648148",
+    "filename": "Quer um Criativo assim_ Dm @sat6shi #motiongraphics #motiondesign #al... [7676866948541648148].mp4",
+    "sha256": "5dcd44d43fe329336a9d41267982e1859bd0038c743a9ae005b9540fb3c49d9f",
+    "duration": 21.5,
+    "width": 1080,
+    "height": 1350,
+    "fps": "60/1",
+    "audioStreams": [
+      {
+        "codec": "aac",
+        "sampleRate": "48000",
+        "channels": 2
+      },
+      {
+        "codec": "aac",
+        "sampleRate": "48000",
+        "channels": 2
+      }
+    ],
+    "loudness": {
+      "input_i": "-14.61",
+      "input_tp": "-0.52",
+      "input_lra": "18.20",
+      "input_thresh": "-25.64",
+      "output_i": "-23.10",
+      "output_tp": "-8.48",
+      "output_lra": "3.60",
+      "output_thresh": "-33.66",
+      "normalization_type": "dynamic",
+      "target_offset": "-0.90"
+    },
+    "cutCandidates": [
+      13.0,
+      13.533333,
+      14.05,
+      14.583333,
+      15.133333,
+      15.616667,
+      16.15,
+      16.166667,
+      17.15
+    ],
+    "microSampleAt": 13.0,
+    "atlasSampleTimes": [
+      0.8958333333333334,
+      2.6875,
+      4.479166666666667,
+      6.270833333333333,
+      8.0625,
+      9.854166666666666,
+      11.645833333333334,
+      13.4375,
+      15.229166666666666,
+      17.020833333333332,
+      18.8125,
+      20.604166666666668
+    ]
+  },
+  {
+    "id": "7558134029304778016",
+    "filename": "What if… Apple made ad for Spotify_ _Personal project, not sponsored.... [7558134029304778016].mp4",
+    "sha256": "e6977147df413ff53cf58816884e3241f9b52c3b529e5df06a43c81256c091f2",
+    "duration": 15.849183,
+    "width": 1280,
+    "height": 720,
+    "fps": "2997/100",
+    "audioStreams": [
+      {
+        "codec": "aac",
+        "sampleRate": "44100",
+        "channels": 2
+      }
+    ],
+    "loudness": {
+      "input_i": "-37.81",
+      "input_tp": "-13.02",
+      "input_lra": "4.30",
+      "input_thresh": "-48.18",
+      "output_i": "-25.52",
+      "output_tp": "-2.37",
+      "output_lra": "1.70",
+      "output_thresh": "-35.83",
+      "normalization_type": "dynamic",
+      "target_offset": "1.52"
+    },
+    "cutCandidates": [
+      15.815816
+    ],
+    "microSampleAt": 15.815816,
+    "atlasSampleTimes": [
+      0.660382625,
+      1.9811478750000002,
+      3.301913125,
+      4.6226783750000005,
+      5.9434436250000005,
+      7.2642088750000005,
+      8.584974125,
+      9.905739375,
+      11.226504624999999,
+      12.547269875,
+      13.868035125,
+      15.188800375
+    ]
+  }
+]

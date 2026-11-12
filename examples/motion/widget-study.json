@@ -1,0 +1,17 @@
+{
+  "format": "mediaforge-motion-v1",
+  "title": "Menos ruído. Mais foco.",
+  "width": 1080,
+  "height": 1920,
+  "fps": 60,
+  "totalFrames": 720,
+  "audioMode": "silent-study",
+  "palette": {"ground":"#eeeDE7","ink":"#191d19","accent":"#538519","paper":"#ffffff"},
+  "references": ["7521798862521060630", "7657700630282112277", "7624546375375588615"],
+  "scenes": [
+    {"id":"opening","type":"kinetic","startFrame":0,"endFrame":150,"eyebrow":"FOCO / UM ESTUDO EM MOVIMENTO","headline":"Menos ruído.","detail":"Espaço para o que importa.","transition":"cut","events":[{"id":"opening-arrive","action":"enter","startFrame":0,"peakFrame":30,"endFrame":48},{"id":"opening-focus","action":"focus","startFrame":65,"peakFrame":90,"endFrame":120}]},
+    {"id":"dashboard","type":"widget","startFrame":150,"endFrame":540,"eyebrow":"01 / CADA AÇÃO CONTA","headline":"Veja acontecer.","detail":"Um gesto. Uma mudança real.","metricLabel":"Sua semana","controlLabel":"Modo foco","transition":"push","events":[{"id":"cards-arrive","action":"enter","startFrame":0,"peakFrame":30,"endFrame":50},{"id":"progress-one","action":"state","value":28,"startFrame":55,"peakFrame":95,"endFrame":115},{"id":"progress-two","action":"state","value":65,"startFrame":145,"peakFrame":185,"endFrame":205},{"id":"dashboard-focus","action":"focus","startFrame":220,"peakFrame":245,"endFrame":270},{"id":"progress-complete","action":"state","value":100,"startFrame":285,"peakFrame":325,"endFrame":350}]},
+    {"id":"resolve","type":"end-card","startFrame":540,"endFrame":720,"eyebrow":"MENOS RUÍDO. MAIS FOCO.","headline":"Faça espaço.","detail":"Seu próximo movimento começa aqui.","transition":"iris","events":[{"id":"resolve-arrive","action":"enter","startFrame":0,"peakFrame":35,"endFrame":55}]}
+  ],
+  "audioCues": []
+}
