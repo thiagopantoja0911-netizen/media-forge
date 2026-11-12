@@ -79,10 +79,10 @@ const INDEX_HTML = `<!doctype html>
       line-height:1.04; letter-spacing:-.062em; font-weight:900; text-wrap:balance;
       text-shadow:0 12px 40px #0008; }
     #hero-headline-inner { display:block; }
-    .subline { position:absolute; left:9%; width:74%; bottom:18%; font-size:3.3vw;
+    .subline { position:absolute; left:9%; width:72%; bottom:31%; font-size:3.3vw;
       line-height:1.24; font-weight:500; color:#e1ebed; text-shadow:0 9px 25px #000b; }
-    .rule { position:absolute;left:9%;right:9%;bottom:15%;height:2px;background:var(--accent);opacity:.5; }
-    .mark { position:absolute;left:9%;bottom:11%;font-size:1.65vw;letter-spacing:.22em;
+    .rule { position:absolute;left:9%;right:9%;bottom:27%;height:2px;background:var(--accent);opacity:.5; }
+    .mark { position:absolute;left:9%;bottom:24%;font-size:1.65vw;letter-spacing:.22em;
       font-weight:900;color:var(--accent); }
   </style>
   <script type="importmap">{"imports":{"three":"./assets/three/build/three.module.js"}}</script>
@@ -199,11 +199,11 @@ function draw(t){
   // Camera: deliberately slow acceleration, clean deceleration, spatial parallax.
   const mode="__CAMERA__";
   const yaw= mode==="orbit" ? -.42+.80*glide : mode==="reveal" ? -.22+.47*glide : -.13+.24*glide;
-  const distance=mode==="dolly" ? 9.3-2.4*glide : mode==="reveal" ? 6.8+1.45*glide : 7.8-.65*glide;
+  const distance=mode==="dolly" ? 10.5-1.55*glide : mode==="reveal" ? 8.65+1.4*glide : 9.45-.65*glide;
   camera.position.set(Math.sin(yaw)*distance, .35+Math.sin(p*Math.PI)*.16,
                       Math.cos(yaw)*distance);
   camera.lookAt(0,.05,0);
-  hero.rotation.set(.08*Math.sin(p*Math.PI*1.5),p*Math.PI*2.0, .08*Math.sin(p*Math.PI));
+  hero.rotation.set(.08*Math.sin(p*Math.PI*1.5),smoother(p)*Math.PI*1.8, .08*Math.sin(p*Math.PI));
   orbit.rotation.set(.15*Math.sin(p*Math.PI),p*Math.PI*.78,0);
   key.position.x=-3.8+2.4*glide; rim.intensity=3.0+.5*Math.sin(p*Math.PI);
   renderer.render(scene,camera);
