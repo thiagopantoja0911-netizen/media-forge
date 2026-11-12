@@ -1,6 +1,8 @@
 'use strict';
 (function(){
-  var STORAGE='mediaforge_creator_studio_v1',VERSION=1;
+  // Keep public-preview drafts isolated from the authenticated production Studio.
+  var STORAGE=(typeof location!=='undefined' && /^\\/studio\\/preview(?:\\/|$)/.test(location.pathname))
+    ? 'mediaforge_creator_preview_v1' : 'mediaforge_creator_studio_v1',VERSION=1;
   var ids=['title','topic','intent','duration','audience','tone','style','cta','hookA','hookB','hookC'];
   var names=['Gancho','Contexto','Prova visual','Revelação','Fechamento'];
   var fields=['spoken','onscreen','action','sound'];
