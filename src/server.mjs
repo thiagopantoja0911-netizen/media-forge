@@ -245,6 +245,16 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, "http://" + (request.headers.host ?? "localhost"));
     const parts = url.pathname.split("/").filter(Boolean);
+    // Single-domain cutover: old homepage directs new work to the canonical MediaForge.
+    // Legacy /studio remains available for exporting local browser drafts.
+    if (url.pathname === "/" && (request.method === "GET" || request.method === "HEAD")) {
+      response.writeHead(302, {
+        location: "https://mediaforge.salevo.site/studio/preview",
+        "cache-control": "no-store"
+      });
+      response.end();
+      return;
+    }
     if(await handleRemoteWorker({request,response,url,jobsDir,projectsRoot,workerStatusFile})) return;
 
     if (url.pathname === "/mcp") {
