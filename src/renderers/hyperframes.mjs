@@ -105,7 +105,7 @@ function addOption(args, name, value) {
   args.push("--" + name, String(value));
 }
 
-function renderArgs(job, outputPath) {
+export function renderArgs(job, outputPath) {
   const args = ["render", "-o", outputPath];
   addOption(args, "resolution", job.project.resolution);
   addOption(args, "fps", job.project.fps);
@@ -113,10 +113,17 @@ function renderArgs(job, outputPath) {
   addOption(args, "workers", job.project.workers);
   if (job.project.browserGpu === false) args.push("--no-browser-gpu");
   if (job.project.browserGpu === true) args.push("--browser-gpu");
+  // Keep compatibility with the validated cinematic fork installed on the worker.
+  if (job.metadata?.kind === "cinematic-3d" && job.metadata?.motionBlur?.enabled === true) {
+    if (!process.env.HYPERFRAMES_BIN?.toLowerCase().endsWith("hyperframes.cmd")) {
+      throw new Error("The cinematic 3D renderer requires the validated local HyperFrames fork");
+    }
+    args.push("--cinematic-motion-blur");
+  }
   return args;
 }
 
-export async function renderWithHyperFrames(job) {
+export async function renderWithHyperFrames(job, { onProgress = async () => {} } = {}) {
   const sourceDir = job.project.sourceDir;
   if (!sourceDir || isAbsolute(sourceDir) || sourceDir.split(/[\\/]/).includes("..")) {
     const error = new Error("project.sourceDir is required and must be relative to MEDIAFORGE_PROJECTS_DIR");
@@ -150,14 +157,18 @@ export async function renderWithHyperFrames(job) {
   let preflight = null;
   if (job.project.preflight !== false || motionReview) {
     try {
+      await onProgress(24, "Executando auditoria completa HyperFrames, incluindo craft pass");
       preflight = await run(command, cliArgs(command, "check", projectDir, "--json"), projectDir, join(diagnosticsDir, "check"));
+      await onProgress(36, "Auditoria HyperFrames aprovada");
     } catch (error) {
       error.code = "HYPERFRAMES_PREFLIGHT_FAILED";
       error.retryable = false;
       throw error;
     }
   }
+  await onProgress(40, "Renderizando vídeo com HyperFrames");
   const render = await run(command, cliArgs(command, ...renderArgs(job, outputPath)), projectDir, join(diagnosticsDir, "render"));
+  await onProgress(92, "Render concluído; verificando o MP4");
 
   return {
     mode: "hyperframes-cli",

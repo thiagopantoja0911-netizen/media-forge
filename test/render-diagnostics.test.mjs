@@ -3,6 +3,22 @@ import assert from "node:assert/strict";
 import { mkdtemp,mkdir,readFile,writeFile,access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { renderArgs } from "../src/renderers/hyperframes.mjs";
+
+test("deployment preserves cinematic fork motion blur without enabling it on regular motion", () => {
+  const previous = process.env.HYPERFRAMES_BIN;
+  try {
+    const job = { project: { fps: 60 }, metadata: { kind: "cinematic-3d", motionBlur: { enabled: true } } };
+    delete process.env.HYPERFRAMES_BIN;
+    assert.throws(() => renderArgs(job, "out.mp4"), /validated local HyperFrames fork/);
+    process.env.HYPERFRAMES_BIN = "C:/MediaForge-HyperFrames/hyperframes.cmd";
+    assert.ok(renderArgs(job, "out.mp4").includes("--cinematic-motion-blur"));
+    assert.ok(!renderArgs({ project: job.project }, "out.mp4").includes("--cinematic-motion-blur"));
+  } finally {
+    if (previous === undefined) delete process.env.HYPERFRAMES_BIN;
+    else process.env.HYPERFRAMES_BIN = previous;
+  }
+});
 
 test("renderer preserves structured preflight failures and never starts render after failure",async()=>{
   const root=await mkdtemp(join(tmpdir(),"mediaforge-render-"));
