@@ -1,0 +1,31 @@
+name: MediaForge Cinematic 3D Browser Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/cinematic-3d.mjs'
+      - 'src/videos-secrets-mcp.mjs'
+      - 'scripts/check-cinematic-3d.mjs'
+      - '.github/workflows/cinematic-3d-smoke.yml'
+
+jobs:
+  webgl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: node --check src/cinematic-3d.mjs
+      - run: node scripts/check-cinematic-3d.mjs
+      - name: Upload cinematic 3D review frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mediaforge-cinematic-3d-review
+          path: ${{ runner.temp }}/mediaforge-cinematic-3d-preview
+          if-no-files-found: warn
+          retention-days: 7

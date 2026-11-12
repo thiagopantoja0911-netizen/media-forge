@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { buildCinematic3dProject } from "./cinematic-3d.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
@@ -38,6 +39,29 @@ export const VIDEOS_SECRETS_TOOLS = [
         }
       },
       required: ["title", "prompt", "duration_seconds", "aspect_ratio", "project_files"]
+    }
+  },
+  {
+    name: "create_cinematic_3d",
+    description: "Cria um vídeo 3D cinematográfico real com Three.js local, luz física, câmera suave, motion blur e opção de importar GLB 2.0. Envia projeto completo ao Worker HyperFrames.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        title: { type: "string", maxLength: 160 },
+        headline: { type: "string", maxLength: 120 },
+        subtitle: { type: "string", maxLength: 180 },
+        duration_seconds: { type: "integer", minimum: 10, maximum: 30 },
+        aspect_ratio: { type: "string", enum: ["16:9", "9:16", "1:1"] },
+        shape: { type: "string", enum: ["torus-knot", "torus", "sphere", "cube"] },
+        accent_color: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" },
+        camera: { type: "string", enum: ["dolly", "orbit", "reveal"] },
+        model_glb_base64: { type: "string", description: "Optional complete GLB 2.0 model embedded as base64 (max 8MB; no external dependencies)" },
+        quality: { type: "string", enum: ["draft", "looks", "standard", "high", "delivery"] },
+        browser_gpu: { type: "boolean" },
+        preflight: { type: "boolean" }
+      },
+      required: ["title"]
     }
   },
   {
@@ -197,7 +221,7 @@ export async function handleVideosSecretsMcp({
       return writeResult(response, id, {
         protocolVersion: version,
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: "mediaforge", version: "0.2.0" }
+        serverInfo: { name: "mediaforge", version: "0.3.0" }
       }, version);
     }
 
@@ -217,7 +241,7 @@ export async function handleVideosSecretsMcp({
         capabilities: { tools: { listChanged: false } },
         _meta: {
           "io.modelcontextprotocol/serverInfo": {
-            name: "mediaforge", version: "0.2.1"
+            name: "mediaforge", version: "0.3.0"
           }
         },
         ...NO_CACHE
@@ -259,6 +283,33 @@ export async function handleVideosSecretsMcp({
         id: job.id,
         status: job.status,
         message: "Vídeo adicionado à fila do MediaForge."
+      }, false, version), version);
+    }
+
+    if (name === "create_cinematic_3d") {
+      if (!auth.scopes.includes("videos:write")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
+      const project = await buildCinematic3dProject(args);
+      const job = await createJob({
+        title: project.title,
+        prompt: "Cena 3D cinematográfica determinística com câmera " + (args.camera || "dolly")
+          + ", iluminação de estúdio e movimento suave; rever qualidade artística após render.",
+        duration_seconds: project.durationSeconds,
+        aspect_ratio: project.aspectRatio,
+        resolution: project.resolution,
+        fps: project.fps,
+        quality: args.quality ?? "high",
+        browser_gpu: args.browser_gpu,
+        preflight: args.preflight ?? true,
+        project_files: project.projectFiles,
+        metadata: project.productionMetadata
+      });
+      return writeResult(response, id, textResult({
+        id: job.id,
+        status: job.status,
+        renderer: "hyperframes",
+        effect: "cinematic-3d",
+        profile: { resolution: project.resolution, fps: project.fps, quality: args.quality ?? "high" },
+        message: "Projeto 3D entregue à fila do Worker; aprovação artística continua pendente."
       }, false, version), version);
     }
 

@@ -1,6 +1,6 @@
 {
   "name": "mediaforge",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -12,5 +12,8 @@
     "worker:once": "node src/worker.mjs --once",
     "validate": "node src/job-schema.mjs examples/job.json",
     "worker:remote": "node src/remote-worker-client.mjs"
+  },
+  "dependencies": {
+    "three": "0.180.0"
   }
 }
