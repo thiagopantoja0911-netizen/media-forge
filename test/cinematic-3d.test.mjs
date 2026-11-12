@@ -30,7 +30,7 @@ test("cinematic 3D exports a complete, locally bundled Three.js HyperFrames proj
   assert.match(index,/data-duration="12"/);
   assert.match(index,/__timelines\["main"\] = timeline/);
   assert.match(index,/UM NOVO ÂNGULO/);
-  assert.ok(index.indexOf("window.__timelines")>index.indexOf("timeline.fromTo"));
+  assert.ok(index.indexOf('window.__timelines["main"] = timeline')>index.indexOf("timeline.fromTo"));
   const scene=files.get("assets/scene.mjs");
   assert.match(scene,/import \* as THREE/);
   assert.match(scene,/new THREE\.WebGLRenderer/);
