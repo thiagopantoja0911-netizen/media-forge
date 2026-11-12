@@ -8,7 +8,20 @@ ChatGPT transforma o prompt em um job estruturado. O MediaForge recebe o prompt 
 
 Fluxo:
 
-ChatGPT → MediaForge MCP/API → MediaForge Local Worker → HyperFrames / VoiceStudio / FilmCraft → arquivos locais
+ChatGPT → MediaForge MCP/API → MediaForge Local Worker → HyperFrames → arquivos locais
+
+VoiceStudio, ArtCraft, LightCraft, FilmCraft e OpenWhispr têm papéis de preparação/pós-produção descritos em [integrações](docs/SOURCE_INTEGRATIONS.md). A presença dos arquivos desses projetos não significa que seus motores estejam conectados.
+
+## Motion a partir de referências
+
+O compositor adicional aceita cenas de tipografia, widgets com estados, produto, colagem e fechamento. Os eventos são definidos por quadros; efeitos sonoros apontam para ações visíveis. Veja o [fluxo e contrato](docs/MOTION_WORKFLOW.md) e a [análise dos dez vídeos](docs/references/ANALYSIS.md).
+
+```sh
+npm run motion:compose -- examples/motion/widget-study.json .mediaforge/widget-study
+npm test
+```
+
+O comando gera um projeto editável e um payload para a fila. O exemplo é um estudo visual sem áudio; a aprovação artística permanece pendente. O worker valida o plano e preserva os relatórios completos do HyperFrames. As novas rotas autenticadas `/api/studio/motion/compose` e `/api/studio/motion/render` usam o mesmo fluxo de execução.
 
 ## Estado atual
 

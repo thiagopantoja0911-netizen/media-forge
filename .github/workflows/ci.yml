@@ -2,9 +2,9 @@ name: MediaForge CI
 
 on:
   push:
-    branches: [main, feature/conexoes-mediaforge-primeiro]
+    branches: [main, feature/conexoes-mediaforge-primeiro, feat/reference-motion-quality]
   pull_request:
-    branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro]
+    branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro, feat/forge-real-render-pipeline-20261111]
 
 jobs:
   validate:
@@ -18,6 +18,9 @@ jobs:
       - run: node --check src/legacy-studio.mjs
       - run: node --check src/creator-media.mjs
       - run: node --check src/video-qa.mjs
+      - run: node --check src/motion/plan.mjs
+      - run: node --check src/motion/composer.mjs
+      - run: node --check scripts/analyze-reference.mjs
       - run: node --check src/creator-composer.mjs
       - run: node --check src/studio.mjs
       - run: node --check src/studio-api.mjs
@@ -32,6 +35,10 @@ jobs:
       - run: node --check src/renderers/hyperframes.mjs
       - run: node --test test/*.test.mjs
       - run: npm run validate
+      - name: Validate reference motion composition
+        run: |
+          node scripts/compose-motion.mjs examples/motion/widget-study.json .mediaforge/motion-ci
+          npx --yes hyperframes@0.9.30 check .mediaforge/motion-ci --json
       - name: Check generated Forge Midjourney composition with HyperFrames
         run: node scripts/check-creator-composition.mjs
       - name: Check real-media HyperFrames composition and snapshots

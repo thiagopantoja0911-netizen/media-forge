@@ -11,6 +11,9 @@
     "worker": "node src/worker.mjs --watch",
     "worker:once": "node src/worker.mjs --once",
     "validate": "node src/job-schema.mjs examples/job.json",
-    "worker:remote": "node src/remote-worker-client.mjs"
+    "worker:remote": "node src/remote-worker-client.mjs",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs",
+    "motion:compose": "node scripts/compose-motion.mjs",
+    "reference:analyze": "node scripts/analyze-reference.mjs"
   }
 }
