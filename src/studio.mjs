@@ -40,7 +40,7 @@ export async function handleStudio({ request, response, isAdminSession }) {
     const html = content.toString("utf8")
       .replace(
         '<main id="conteudo" class="container">',
-        '<main id="conteudo" class="container"><aside role="note" style="margin:16px 0;padding:14px 18px;border:1px solid #e9bd61;border-radius:10px;color:#f5deb0;background:#242018"><strong>PRÉVIA ISOLADA DO FORGE MIDJOURNEY</strong> — Navegue, edite o roteiro e exporte os dados locais. A geração de pacotes no servidor, os jobs e a renderização exigem login administrativo e não estão liberados nesta prévia.</aside>'
+        '<main id="conteudo" class="container"><aside role="note" style="margin:16px 0;padding:14px 18px;border:1px solid #e9bd61;border-radius:10px;color:#f5deb0;background:#242018"><strong>PRÉVIA ISOLADA DO FORGE MIDJOURNEY</strong> — Navegue, edite o roteiro e exporte os dados locais. Esta é a área antiga de rascunhos. Para levar seu projeto ao domínio principal, clique em <b>Baixar JSON</b> no final da página e depois em <b>Importar JSON</b> no Studio autenticado de mediaforge.salevo.site. A geração de pacotes e a renderização permanecem disponíveis apenas no domínio principal.</aside>'
       )
       .replace('id="build-composition"', 'id="build-composition" disabled title="Indisponível nesta prévia sem login"');
     content = Buffer.from(html, "utf8");
