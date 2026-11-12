@@ -2,6 +2,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
+import { inspectRenderedVideo } from "./video-qa.mjs";
 
 const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
 const jobsDir = join(dataDir, "jobs");
@@ -51,6 +52,11 @@ async function processJob(job) {
 
   if (rendererMode === "hyperframes" && job.project.renderer === "hyperframes") {
     const result = await renderWithHyperFrames(job);
+    const technicalQA = await inspectRenderedVideo(result.outputPath,
+      { ...job.project, width: result.motionReview?.width, height: result.motionReview?.height },
+      job.metadata?.expectsAudio === true || result.motionReview?.expectsAudio === true);
+    if (technicalQA.status === "failed") throw Object.assign(new Error(technicalQA.issues.join("; ")), { code: "VIDEO_TECHNICAL_QA_FAILED", retryable: false });
+    result.report = { technicalQA, motionReview: result.motionReview, artisticQA: "pending-user-review" };
     job.status = "completed";
     job.progress = 100;
     job.result = result;
@@ -99,8 +105,8 @@ async function loop() {
     try {
       await processJob(job);
     } catch (error) {
-      job.error = { message: error.message, code: error.code ?? "RENDER_FAILED" };
-      if ((job.attempts ?? 0) <= maxRetries) {
+      job.error = { message: error.message, code: error.code ?? "RENDER_FAILED", diagnostics: error.diagnostics ?? null };
+      if (error.retryable !== false && (job.attempts ?? 0) <= maxRetries) {
         job.status = "queued";
         job.progress = 0;
         job.nextAttemptAt = new Date(Date.now() + intervalMs).toISOString();

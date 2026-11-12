@@ -1,5 +1,6 @@
 import { importSalevoStudioDraft } from "./legacy-studio.mjs";
 import { buildCreatorComposition } from "./creator-composer.mjs";
+import { buildMotionComposition } from "./motion/composer.mjs";
 
 function reply(response, status, body) {
   response.writeHead(status, {
@@ -13,13 +14,15 @@ function reply(response, status, body) {
 /**
  * The Studio API is session-authenticated. Controlled render submission does not
  * bypass the creator delivery gate: it produces TEST jobs only, after explicit
- * consent, five uploaded scene assets and a verified-length narration.
+ * consent. Legacy creator uses five uploaded scenes and narration; the motion
+ * composer validates its frame plan and its declared audio/media requirements.
  */
 export async function handleStudioApi({ request, response, parseBody, isAdminSession, createJob, getJob }) {
   const url = new URL(request.url, "http://localhost");
   const path = url.pathname;
-  const isCompose = path === "/api/studio/compose";
-  const isRender = path === "/api/studio/render";
+  const isMotion = path.startsWith("/api/studio/motion/");
+  const isCompose = path === "/api/studio/compose" || path === "/api/studio/motion/compose";
+  const isRender = path === "/api/studio/render" || path === "/api/studio/motion/render";
   const statusId = /^\/api\/studio\/jobs\/([a-f0-9]{32})$/.exec(path)?.[1];
   if (!isCompose && !isRender && !statusId) return false;
   if (request.method !== (statusId ? "GET" : "POST")) {
@@ -76,9 +79,11 @@ export async function handleStudioApi({ request, response, parseBody, isAdminSes
       reply(response, 428, { ok: false, error: "RENDER_CONFIRMATION_REQUIRED" });
       return true;
     }
-    const imported = importSalevoStudioDraft(raw);
+    const imported = isMotion ? {warnings:[]} : importSalevoStudioDraft(raw);
     const mediaAssets = raw.mediaAssets && typeof raw.mediaAssets === "object" ? raw.mediaAssets : {};
-    const composition = await buildCreatorComposition(imported.manifest, mediaAssets);
+    const composition = isMotion
+      ? await buildMotionComposition(raw.motionPlan, raw.assetFiles ?? [])
+      : await buildCreatorComposition(imported.manifest, mediaAssets);
     if (isCompose) {
       reply(response, 200, { ok: true, ...composition, warnings: imported.warnings });
       return true;
@@ -102,7 +107,8 @@ export async function handleStudioApi({ request, response, parseBody, isAdminSes
         source: "forge-midjourney-studio",
         mode: "controlled-test",
         qaStatus: "pending-technical-and-artistic-review",
-        expectsAudio: Boolean(composition.readiness.audio.voiceover.attached),
+        expectsAudio: isMotion ? composition.metadata.expectsAudio : Boolean(composition.readiness.audio.voiceover.attached),
+        motionPlan: isMotion,
         approvedBy: "authenticated-admin-confirmation"
       }
     });
