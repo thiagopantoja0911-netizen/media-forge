@@ -1,7 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
 
-const SUPPORTED_PROTOCOLS = new Set(["2025-03-26", "2025-06-18", "2025-11-25"]);
+const MODERN_PROTOCOL = "2026-07-28";
+const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
+const SUPPORTED_PROTOCOLS = new Set([...LEGACY_PROTOCOLS, MODERN_PROTOCOL]);
 const DEFAULT_PROTOCOL = "2025-06-18";
+const NO_CACHE = { ttlMs: 0, cacheScope: "private" };
 
 export const VIDEOS_SECRETS_TOOLS = [
   {
@@ -100,8 +103,11 @@ async function requireBearer(request, authenticateBearer) {
 }
 
 function protocolVersion(request, params) {
+  // MCP 2026-07-28 is stateless: clients advertise their version in
+  // request params._meta; legacy clients still use the HTTP header.
   const requested = String(
-    request.headers["mcp-protocol-version"]
+    params?._meta?.["io.modelcontextprotocol/protocolVersion"]
+      ?? request.headers["mcp-protocol-version"]
       ?? params?.protocolVersion
       ?? DEFAULT_PROTOCOL
   );
@@ -129,8 +135,9 @@ function writeError(response, id, code, message, status, version) {
   }, version);
 }
 
-function textResult(value, isError = false) {
+function textResult(value, isError = false, version = DEFAULT_PROTOCOL) {
   return {
+    ...(version === MODERN_PROTOCOL ? { resultType: "complete" } : {}),
     content: [{ type: "text", text: JSON.stringify(value) }],
     isError
   };
@@ -200,8 +207,28 @@ export async function handleVideosSecretsMcp({
       return;
     }
 
-    if (method === "tools/list" || method === "server/discover") {
-      return writeResult(response, id, { tools: VIDEOS_SECRETS_TOOLS }, version);
+    if (method === "server/discover") {
+      // ChatGPT now probes the MCP 2026-07-28 stateless protocol first.
+      // A tools/list payload here is invalid and breaks action discovery
+      // even after OAuth succeeds. Keep initialize for legacy clients.
+      return writeResult(response, id, {
+        resultType: "complete",
+        supportedVersions: [MODERN_PROTOCOL, ...LEGACY_PROTOCOLS],
+        capabilities: { tools: { listChanged: false } },
+        _meta: {
+          "io.modelcontextprotocol/serverInfo": {
+            name: "mediaforge", version: "0.2.1"
+          }
+        },
+        ...NO_CACHE
+      }, MODERN_PROTOCOL);
+    }
+
+    if (method === "tools/list") {
+      return writeResult(response, id, {
+        ...(version === MODERN_PROTOCOL ? { resultType: "complete", ...NO_CACHE } : {}),
+        tools: VIDEOS_SECRETS_TOOLS
+      }, version);
     }
 
     if (method !== "tools/call") {
@@ -232,24 +259,24 @@ export async function handleVideosSecretsMcp({
         id: job.id,
         status: job.status,
         message: "Vídeo adicionado à fila do MediaForge."
-      }), version);
+      }, false, version), version);
     }
 
     if (name === "renderer_status") {
       if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
-      return writeResult(response, id, textResult(await rendererStatus()), version);
+      return writeResult(response, id, textResult(await rendererStatus(), false, version), version);
     }
 
     if (name === "list_videos") {
       if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
-      return writeResult(response, id, textResult({ jobs: await listJobs(30) }), version);
+      return writeResult(response, id, textResult({ jobs: await listJobs(30) }, false, version), version);
     }
 
     if (name === "get_video") {
       if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
       const job = await getJob(String(args.id ?? ""));
-      if (!job) return writeResult(response, id, textResult("Trabalho não encontrado.", true), version);
-      return writeResult(response, id, textResult({ job }), version);
+      if (!job) return writeResult(response, id, textResult("Trabalho não encontrado.", true, version), version);
+      return writeResult(response, id, textResult({ job }, false, version), version);
     }
 
     return writeError(response, id, -32602, "Unsupported tool", 400, version);
