@@ -21,3 +21,11 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: node --check src/cinematic-3d.mjs
       - run: node scripts/check-cinematic-3d.mjs
+      - name: Upload cinematic 3D review frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mediaforge-cinematic-3d-review
+          path: ${{ runner.temp }}/mediaforge-cinematic-3d-preview
+          if-no-files-found: warn
+          retention-days: 7
