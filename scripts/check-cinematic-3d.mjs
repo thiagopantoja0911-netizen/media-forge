@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, readFile, readdir, cp } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -49,6 +49,22 @@ try{
   process.stdout.write(checked.stdout.slice(-8000)+"\n");
   const snapshots=await run(["snapshot","--at","0,1,0","--no-end"],180000);
   process.stdout.write("3D screenshot smoke complete:\n"+snapshots.stdout.slice(-5500)+"\n");
+  const base=join(dir,".hyperframes","artifacts","snapshots");
+  const snapshotsDirs=await readdir(base,{withFileTypes:true});
+  const final=snapshotsDirs.filter(x=>x.isDirectory()).map(x=>x.name).sort().at(-1);
+  if(!final)throw new Error("Nenhum diretório de snapshots 3D");
+  const first=await readFile(join(base,final,"frame-00-at-0s.png"));
+  const repeated=await readFile(join(base,final,"frame-02-at-0s.png"));
+  if(!first.equals(repeated)){
+    throw new Error("Render 3D não determinístico: dois seeks em 0s produziram PNGs diferentes");
+  }
+  process.stdout.write("Determinismo WebGL confirmado: mesmo instante gera PNG idêntico.\n");
+  if(process.env.RUNNER_TEMP){
+    const target=join(process.env.RUNNER_TEMP,"mediaforge-cinematic-3d-preview");
+    await mkdir(target,{recursive:true});
+    await cp(join(base,final,"contact-sheet.jpg"),join(target,"contact-sheet.jpg"));
+    process.stdout.write("Contact sheet preservada no artefato do CI.\n");
+  }
 } finally {
   await rm(dir,{recursive:true,force:true});
 }
