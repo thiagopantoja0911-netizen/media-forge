@@ -1,0 +1,96 @@
+
+<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ÓRBITA 001 | 16 amanheceres</title>
+<style>
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#040810}
+#reel{width:1080px;height:1920px;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 62%,#13273c 0%,#070d18 50%,#040810 90%);color:#faf5ec;font-family:Arial,Helvetica,sans-serif;isolation:isolate}
+#bkg{position:absolute;inset:0;z-index:0;background:radial-gradient(ellipse at 60% 55%,rgba(38,89,125,.2),transparent 62%)}
+#glow{position:absolute;z-index:1;left:280px;top:850px;width:820px;height:820px;border-radius:50%;background:radial-gradient(circle,rgba(255,244,194,.94) 0%,rgba(255,159,83,.54) 18%,rgba(247,108,61,.2) 40%,transparent 70%);opacity:0;mix-blend-mode:screen}
+#universe{position:absolute;inset:0;z-index:2}
+#orbitVectors{position:absolute;inset:0;z-index:3;pointer-events:none}
+#shade{position:absolute;inset:0;background:#03060c;z-index:4;opacity:0;pointer-events:none}
+.beat{position:absolute;inset:0;z-index:6}.body{position:absolute;top:235px;left:80px;width:835px;opacity:0}
+.eyebrow{font-size:23px;letter-spacing:4.5px;line-height:1.2;font-weight:800;color:#8fdef2;margin-bottom:69px}
+.headline{font-weight:950;line-height:.96;letter-spacing:-5px;text-transform:uppercase}
+.headline span{display:block;white-space:nowrap}.headline .accent{color:#ff9e68}
+.beat p{font-size:35px;line-height:1.21;color:#d4e1e7;max-width:735px;font-weight:500;margin-top:40px}
+#flag{position:absolute;left:80px;top:133px;z-index:9;font-size:23px;font-weight:900;letter-spacing:5px;color:#faf1e9}
+#flag em{font-style:normal;color:#ffa06b}
+#footer{position:absolute;z-index:9;left:80px;top:1295px;width:824px;border-top:2px solid rgba(137,201,220,.33);padding-top:17px;display:flex;justify-content:space-between;font-size:20px;letter-spacing:3px;font-weight:700;color:#8db0c5}
+#serial{position:absolute;z-index:8;left:80px;top:1385px;color:#6a8ca1;letter-spacing:3px;font-size:19px}
+#grain{position:absolute;inset:0;z-index:10;pointer-events:none;background:radial-gradient(#fff 0.5px,transparent .7px) 0 0/7px 7px;opacity:.043}
+</style></head><body>
+<main class="clip" id="reel" data-composition-id="orbita-001" data-width="1080" data-height="1920" data-start="0" data-duration="45">
+<div id="bkg"></div><div id="glow"></div><canvas id="universe" width="1080" height="1920"></canvas>
+<svg id="orbitVectors" width="1080" height="1920" viewBox="0 0 1080 1920">
+<defs><linearGradient id="panel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#365f71"/><stop offset=".50" stop-color="#0b1c38"/><stop offset="1" stop-color="#45647f"/></linearGradient>
+<linearGradient id="arc"><stop stop-color="#84daee" stop-opacity=".15"/><stop offset=".65" stop-color="#8bdaee"/><stop offset="1" stop-color="#fda977" stop-opacity=".1"/></linearGradient>
+<filter id="halo"><feGaussianBlur stdDeviation="5"/></filter></defs>
+<g id="track" opacity="0"><ellipse cx="540" cy="1110" rx="725" ry="372" transform="rotate(-23 540 1110)" fill="none" stroke="url(#arc)" stroke-width="6" stroke-dasharray="13 13"/><ellipse cx="540" cy="1110" rx="748" ry="395" transform="rotate(-23 540 1110)" fill="none" stroke="#94bbd0" opacity=".2" stroke-width="2"/></g>
+<g id="iss" opacity="0" transform="translate(540 1030) scale(.55)">
+<path d="M-640 0 H640" stroke="#bbc7d1" stroke-width="13"/>
+<g transform="translate(-365,0)"><rect x="-220" y="-100" width="440" height="200" rx="6" fill="#183047" stroke="#bad3db" stroke-width="5"/><rect x="-215" y="-95" width="430" height="190" fill="url(#panel)"/><line x1="-205" y1="-90" x2="-205" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="-153" y1="-90" x2="-153" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="-101" y1="-90" x2="-101" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="-49" y1="-90" x2="-49" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="3" y1="-90" x2="3" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="55" y1="-90" x2="55" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="107" y1="-90" x2="107" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="159" y1="-90" x2="159" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><path d="M-215 -45 H215 M-215 0 H215 M-215 45 H215" stroke="#90b2be" opacity=".6" stroke-width="2"/></g><g transform="translate(365,0)"><rect x="-220" y="-100" width="440" height="200" rx="6" fill="#183047" stroke="#bad3db" stroke-width="5"/><rect x="-215" y="-95" width="430" height="190" fill="url(#panel)"/><line x1="-205" y1="-90" x2="-205" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="-153" y1="-90" x2="-153" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="-101" y1="-90" x2="-101" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="-49" y1="-90" x2="-49" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="3" y1="-90" x2="3" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="55" y1="-90" x2="55" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="107" y1="-90" x2="107" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><line x1="159" y1="-90" x2="159" y2="90" stroke="#84b9cb" stroke-width="2" opacity=".65"/><path d="M-215 -45 H215 M-215 0 H215 M-215 45 H215" stroke="#90b2be" opacity=".6" stroke-width="2"/></g>
+<rect x="-116" y="-52" width="232" height="104" rx="46" fill="#d3dce0" stroke="#667e8f" stroke-width="7"/>
+<ellipse cx="-116" cy="0" rx="24" ry="52" fill="#8ba4b7"/><ellipse cx="116" cy="0" rx="24" ry="52" fill="#819aaf"/>
+<rect x="-38" y="-68" width="76" height="136" rx="13" fill="#a0b0c2" stroke="#e5eff6" stroke-width="6"/>
+</g>
+<g id="clock" opacity="0">
+<circle cx="540" cy="1040" r="340" fill="#091728" fill-opacity=".3" stroke="#b3d9e4" opacity=".8" stroke-width="9"/>
+<circle cx="540" cy="1040" r="318" fill="none" stroke="#ff9e69" stroke-width="20" stroke-dasharray="280 2000" transform="rotate(-90 540 1040)"/>
+<path d="M540 1040 V803 M540 1040 L711 1151" stroke="#f2e9df" stroke-width="12" stroke-linecap="round"/><circle cx="540" cy="1040" r="21" fill="#ffac78"/>
+</g>
+<g id="ticks" opacity="0">
+<rect x="181" y="1507" width="5" height="53" fill="#93d5df" opacity=".75"/><rect x="229" y="1535" width="3" height="25" fill="#93d5df" opacity=".75"/><rect x="277" y="1535" width="3" height="25" fill="#93d5df" opacity=".75"/><rect x="325" y="1535" width="3" height="25" fill="#93d5df" opacity=".75"/><rect x="373" y="1507" width="5" height="53" fill="#93d5df" opacity=".75"/><rect x="421" y="1535" width="3" height="25" fill="#93d5df" opacity=".75"/><rect x="469" y="1535" width="3" height="25" fill="#93d5df" opacity=".75"/><rect x="517" y="1535" width="3" height="25" fill="#93d5df" opacity=".75"/><rect x="565" y="1507" width="5" height="53" fill="#93d5df" opacity=".75"/><rect x="613" y="1535" width="3" height="25" fill="#93d5df" opacity=".75"/><rect x="661" y="1535" width="3" height="25" fill="#93d5df" opacity=".75"/><rect x="709" y="1535" width="3" height="25" fill="#93d5df" opacity=".75"/><rect x="757" y="1507" width="5" height="53" fill="#ffb17f" opacity=".75"/><rect x="805" y="1535" width="3" height="25" fill="#ffb17f" opacity=".75"/><rect x="853" y="1535" width="3" height="25" fill="#ffb17f" opacity=".75"/><rect x="901" y="1535" width="3" height="25" fill="#ffb17f" opacity=".75"/>
+<text x="181" y="1620" fill="#c3d7e1" font-size="26">00:00</text><text x="949" y="1620" text-anchor="end" fill="#ffa56e" font-size="26">24:00</text>
+</g></svg>
+<div id="shade"></div>
+<section class="clip beat" id="s0" data-start="0" data-duration="3" data-track-index="2"><div class="body"><div class="eyebrow">ÓRBITA / 001 / 01</div><div class="headline" style="font-size:105px"><span>16 AMANHECERES</span><span class="accent">EM UM DIA.</span></div><p>No espaço, o tempo parece outro.</p></div></section><section class="clip beat" id="s1" data-start="3" data-duration="3" data-track-index="3"><div class="body"><div class="eyebrow">01 / ACREDITA? / 02</div><div class="headline" style="font-size:115px"><span>DEZESSEIS.</span><span class="accent">VEZES.</span></div><p>Acontece de verdade.</p></div></section><section class="clip beat" id="s2" data-start="6" data-duration="3" data-track-index="4"><div class="body"><div class="eyebrow">02 / AQUI EMBAIXO / 03</div><div class="headline" style="font-size:115px"><span>NA TERRA,</span><span class="accent">UM.</span></div><p>Um amanhecer por dia.</p></div></section><section class="clip beat" id="s3" data-start="9" data-duration="3" data-track-index="5"><div class="body"><div class="eyebrow">03 / LÁ NO ALTO / 04</div><div class="headline" style="font-size:100px"><span>NA ESTAÇÃO,</span><span class="accent">DEZESSEIS.</span></div><p>Uma rotina bem diferente.</p></div></section><section class="clip beat" id="s4" data-start="12" data-duration="3" data-track-index="6"><div class="body"><div class="eyebrow">04 / A RESPOSTA / 05</div><div class="headline" style="font-size:101px"><span>ELA NÃO</span><span class="accent">FICA PARADA.</span></div><p>Gira continuamente ao redor da Terra.</p></div></section><section class="clip beat" id="s5" data-start="15" data-duration="3" data-track-index="7"><div class="body"><div class="eyebrow">05 / VELOCIDADE / 06</div><div class="headline" style="font-size:202px"><span>28.000</span><span class="accent">KM/H.</span></div><p>Quase oito quilômetros por segundo.</p></div></section><section class="clip beat" id="s6" data-start="18" data-duration="3" data-track-index="8"><div class="body"><div class="eyebrow">06 / O TEMPO / 07</div><div class="headline" style="font-size:225px"><span>90</span><span class="accent">MINUTOS.</span></div><p>Cada volta dura cerca disso.</p></div></section><section class="clip beat" id="s7" data-start="21" data-duration="3" data-track-index="9"><div class="body"><div class="eyebrow">07 / UM CICLO / 08</div><div class="headline" style="font-size:112px"><span>DO DIA</span><span class="accent">À NOITE.</span></div><p>Atravessando a luz e a sombra.</p></div></section><section class="clip beat" id="s8" data-start="24" data-duration="3" data-track-index="10"><div class="body"><div class="eyebrow">08 / LADO ESCURO / 09</div><div class="headline" style="font-size:112px"><span>ENTRA</span><span class="accent">NA SOMBRA.</span></div><p>A Terra bloqueia a luz.</p></div></section><section class="clip beat" id="s9" data-start="27" data-duration="3" data-track-index="11"><div class="body"><div class="eyebrow">09 / O RETORNO / 10</div><div class="headline" style="font-size:132px"><span>A LUZ</span><span class="accent">VOLTA.</span></div><p>O horizonte acende outra vez.</p></div></section><section class="clip beat" id="s10" data-start="30" data-duration="3" data-track-index="12"><div class="body"><div class="eyebrow">10 / O ESPETÁCULO / 11</div><div class="headline" style="font-size:104px"><span>UM RISCO</span><span class="accent">DE FOGO.</span></div><p>É a atmosfera iluminada.</p></div></section><section class="clip beat" id="s11" data-start="33" data-duration="3" data-track-index="13"><div class="body"><div class="eyebrow">11 / O CICLO / 12</div><div class="headline" style="font-size:105px"><span>DE NOVO.</span><span class="accent">E DE NOVO.</span></div><p>Muitas vezes em um único dia.</p></div></section><section class="clip beat" id="s12" data-start="36" data-duration="4" data-track-index="14"><div class="body"><div class="eyebrow">12 / 24 HORAS / 13</div><div class="headline" style="font-size:113px"><span>16 × LUZ.</span><span class="accent">16 × SOMBRA.</span></div><p>Cerca de 16 nasceres e pores do sol.</p></div></section><section class="clip beat" id="s13" data-start="40" data-duration="3" data-track-index="15"><div class="body"><div class="eyebrow">13 / O MOTIVO / 14</div><div class="headline" style="font-size:100px"><span>O SOL NÃO</span><span class="accent">ACELEROU.</span></div><p>É a estação que viaja depressa.</p></div></section><section class="clip beat" id="s14" data-start="43" data-duration="2" data-track-index="16"><div class="body"><div class="eyebrow">ÓRBITA / FINAL / 15</div><div class="headline" style="font-size:107px"><span>A ESTAÇÃO</span><span class="accent">NÃO PARA.</span></div><p>SALVE ESTA CURIOSIDADE.</p></div></section>
+<div id="flag"><em>✳</em> ÓRBITA <span style="color:#486479">/ 001</span></div>
+<div id="footer"><span>CIÊNCIA EM MOVIMENTO</span><span>NASA / ISS</span></div>
+<div id="serial">ESTAÇÃO ESPACIAL INTERNACIONAL</div><div id="grain"></div>
+<audio id="score" src="assets/score.wav" data-start="0" data-duration="45" data-track-index="22" data-volume=".8"></audio></main>
+<script src="lib/three.min.js"></script><script src="lib/gsap.min.js"></script>
+<script>
+(function(){
+const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(34,1080/1920,.1,100);cam.position.z=7.7;
+const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('universe'),alpha:true,antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(1080,1920,false);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;
+const rig=new THREE.Group();scene.add(rig);
+const mat=new THREE.MeshPhongMaterial({color:0xffffff,shininess:10,specular:0x132435});
+const earth=new THREE.Mesh(new THREE.SphereGeometry(1,64,48),mat);rig.add(earth);
+const glowSphere=new THREE.Mesh(new THREE.SphereGeometry(1.075,48,36),new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.BackSide,blending:THREE.AdditiveBlending,vertexShader:'varying vec3 norm; void main(){norm=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:'varying vec3 norm; void main(){float glow=pow(1.0-abs(normalize(norm).z),4.0);gl_FragColor=vec4(.19,.64,.89,glow*.38);}'}));rig.add(glowSphere);
+scene.add(new THREE.AmbientLight(0x6082a1,.31));
+const sun=new THREE.DirectionalLight(0xffebd6,2.4);sun.position.set(-3,2,5);scene.add(sun);
+const blue=new THREE.DirectionalLight(0x62b7df,.40);blue.position.set(3,-1,-4);scene.add(blue);
+let rng=43;const rand=()=>{rng=(Math.imul(rng,1664525)+1013904223)>>>0;return rng/4294967296};
+const pts=[];for(let i=0;i<420;i++)pts.push((rand()-.5)*22,(rand()-.5)*32,-9-rand()*18);
+const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x7894b3,size:.014,transparent:true,opacity:.52})));
+const keys=[[0,.35,-1.5,2.08,2.6],[3,-.16,-.77,1.37,2.5],[6,.13,-.82,1.4,2.7],[9,.21,-.58,1.20,2.7],[12,-.25,-.36,1.03,2.6],[15,.24,-.7,1.59,2.7],[18,-.26,-.83,1.28,2.7],[21,-.03,-.45,1.11,2.6],[24,.12,-.62,1.44,.22],[27,.17,-.67,1.4,1.2],[30,-.33,-.75,1.9,3.2],[33,.21,-.66,1.23,2.8],[36,.08,-.47,1.27,2.5],[40,-.31,-.82,1.57,2.7],[43,.17,-.76,1.63,2.9],[45,.12,-.83,1.88,3]];
+const smooth=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x)};
+function val(t,j){let idx=keys.length-2;for(let i=0;i<keys.length-1;i++){if(t>=keys[i][0]&&t<keys[i+1][0]){idx=i;break}}const a=keys[idx],b=keys[idx+1],p=smooth((t-a[0])/(b[0]-a[0]));return a[j]+(b[j]-a[j])*p}
+function frame(t){rig.position.set(val(t,1),val(t,2),0);rig.scale.setScalar(val(t,3));earth.rotation.y=1.4+t*.085;earth.rotation.x=.18;sun.intensity=val(t,4);sun.position.set(4*Math.sin(t*.1-1.3),2,6);renderer.render(scene,cam)}
+let resolveLoad;const assetReady=new Promise(resolve=>resolveLoad=resolve);
+window.__hf=window.__hf||{};window.__hf.buildReady=window.__hf.buildReady||{};window.__hf.buildReady.earth=assetReady;
+new THREE.TextureLoader().load('assets/earth.jpg',t=>{t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;mat.map=t;mat.needsUpdate=true;frame(0);resolveLoad()},undefined,()=>{frame(0);resolveLoad()});
+const beats=[["ÓRBITA / 001","16 AMANHECERES","EM UM DIA.","No espaço, o tempo parece outro.",105],["01 / ACREDITA?","DEZESSEIS.","VEZES.","Acontece de verdade.",115],["02 / AQUI EMBAIXO","NA TERRA,","UM.","Um amanhecer por dia.",115],["03 / LÁ NO ALTO","NA ESTAÇÃO,","DEZESSEIS.","Uma rotina bem diferente.",100],["04 / A RESPOSTA","ELA NÃO","FICA PARADA.","Gira continuamente ao redor da Terra.",101],["05 / VELOCIDADE","28.000","KM/H.","Quase oito quilômetros por segundo.",202],["06 / O TEMPO","90","MINUTOS.","Cada volta dura cerca disso.",225],["07 / UM CICLO","DO DIA","À NOITE.","Atravessando a luz e a sombra.",112],["08 / LADO ESCURO","ENTRA","NA SOMBRA.","A Terra bloqueia a luz.",112],["09 / O RETORNO","A LUZ","VOLTA.","O horizonte acende outra vez.",132],["10 / O ESPETÁCULO","UM RISCO","DE FOGO.","É a atmosfera iluminada.",104],["11 / O CICLO","DE NOVO.","E DE NOVO.","Muitas vezes em um único dia.",105],["12 / 24 HORAS","16 × LUZ.","16 × SOMBRA.","Cerca de 16 nasceres e pores do sol.",113],["13 / O MOTIVO","O SOL NÃO","ACELEROU.","É a estação que viaja depressa.",100],["ÓRBITA / FINAL","A ESTAÇÃO","NÃO PARA.","SALVE ESTA CURIOSIDADE.",107]];
+const timeline=gsap.timeline({paused:true});
+beats.forEach((b,i)=>{const start=i<13?i*3:(i===13?40:43),end=i<12?(i+1)*3:(i===12?40:i===13?43:45);
+const el=document.querySelector('#s'+i+' .body');
+timeline.fromTo(el,{opacity:0,y:60,filter:'blur(15px)'},{opacity:1,y:0,filter:'blur(0px)',duration:.43,ease:'power4.out',immediateRender:false},start+.02);
+timeline.to(el,{opacity:0,y:-55,filter:'blur(9px)',duration:.27,ease:'power3.in'},end-.29);
+});
+timeline.fromTo('#iss',{opacity:0,x:-950,y:250,scale:.45,rotation:-15,transformOrigin:'50% 50%'},{opacity:1,x:0,y:0,scale:1,rotation:-3,duration:1.1,ease:'power4.out'},9.05);
+timeline.to('#iss',{x:950,y:-250,opacity:0,scale:.34,rotation:15,duration:4.6,ease:'power2.inOut'},12.05);
+timeline.fromTo('#track',{opacity:0,scale:.7,rotation:-20,transformOrigin:'50% 56%'},{opacity:.92,scale:1,rotation:0,duration:.75,ease:'power2.out'},12.0);
+timeline.to('#track',{opacity:0,duration:.3},23.8);
+timeline.fromTo('#clock',{opacity:0,scale:.32,rotation:-30,transformOrigin:'50% 55%'},{opacity:1,scale:1,rotation:0,duration:.58,ease:'power4.out'},18.03);
+timeline.to('#clock',{rotation:300,duration:2.2,ease:'power2.inOut'},18.6);
+timeline.to('#clock',{opacity:0,scale:1.25,duration:.3},20.65);
+timeline.to('#shade',{opacity:.65,duration:.7,ease:'power2.inOut'},24);
+timeline.to('#shade',{opacity:0,duration:.72,ease:'power2.inOut'},27);
+timeline.fromTo('#glow',{opacity:0,scale:.6,transformOrigin:'50% 50%'},{opacity:1,scale:1.1,duration:.82,ease:'power3.out'},27.05);
+timeline.to('#glow',{opacity:.14,scale:1.4,duration:3},30.25);timeline.to('#glow',{opacity:0,duration:.4},33.7);
+timeline.fromTo('#ticks',{opacity:0,y:50},{opacity:1,y:0,duration:.42,ease:'power4.out'},36);timeline.to('#ticks',{opacity:0,y:-45,duration:.32},39.74);
+window.__timelines=window.__timelines||{};window.__timelines['orbita-001']=timeline;
+window.addEventListener('hf-seek',e=>{frame(e.detail.time)});frame(0);
+})();
+</script></body></html>
