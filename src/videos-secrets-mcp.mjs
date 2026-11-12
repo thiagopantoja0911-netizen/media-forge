@@ -221,7 +221,7 @@ export async function handleVideosSecretsMcp({
       return writeResult(response, id, {
         protocolVersion: version,
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: "mediaforge", version: "0.2.0" }
+        serverInfo: { name: "mediaforge", version: "0.3.0" }
       }, version);
     }
 
@@ -241,7 +241,7 @@ export async function handleVideosSecretsMcp({
         capabilities: { tools: { listChanged: false } },
         _meta: {
           "io.modelcontextprotocol/serverInfo": {
-            name: "mediaforge", version: "0.2.1"
+            name: "mediaforge", version: "0.3.0"
           }
         },
         ...NO_CACHE
