@@ -19,7 +19,7 @@ const analyzer = join(here, "analyze.py");
 const running = new Map();
 const ID = /^[a-f0-9]{32}$/;
 const KINDS = new Set(["reference", "render"]);
-const IMAGES = new Set(["reference", "render", "diff"]);
+const IMAGES = new Set(["reference", "render", "diff", "flow"]);
 
 if (process.env.NODE_ENV === "production" && secret.length < 24) {
   throw new Error("FRAME_LAB_KEY must have >=24 characters in production (no anonymous uploads)");
