@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { buildCinematic3dProject } from "./cinematic-3d.mjs";
+import { buildMotionComposition } from "./motion/composer.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
@@ -10,7 +11,7 @@ const NO_CACHE = { ttlMs: 0, cacheScope: "private" };
 export const VIDEOS_SECRETS_TOOLS = [
   {
     name: "create_video",
-    description: "Cria um job de vídeo no MediaForge usando o contrato compatível com Vídeos Secrets.",
+    description: "Caminho legado: envia HTML já preparado. Para motion cinematográfico com mídia, música e micro-SFX obrigatórios, use create_motion_video.",
     inputSchema: {
       type: "object",
       properties: {
@@ -39,6 +40,20 @@ export const VIDEOS_SECRETS_TOOLS = [
         }
       },
       required: ["title", "prompt", "duration_seconds", "aspect_ratio", "project_files"]
+    }
+  },
+  {
+    name: "create_motion_video",
+    description: "Cria vídeo cinematográfico no Worker Windows usando compositor validado MediaForge: planos reais em movimento, câmera GSAP, trilha e micro-SFX com eventos sincronizados. Bloqueia mídia ausente, fotos repetidas e entregas sem áudio. Requer plano mediaforge-motion-v1 com productionMode=cinematic e assets locais em base64.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        motion_plan: { type: "object", description: "Frame-based plan: format=mediaforge-motion-v1, productionMode=cinematic, audioMode=voice-led or sound-design, scenes, events and audioCues" },
+        asset_files: { type: "array", minItems: 1, maxItems: 72, items: { type: "object", additionalProperties: false, properties: { path: {type:"string"}, content: {type:"string"}, encoding: {type:"string",enum:["base64","utf8"]} }, required:["path","content","encoding"] } },
+        quality: {type:"string",enum:["draft","looks","standard","high","delivery"]}
+      },
+      required: ["motion_plan","asset_files"]
     }
   },
   {
@@ -283,6 +298,44 @@ export async function handleVideosSecretsMcp({
         id: job.id,
         status: job.status,
         message: "Vídeo adicionado à fila do MediaForge."
+      }, false, version), version);
+    }
+
+    if (name === "create_motion_video") {
+      if (!auth.scopes.includes("videos:write")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
+      if (args.motion_plan?.productionMode !== "cinematic") {
+        return writeError(response, id, -32602, "create_motion_video requires productionMode=cinematic", 422, version);
+      }
+      if (!Array.isArray(args.asset_files)) return writeError(response, id, -32602, "asset_files must be an array", 422, version);
+      const assets = args.asset_files.map(file => file.encoding === "base64"
+        ? {path:file.path,contentBase64:file.content}
+        : {path:file.path,content:file.content});
+      const composition = await buildMotionComposition(args.motion_plan, assets);
+      // The cinematic gate is mandatory; the tool never bypasses preflight or creative asset checks.
+      if (!composition.readiness.testRenderReady) {
+        return writeError(response, id, -32602, "Motion assets or cinematic quality gate not ready", 422, version);
+      }
+      const project = {
+        ...composition.project,
+        resolution: args.motion_plan.width === 2160 && args.motion_plan.height === 3840 ? "portrait-4k"
+          : args.motion_plan.width === 1080 && args.motion_plan.height === 1920 ? "portrait"
+          : args.motion_plan.width === 3840 && args.motion_plan.height === 2160 ? "landscape-4k"
+          : args.motion_plan.width === 1920 && args.motion_plan.height === 1080 ? "landscape" : undefined,
+        quality: args.quality ?? "high",
+        preflight: true
+      };
+      if (!project.resolution) return writeError(response, id, -32602, "Unsupported canvas for Windows delivery; use 1080x1920, 2160x3840, 1920x1080 or 3840x2160", 422, version);
+      const job = await createJob({
+        prompt: "Cinematic motion from validated timed plan: " + project.title,
+        project,
+        projectFiles: composition.projectFiles,
+        metadata: { ...composition.metadata, source:"cinematic-motion-v2", qaStatus:"pending-technical-and-artistic-review" }
+      });
+      return writeResult(response, id, textResult({
+        id:job.id,status:job.status,worker:"windows-local",renderer:"hyperframes",
+        cinematicCraft:composition.readiness.cinematicCraft,
+        audio: { voice:args.motion_plan.audioCues.some(c=>c.role==="voice"),music:args.motion_plan.audioCues.some(c=>c.role==="music"),sfx:args.motion_plan.audioCues.filter(c=>c.role==="sfx").length },
+        message:"Composição cinematográfica validada e enfileirada no Worker Windows; revisão artística ainda pendente."
       }, false, version), version);
     }
 

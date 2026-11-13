@@ -4,7 +4,7 @@ import { mkdir, stat, writeFile, access } from "node:fs/promises";
 import { resolve, join, relative, sep, basename } from "node:path";
 import { hostname } from "node:os";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
-import { inspectRenderedVideo } from "./video-qa.mjs";
+import { inspectRenderedVideo, inspectRenderedAudio } from "./video-qa.mjs";
 
 const url=String(process.env.MEDIAFORGE_REMOTE_URL||"").replace(/\/$/,"");
 const token=process.env.MEDIAFORGE_WORKER_TOKEN||"";
@@ -89,10 +89,18 @@ async function processRemote(job,leaseId) {
     if(technicalQA.status==="unverified") {
       console.warn("QA técnico não verificado:", technicalQA.issues.join("; "));
     }
+    const audioQA = configured.metadata?.productionMode === "cinematic"
+      ? await inspectRenderedAudio(rendered.outputPath) : null;
+    if(audioQA && audioQA.status !== "passed") {
+      const error = new Error("Cinematic audio QA failed: " + (audioQA.issues||[]).join("; "));
+      error.code = "AUDIO_MIX_QA_FAILED";
+      error.retryable = false;
+      throw error;
+    }
     await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
       leaseId,success:true,fileName:basename(rendered.outputPath),size:info.size,
       sha256:await hashFile(rendered.outputPath),outputPath:rendered.outputPath,
-      report:{outputName:basename(rendered.outputPath),technicalQA,motionReview:rendered.motionReview??null,diagnosticsDir:rendered.diagnosticsDir,artisticQA:"pending-user-review"}
+      report:{outputName:basename(rendered.outputPath),technicalQA,audioQA,motionReview:rendered.motionReview??null,diagnosticsDir:rendered.diagnosticsDir,artisticQA:"pending-user-review"}
     });
     console.log("Remote job completed:",job.id);
   }catch(error){
