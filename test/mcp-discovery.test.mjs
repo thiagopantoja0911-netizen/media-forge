@@ -118,6 +118,28 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     assert.equal(modernCall.data.result.content[0].type, "text");
     assert.equal(typeof JSON.parse(modernCall.data.result.content[0].text).online, "boolean");
 
+    // Premium Motion is the safe default for new promotional videos.
+    // A silent HTML stub must be blocked before it reaches the Windows worker.
+    const incompletePromo = await call("tools/call", MODERN, {
+      params: { name: "create_video", arguments: {
+        title: "Rejected premium study", prompt: "Test that the quality gate blocks regressions",
+        duration_seconds: 16, aspect_ratio: "16:9",
+        project_files: [{ path: "index.html", content: "<!doctype html><html><body>Static</body></html>" }]
+      } }
+    });
+    assert.equal(incompletePromo.status, 422);
+    assert.match(incompletePromo.data.error.message, /Premium Motion/);
+
+    // The only escape hatch for silent experiments is an explicit study profile.
+    const explicitStudy = await call("tools/call", MODERN, {
+      params: { name: "create_video", arguments: {
+        title: "Intentional silent experiment", prompt: "Study with no music, no production claim",
+        duration_seconds: 16, aspect_ratio: "16:9", production_profile: "study",
+        project_files: [{ path: "index.html", content: "<!doctype html><html><body>Static</body></html>" }]
+      } }
+    });
+    assert.equal(explicitStudy.status, 200, JSON.stringify(explicitStudy.data));
+
     const legacyInit = await call("initialize", LEGACY, {
       params: {
         protocolVersion: LEGACY,
