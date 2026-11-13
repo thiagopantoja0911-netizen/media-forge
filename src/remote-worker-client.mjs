@@ -38,6 +38,27 @@ async function call(path, method="GET", body, leaseId) {
     return data;
   }finally{clearTimeout(timeout);}
 }
+async function uploadFrameLabArtifact(jobId,leaseId,outputPath){
+  const fileSize=(await stat(outputPath)).size;
+  const sha=await hashFile(outputPath);
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),10*60*1000);
+  try{
+    const response=await fetch(url+"/v1/worker/jobs/"+jobId+"/artifact",{
+      method:"POST",duplex:"half",body:createReadStream(outputPath),
+      headers:{authorization:"Bearer "+token,
+        "x-mediaforge-lease":leaseId,
+        "x-mediaforge-artifact-sha256":sha,
+        "content-length":String(fileSize),
+        "content-type":"video/mp4"},
+      signal:controller.signal
+    });
+    const data=await response.json();
+    if(!response.ok||data.ok!==true||data.sha256!==sha)
+      throw new Error("Frame Lab MP4 upload failed: "+(data.error||response.status));
+    return data;
+  }finally{clearTimeout(timer);}
+}
 async function sendHeartbeat(active) {
   return call("/v1/worker/heartbeat","POST",{
     workerId,renderer:"hyperframes",
@@ -97,8 +118,12 @@ async function processRemote(job,leaseId) {
       error.retryable = false;
       throw error;
     }
+    // Full Frame Lab workflow: the output must return to the web service for real comparison.
+    // A failed upload fails the job instead of falsely marking the pipeline completed.
+    const artifactUploaded=job.metadata?.source==="frame-lab"
+      ? Boolean((await uploadFrameLabArtifact(job.id,leaseId,rendered.outputPath)).ok) : false;
     await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
-      leaseId,success:true,fileName:basename(rendered.outputPath),size:info.size,
+      leaseId,success:true,artifactUploaded,fileName:basename(rendered.outputPath),size:info.size,
       sha256:await hashFile(rendered.outputPath),outputPath:rendered.outputPath,
       report:{outputName:basename(rendered.outputPath),technicalQA,audioQA,motionReview:rendered.motionReview??null,diagnosticsDir:rendered.diagnosticsDir,artisticQA:"pending-user-review"}
     });
