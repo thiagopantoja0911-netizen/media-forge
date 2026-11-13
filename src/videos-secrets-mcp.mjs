@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { FRAME_LAB_MCP_TOOLS, FRAME_LAB_MCP_NAMES, FRAME_LAB_MCP_READ_TOOLS } from "../frame-lab/mcp-schemas.mjs";
 import { buildCinematic3dProject } from "./cinematic-3d.mjs";
 import { buildMotionComposition } from "./motion/composer.mjs";
 import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./premium-motion-baseline.mjs";
@@ -99,7 +100,8 @@ export const VIDEOS_SECRETS_TOOLS = [
       properties: { id: { type: "string", pattern: "^(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$" } },
       required: ["id"]
     }
-  }
+  },
+  ...FRAME_LAB_MCP_TOOLS
 ];
 
 function requestToken(request) {
@@ -280,6 +282,16 @@ export async function handleVideosSecretsMcp({
     const args = params.arguments && typeof params.arguments === "object" ? params.arguments : {};
     if (!toolByName(name)) {
       return writeError(response, id, -32602, "Unknown tool", 400, version);
+    }
+
+    if (FRAME_LAB_MCP_NAMES.has(name)) {
+      const scope = FRAME_LAB_MCP_READ_TOOLS.has(name) ? "videos:read" : "videos:write";
+      if (!auth.scopes.includes(scope))
+        return writeError(response, id, -32003, "Insufficient Frame Lab scope: "+scope, 403, version);
+      // Import the analyzer only for Frame Lab operations, leaving video MCP resilient.
+      const { executeFrameLabMcp } = await import("../frame-lab/mcp-actions.mjs");
+      const result = await executeFrameLabMcp(name, args, { createJob, getJob });
+      return writeResult(response, id, textResult(result, false, version), version);
     }
 
     if (name === "create_video") {
