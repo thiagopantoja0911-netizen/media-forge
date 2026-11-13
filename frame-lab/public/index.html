@@ -149,6 +149,9 @@ async function boot(){
  setText("engineBadge",caps.engineReady?"OpenCV ativo / frame a frame":"Motor de análise indisponível");
  if(!caps.engineReady)setText("status","O motor de análise ainda não está disponível nesta instância.");
  await projects();
+ const id=new URLSearchParams(location.search).get("project");
+ if(id && [...document.getElementById("projectSelect").options].some(o=>o.value===id))
+   await selectProject(id);
 }
 async function projects(){
   const r=await api("/frame-lab/api/projects");const sel=$("projectSelect");
@@ -514,4 +517,5 @@ init();
 boot().catch(err);
 })();
 </script>
+<script src="/frame-lab/quick-flow.js" defer></script>
 </body></html>
