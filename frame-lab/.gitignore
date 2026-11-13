@@ -1,0 +1,4 @@
+.venv/
+.frame-lab-data/
+__pycache__/
+*.pyc
