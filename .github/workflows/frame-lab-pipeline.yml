@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/frame-lab-full-pipeline-20261113
+      - feature/frame-lab-chat-mcp-20261113
     paths:
       - src/**
       - frame-lab/**
