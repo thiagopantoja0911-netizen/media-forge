@@ -151,6 +151,8 @@ async function serveFrame(response,id,kind,index) {
     "cache-control":"private, max-age=60","x-content-type-options":"nosniff"});
   createReadStream(file).pipe(response);
 }
+// MCP actions share these tested Frame Lab primitives and storage.
+export { dataRoot, safeDir, readJson, writeJson, fileExists, statusOf, capabilities, startAnalysis };
 export async function handleFrameLab({request,response,url,isAdminSession,createJob,getJob}){
   const fullPath=url.pathname;
   if(!(fullPath==="/frame-lab" || fullPath.startsWith("/frame-lab/"))) return false;
