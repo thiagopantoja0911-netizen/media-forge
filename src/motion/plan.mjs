@@ -1,6 +1,7 @@
 // Frame-based authoring contract. Evidence and creative approval are deliberately separate.
-export const SCENE_TYPES = ["kinetic", "widget", "product", "collage", "end-card"];
-export const TRANSITIONS = ["cut", "push", "iris"];
+import { reviewCinematicCraft } from "./cinematic-quality.mjs";
+export const SCENE_TYPES = ["kinetic", "widget", "product", "collage", "footage", "photo", "end-card"];
+export const TRANSITIONS = ["cut", "push", "iris", "whip", "dip", "match-cut"];
 const identifier = /^[a-z][a-z0-9-]{0,47}$/;
 const assetPath = /^assets\/[a-zA-Z0-9_./-]+$/;
 const isAsset = value => typeof value === "string" && assetPath.test(value) && !value.split("/").includes("..");
@@ -20,6 +21,7 @@ export function validateMotionPlan(plan) {
   if (!Number.isInteger(plan.width) || !Number.isInteger(plan.height) || plan.width < 256 || plan.height < 256 || plan.width > 3840 || plan.height > 3840 || plan.width % 2 || plan.height % 2) fail("width/height must be even integers in 256..3840");
   if (![1,9/16,16/9].some(r=>Math.abs(plan.width/plan.height-r)<.001)) fail("This composer supports 9:16, 16:9 and 1:1; keep other reference ratios in the evidence inventory");
   if (typeof plan.title !== "string" || !plan.title.trim() || plan.title.length > 160) fail("title is required, max 160 characters");
+  if (plan.productionMode !== undefined && !["standard","cinematic"].includes(plan.productionMode)) fail("productionMode must be standard or cinematic");
   if (!["silent-study", "sound-design", "voice-led"].includes(plan.audioMode)) fail("Choose audioMode: silent-study, sound-design or voice-led");
   if (plan.palette && Object.values(plan.palette).some(v => !/^#[0-9a-f]{6}$/i.test(v))) fail("palette values must be six-digit hex colors");
   const scenes = plan.scenes;
@@ -37,17 +39,19 @@ export function validateMotionPlan(plan) {
     if (typeof scene.headline !== "string" || !scene.headline.trim() || scene.headline.length > 72) fail(`${scene.id}: headline must contain 1..72 characters`);
     for (const field of ["eyebrow", "detail", "metricLabel", "controlLabel"]) if (scene[field] !== undefined && (typeof scene[field] !== "string" || scene[field].length > 100)) fail(`${scene.id}: ${field} max 100 characters`);
     if (scene.media !== undefined && !isAsset(scene.media)) fail(`${scene.id}: media must be a local assets/ path`);
-    if (["product", "collage"].includes(scene.type) && !scene.media) fail(`${scene.id}: ${scene.type} requires a supplied image (no invented product)`);
+    if (["product", "collage", "footage", "photo"].includes(scene.type) && !scene.media) fail(`${scene.id}: ${scene.type} requires a packaged local asset (no external URLs)`);
+    if (scene.camera !== undefined && !["dolly-in","pull-back","truck-left","truck-right","arc-reveal","locked"].includes(scene.camera)) fail(`${scene.id}: invalid camera move`);
     if (!TRANSITIONS.includes(scene.transition ?? "cut")) fail(`${scene.id}: unsupported transition`);
     if ((scene.transition ?? "cut") !== "cut" && length < fps * .8) fail(`${scene.id}: transition needs at least 0.8 seconds`);
     if (!Array.isArray(scene.events) || !scene.events.length || scene.events.length > 24) { fail(`${scene.id}: provide 1..24 timed events`); continue; }
     let previous = -1;
     for (const event of scene.events) {
       if (!event || !identifier.test(event.id) || eventFrames.has(event.id)) { fail(`${scene.id}: events need unique lowercase ids`); continue; }
-      if (!["enter", "state", "focus", "exit"].includes(event.action)) fail(`${event.id}: unsupported action`);
+      if (!["enter", "state", "focus", "camera", "exit"].includes(event.action)) fail(`${event.id}: unsupported action`);
       if (![event.startFrame, event.peakFrame, event.endFrame].every(Number.isInteger) || event.startFrame < 0 || event.startFrame < previous || event.peakFrame <= event.startFrame || event.endFrame < event.peakFrame || event.endFrame >= length) fail(`${event.id}: require ordered local start < peak <= end within the scene`);
       if (event.value !== undefined && (!Number.isFinite(event.value) || event.value < 0 || event.value > 100)) fail(`${event.id}: value must be 0..100`);
       if (event.action === "state" && scene.type !== "widget") fail(`${event.id}: state action is for widgets`);
+      if (event.action === "camera" && !["footage","photo","product","collage"].includes(scene.type)) fail(`${event.id}: camera action requires media-backed scene`);
       previous = event.startFrame;
       eventFrames.set(event.id, scene.startFrame + event.peakFrame);
     }
@@ -65,7 +69,7 @@ export function validateMotionPlan(plan) {
     for (const cue of cues) {
       if (!cue || !identifier.test(cue.id) || cueIds.has(cue.id)) { fail("audio cues require unique lowercase ids"); continue; }
       cueIds.add(cue.id);
-      if (!isAsset(cue.src)) fail(`${cue.id}: audio must be a local assets/ path`);
+      if (!isAsset(cue.src) || !/\.(?:wav|mp3|m4a|aac|ogg|opus|webm)$/i.test(cue.src)) fail(`${cue.id}: audio must be a packaged audio file under assets/`);
       if (!["music", "voice", "sfx"].includes(cue.role)) fail(`${cue.id}: invalid audio role`);
       if (!Number.isInteger(cue.startFrame) || !Number.isInteger(cue.endFrame) || cue.startFrame < 0 || cue.endFrame <= cue.startFrame || cue.endFrame > plan.totalFrames) fail(`${cue.id}: audio outside timeline`);
       if (!Number.isFinite(cue.volume) || cue.volume < 0 || cue.volume > 1) fail(`${cue.id}: volume must be 0..1`);
@@ -82,7 +86,8 @@ export function validateMotionPlan(plan) {
     if (plan.audioMode === "silent-study") warnings.push("Silent visual study: sound design and mix are pending");
     else if (cues.length && Math.max(...cues.map(c => c?.endFrame ?? 0)) < plan.totalFrames - fps * .5) warnings.push("Audio ends more than 0.5 seconds before the picture");
   }
-  return { ok: errors.length === 0, errors, warnings, artisticReview: "pending" };
+  const craft = reviewCinematicCraft(plan);
+  return { ok: errors.length === 0 && craft.ok, errors: [...errors, ...craft.errors], warnings: [...warnings, ...craft.warnings], cinematicCraft: craft.metrics, artisticReview: "pending" };
 }
 
 export function requireMotionPlan(plan) {
