@@ -1,0 +1,37 @@
+name: MediaForge Frame Lab Integration
+on:
+  push:
+    branches:
+      - feature/mediaforge-frame-lab-integrated-20261113
+    paths:
+      - src/server.mjs
+      - src/panel.mjs
+      - frame-lab/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/frame-lab-integration.yml
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install root MediaForge and Frame Lab pinned dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check integrated server and frame-analysis modules
+        run: |
+          node --check src/server.mjs
+          node --check src/panel.mjs
+          node --check frame-lab/handler.mjs
+          node --check frame-lab/analyze-node.mjs
+          node --check frame-lab/motion-curves.mjs
+      - name: Verify original MediaForge functionality
+        run: node --test --test-concurrency=1 test/*.test.mjs
+      - name: Verify Frame Lab integration, CSRF and session protection
+        run: node --test --test-concurrency=1 frame-lab/tests/curves.test.mjs frame-lab/tests/bridge.test.mjs
+      - name: Frame-by-frame decoding, WASM OpenCV and reconstruction QA
+        run: node --test --test-concurrency=1 frame-lab/tests/synthetic-node.test.mjs
