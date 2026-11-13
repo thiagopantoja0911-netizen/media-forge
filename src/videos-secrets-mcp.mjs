@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { buildCinematic3dProject } from "./cinematic-3d.mjs";
 import { buildMotionComposition } from "./motion/composer.mjs";
+import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./premium-motion-baseline.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
@@ -11,7 +12,7 @@ const NO_CACHE = { ttlMs: 0, cacheScope: "private" };
 export const VIDEOS_SECRETS_TOOLS = [
   {
     name: "create_video",
-    description: "Caminho legado: envia HTML já preparado. Para motion cinematográfico com mídia, música e micro-SFX obrigatórios, use create_motion_video.",
+    description: "Produção de vídeo com Premium Motion como padrão: 60 FPS, high/delivery, preflight, movimento GSAP, trilha e micro-SFX. Para estudo silencioso use production_profile=study; para mídia cinematográfica especializada use create_motion_video.",
     inputSchema: {
       type: "object",
       properties: {
@@ -24,6 +25,7 @@ export const VIDEOS_SECRETS_TOOLS = [
         quality: { type: "string", enum: ["draft", "looks", "standard", "high", "delivery"] },
         workers: { type: "integer", minimum: 1, maximum: 64 },
         preflight: { type: "boolean" },
+        production_profile: { type: "string", enum: ["premium-motion-v1", "study"], description: "Padrão para anúncios: Premium Motion. study permite testes visuais ou vídeos intencionalmente silenciosos." },
         project_files: {
           type: "array",
           minItems: 1,
@@ -282,17 +284,31 @@ export async function handleVideosSecretsMcp({
 
     if (name === "create_video") {
       if (!auth.scopes.includes("videos:write")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
+      const productionProfile = args.production_profile ?? PREMIUM_MOTION_BASELINE;
+      if (!["premium-motion-v1", "study"].includes(productionProfile)) {
+        return writeError(response, id, -32602, "Unsupported production profile", 422, version);
+      }
+      const premium = productionProfile === PREMIUM_MOTION_BASELINE;
+      if (premium) {
+        const review = validatePremiumMotionSubmission(args);
+        if (!review.ok) return writeError(response, id, -32602, review.errors.join("; "), 422, version);
+      }
       const job = await createJob({
         title: args.title,
         prompt: args.prompt,
         duration_seconds: args.duration_seconds,
         aspect_ratio: args.aspect_ratio,
-        resolution: args.resolution ?? (args.aspect_ratio === "16:9" ? "landscape-4k" : args.aspect_ratio === "1:1" ? "square-4k" : "portrait-4k"),
+        resolution: args.resolution ?? (premium
+          ? (args.aspect_ratio === "16:9" ? "landscape" : args.aspect_ratio === "1:1" ? "square" : "portrait")
+          : (args.aspect_ratio === "16:9" ? "landscape-4k" : args.aspect_ratio === "1:1" ? "square-4k" : "portrait-4k")),
         fps: args.fps ?? 60,
         quality: args.quality ?? "high",
         workers: args.workers,
-        preflight: args.preflight ?? true,
-        project_files: args.project_files
+        preflight: premium ? true : (args.preflight ?? true),
+        project_files: args.project_files,
+        metadata: premium
+          ? { productionMode: "cinematic", qualityBaseline: PREMIUM_MOTION_BASELINE, expectsAudio: true, artisticQA: "pending-user-review" }
+          : { productionMode: "study" }
       });
       return writeResult(response, id, textResult({
         id: job.id,
