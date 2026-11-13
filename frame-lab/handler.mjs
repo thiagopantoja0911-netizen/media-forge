@@ -9,6 +9,7 @@ import { existsSync } from "node:fs";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
+import { readProjectPackage } from "./project-bundle.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dataRoot = resolve(process.env.FRAME_LAB_DATA_DIR || join(process.env.MEDIAFORGE_DATA_DIR || ".mediaforge", "frame-lab"));
@@ -150,7 +151,7 @@ async function serveFrame(response,id,kind,index) {
     "cache-control":"private, max-age=60","x-content-type-options":"nosniff"});
   createReadStream(file).pipe(response);
 }
-export async function handleFrameLab({request,response,url,isAdminSession}){
+export async function handleFrameLab({request,response,url,isAdminSession,createJob,getJob}){
   const fullPath=url.pathname;
   if(!(fullPath==="/frame-lab" || fullPath.startsWith("/frame-lab/"))) return false;
   const path=fullPath.slice("/frame-lab".length)||"/";
@@ -202,6 +203,66 @@ export async function handleFrameLab({request,response,url,isAdminSession}){
       return json(response,202,await startAnalysis(id));
     }
     if(tail==="status"&&request.method==="GET")return json(response,200,await statusOf(id));
+    if(tail==="render-job"&&request.method==="GET"){
+      const queued=await readJson(join(dir,"render-job.json"),null);
+      if(!queued)return json(response,200,{ok:true,renderJob:null});
+      const job=typeof getJob==="function"?await getJob(queued.jobId):null;
+      return json(response,200,{ok:true,renderJob:job?{
+        id:job.id,status:job.status,progress:job.progress,
+        error:job.error||null,result:job.result?{
+          fileName:job.result.fileName,report:job.result.report||null,
+          artifactUploaded:job.result.artifactUploaded===true
+        }:null
+      }:{id:queued.jobId,status:"unknown"}});
+    }
+    if(tail==="render-job"&&request.method==="POST"){
+      if(typeof createJob!=="function")throw statusError("MediaForge render queue unavailable",503);
+      const report=await readJson(join(dir,"results","report.json"),null);
+      if(!report)throw statusError("Analyze the source before rendering",409);
+      const zip=join(dir,"project.zip");
+      if(!(await fileExists(zip)))throw statusError("Upload an editable reconstruction ZIP first",409);
+      const previous=await readJson(join(dir,"render-job.json"),null);
+      if(previous && typeof getJob==="function"){
+        const job=await getJob(previous.jobId);
+        if(job&&["queued","processing"].includes(job.status))throw statusError("Previous render still active",409);
+      }
+      const archive=await readProjectPackage(zip);
+      const settings=await bodyJson(request,8192);
+      if(settings.confirmRender!==true)throw statusError("Explicit render confirmation required",428);
+      const w=report.reference.width,h=report.reference.height;
+      const aspectRatio=Math.abs(w/h-9/16)<.04?"9:16":Math.abs(w/h-16/9)<.04?"16:9":
+        Math.abs(w/h-1)<.04?"1:1":null;
+      if(!aspectRatio)throw statusError("Source aspect ratio is not yet supported by renderer",422);
+      const fps=Math.min(120,Math.max(1,Math.round(report.reference.fps||30)));
+      const quality=["draft","looks","standard","high","delivery"].includes(settings.quality)?
+        settings.quality:"standard";
+      const job=await createJob({
+        prompt:"Frame Lab frame-accurate editable reconstruction "+id,
+        project:{title:"Frame Lab — "+id.slice(0,9),durationSeconds:report.reference.duration_s,
+          aspectRatio,outputs:["video"],renderer:"hyperframes",fps,
+          quality,resolution:aspectRatio==="9:16"?"portrait":"landscape",
+          workers:1,preflight:true},
+        projectFiles:archive.projectFiles,
+        metadata:{source:"frame-lab",frameLabProjectId:id,mode:"reconstruction",
+          expectsAudio:archive.projectFiles.some(f=>f.path.match(/\.(?:m4a|mp3|wav)$/i)),
+          qaStatus:"pending-reference-comparison"}
+      });
+      await writeJson(join(dir,"render-job.json"),{jobId:job.id,createdAt:new Date().toISOString()});
+      return json(response,202,{ok:true,jobId:job.id,status:job.status,
+        workflow:"analysis → authored project → MediaForge worker → artifact upload → frame comparison"});
+    }
+    if(tail==="compare"&&request.method==="POST"){
+      if(!(await fileExists(join(dir,"render.mp4"))))throw statusError("Rendered MP4 not received",409);
+      return json(response,202,await startAnalysis(id));
+    }
+    if(tail==="video/render"&&request.method==="GET"){
+      const file=join(dir,"render.mp4");
+      const details=await stat(file).catch(()=>null);
+      if(!details?.isFile())throw statusError("Rendered file not yet available",404);
+      response.writeHead(200,{"content-type":"video/mp4","content-length":details.size,
+        "cache-control":"private, no-store","content-disposition":'attachment; filename="frame-lab-render.mp4"'});
+      return createReadStream(file).pipe(response);
+    }
     if(tail==="objects"&&request.method==="GET"){
       return json(response,200,await readJson(join(dir,"objects.json"),{objects:[]}));
     }
@@ -235,9 +296,20 @@ export async function handleFrameLab({request,response,url,isAdminSession}){
     }
     if(tail.startsWith("upload/")&&request.method==="POST"){
       const kind=tail.split("/")[1];
-      if(!KINDS.has(kind))throw statusError("Invalid upload type",404);
+      if(kind!=="project"&&!KINDS.has(kind))throw statusError("Invalid upload type",404);
       if(running.has(id))throw statusError("Analysis in progress",409);
-      const bytes=await receiveFile(request,join(dir,kind+".mp4"));
+      const job=await readJson(join(dir,"render-job.json"),null);
+      if(job && typeof getJob==="function"){
+        const current=await getJob(job.jobId);
+        if(current&&["queued","processing"].includes(current.status))
+          throw statusError("Cannot replace project or videos while rendering",409);
+      }
+      const file=join(dir,kind==="project"?"project.zip":kind+".mp4");
+      const bytes=await receiveFile(request,file);
+      if(kind==="project"){
+        try{await readProjectPackage(file)}
+        catch(e){await rm(file,{force:true});throw e}
+      }
       return json(response,201,{ok:true,kind,bytes});
     }
     return json(response,404,{error:"Unknown route"});
