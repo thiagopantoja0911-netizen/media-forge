@@ -1,0 +1,157 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><title>Spotify × Apple — Faithful Motion Reconstruction / test</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;overflow:hidden;width:1280px;height:720px;background:#07120c;color:#fff;font-family:Inter,Arial,Helvetica,sans-serif}
+#main{position:relative;overflow:hidden;width:1280px;height:720px;isolation:isolate;background:#09150d}
+.clip{position:absolute;inset:0;overflow:hidden}
+.world{position:absolute;inset:0;overflow:hidden;background:radial-gradient(ellipse at 36% 60%,#0c291c 0%,#0a140d 53%,#070a08 100%)}
+.light{position:absolute;pointer-events:none;border-radius:50%;mix-blend-mode:screen;filter:blur(75px);opacity:.9}
+#lightA{width:890px;height:930px;left:430px;top:-370px;background:radial-gradient(ellipse,#06ff5a 0%,#02d84a 30%,#039c3e 48%,transparent 73%)}
+#lightB{width:1100px;height:600px;left:-250px;top:360px;background:radial-gradient(ellipse,#04cb37 0%,#07a942 35%,transparent 72%);opacity:.77}
+#lightC{width:790px;height:940px;left:740px;top:190px;background:radial-gradient(ellipse,#0ab83a 0%,#00a733 39%,transparent 77%);opacity:.61}
+#lightD{width:780px;height:860px;left:110px;top:-170px;background:radial-gradient(ellipse,#065f29 0%,transparent 71%);opacity:.4}
+#shade{position:absolute;inset:0;background:radial-gradient(ellipse at 46% 47%,transparent 36%,#0312087d 98%);pointer-events:none}
+#noise{position:absolute;inset:0;opacity:.085;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23ffffff' filter='url(%23n)' d='M0 0h128v128H0z'/%3E%3C/svg%3E")}
+.spot-mark{display:block;flex:none}
+.brand{display:flex;align-items:center;gap:13px;font-size:41px;font-weight:800;letter-spacing:-.055em;white-space:nowrap}
+.brand .spot-mark{height:62px;width:62px}
+.brand .spot-white circle{fill:#1ed760}
+.center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.typ{font-size:38px;font-weight:700;letter-spacing:-.045em;white-space:nowrap;margin:0;color:#fff}
+.miniTitle{font-size:34px;font-weight:750;letter-spacing:-.04em}
+#intro .center{overflow:visible}
+#openingLine{display:flex;align-items:center;justify-content:center;gap:12px;white-space:nowrap;font-size:42px;font-weight:700;letter-spacing:-.055em;position:absolute;left:410px;top:320px;width:max-content}
+#openingLine .spot-mark{height:64px;width:64px}
+#openingLine .apple{color:#1ed760;font-weight:750}
+#openingLine .extra{white-space:pre}
+#titlePlaylists .miniTitle{font-size:34px;font-weight:700}
+#showcase .scene{position:absolute;inset:0}
+#showcaseTitle{position:absolute;top:190px;left:130px;font-size:35px;font-weight:780;letter-spacing:-.05em}
+#showcaseCards{position:absolute;left:130px;top:278px;display:flex;gap:23px;width:max-content;perspective:1400px}
+.mix-card{width:184px;flex:none;min-height:260px;transform-origin:50% 50%;color:#fff}
+.mix-art{position:relative;width:181px;height:181px;border-radius:11px;overflow:hidden;background-color:#111;background-image:url("assets/card_capture.png");background-size:1816px 1031px;background-position:var(--cropX) var(--cropY);box-shadow:0 20px 35px #0009;border:1px solid #ffffff17}
+.mix-bottom{margin-top:15px;font-size:17px;line-height:1.24}
+.mix-bottom span{font-size:17px;font-weight:700}
+.mix-bottom>div{font-size:15px;color:#ffffffa4;line-height:1.25;max-width:190px;margin-top:6px}
+#discover .typ{font-size:42px}
+#mosaic .scene{position:absolute;inset:0}
+#mosaicTexture{position:absolute;width:1280px;height:720px;left:0;top:0;overflow:hidden;background-image:url("assets/mosaic_capture.png");background-size:2270px 1289px;background-position:-495px -283px;filter:saturate(1.17)}
+#mosaicShade{position:absolute;inset:0;background:linear-gradient(130deg,#05180b22,#0004 45%,#08381805)}
+#mosaicTitle{position:absolute;left:445px;top:337px;font-size:44px;font-weight:850;letter-spacing:-.06em;text-shadow:0 2px 18px #000b;white-space:nowrap}
+#playerScene{perspective:1400px}
+.player{position:absolute;width:520px;height:252px;left:380px;top:280px;border-radius:38px;background:linear-gradient(145deg,#121914f5,#0a170cf3);border:1px solid #ffffff16;color:#fff;box-shadow:0 33px 80px #000b,0 6px 20px #02080380;overflow:hidden;padding:23px 33px 24px}
+.player-head{display:flex;align-items:center;gap:18px;height:81px}
+.album{height:71px;width:71px;border-radius:12px;flex:none;background-image:url("assets/card_capture.png");background-size:1816px 1031px;background-position:-864px -440px;box-shadow:0 0 0 2px #ffffff26;background-color:#cfd4d2}
+.trackmeta{min-width:0;flex:1}
+.trackmeta strong{font-size:30px;letter-spacing:-.042em;display:block;white-space:nowrap}
+.trackmeta small{font-size:23px;color:#e5e9e4;display:block;margin-top:3px;letter-spacing:-.02em}
+.waveicon{display:flex;align-items:center;gap:3px}
+.waveicon span{height:13px;width:3px;background:#eaf4e9;border-radius:4px}
+.waveicon span:nth-child(2n){height:23px}
+.waveicon span:nth-child(3n){height:9px}
+.progress{height:7px;background:#b2c3b1;border-radius:100px;margin-top:27px;overflow:hidden}
+.progress .filled{width:56%;height:100%;background:#1ed760}
+.times{display:flex;justify-content:space-between;font-size:15px;margin-top:6px;color:#d2e3d3}
+.controls{display:flex;justify-content:center;align-items:center;gap:42px;margin-top:12px}
+.controls .sym{height:30px;display:grid;place-items:center}
+.controls .sym svg{height:29px;width:29px}
+.controls .sym.play svg{height:36px;width:36px}
+.playerplus{margin-left:auto;display:grid;place-items:center}
+.player-bottom{display:flex;align-items:center;justify-content:center;gap:49px;margin-top:5px}
+.device{font-size:23px;color:#e4f5e5;font-weight:700}
+#collect .typ{position:absolute;left:0;right:0;top:160px;font-size:45px;text-align:center}
+#tapFocus{position:absolute;left:720px;top:422px;font-size:32px}
+#likeScene .greencheck{position:absolute;left:603px;top:246px;width:74px;height:74px;border-radius:50%;background:#1ed760;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 15px #1ed76020}
+#likeScene .greencheck svg{width:43px;height:43px}
+#likedToast{position:absolute;left:410px;top:367px;display:flex;align-items:center;gap:15px;padding:17px 24px;background:#f6f8f2;color:#14251a;border-radius:13px;font-size:18px;font-weight:650;box-shadow:0 16px 40px #0007;white-space:nowrap}
+#likedToast .square{width:25px;height:25px;border-radius:6px;background:linear-gradient(145deg,#6a3deb,#b6c4fe);color:#fff;display:grid;place-items:center;font-size:13px}
+#likedToast .change{font-size:16px;color:#185a3c;padding-left:7px}
+#feel .center .typ{font-size:41px}
+#feel .green{color:#1ed760}
+#lyrics .scene{position:absolute;inset:0;perspective:1100px}
+#lyricCard{position:absolute;left:406px;top:212px;width:520px;height:296px;background:linear-gradient(140deg,#091d0bbf,#0a1c0feb);border:1px solid #ffffff24;border-radius:34px;color:#fff;box-shadow:0 26px 60px #0315079e;padding:27px 31px;overflow:hidden;transform-origin:center}
+.lyricTop{display:flex;justify-content:space-between;align-items:center;font-size:17px;font-weight:650;color:#f6fff6}
+.lyricIcons{font-size:18px;letter-spacing:4px;opacity:.85}
+.lyricFaint{font-size:27px;font-weight:650;letter-spacing:-.045em;color:#d6e7d2a3;margin-top:24px;white-space:nowrap;opacity:.45}
+.lyricMain{font-size:35px;font-weight:850;letter-spacing:-.065em;margin-top:3px}
+.lyricSub{font-size:31px;font-weight:750;color:#fff;margin-top:5px;letter-spacing:-.058em}
+.lyricBottom{height:4px;background:#ffffff19;border-radius:3px;margin-top:29px}
+#outro .center{flex-direction:column}
+#endLogo{display:flex;gap:13px;align-items:center;font-size:48px;letter-spacing:-.06em;font-weight:800}
+#endLogo .spot-mark{width:69px;height:69px}
+#byline{position:absolute;left:0;right:0;bottom:57px;text-align:center;font-size:15px;color:#ffffffaa}
+#byline strong{font-weight:600}
+</style><script src="assets/gsap.min.js"></script></head><body>
+<div id="main" data-composition-id="main" data-width="1280" data-height="720" data-start="0" data-duration="15.85" data-motion-blur="on">
+<div id="bg" class="clip" data-start="0" data-duration="15.85" data-track-index="0" data-layout-ignore><div class="world"></div><div class="light" id="lightA"></div><div class="light" id="lightB"></div><div class="light" id="lightC"></div><div class="light" id="lightD"></div><div id="shade"></div><div id="noise"></div></div>
+<div id="intro" class="clip" data-start="0" data-duration="2.11" data-track-index="1"><div class="center">
+<div id="openingLine"><svg class="spot-mark" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="#1ed760"/><path d="M20 37C40 29 67 32 82 42" fill="none" stroke="#0c1810" stroke-width="9" stroke-linecap="round"/><path d="M22 53c20-7 40-4 57 6" fill="none" stroke="#0c1810" stroke-width="7.5" stroke-linecap="round"/><path d="M27 68c17-5 34-2 47 7" fill="none" stroke="#0c1810" stroke-width="6" stroke-linecap="round"/></svg> <span>Spotify</span><span class="extra"> ad made by </span><span class="apple">Apple.</span></div>
+</div></div>
+<div id="titlePlaylists" class="clip" data-start="2.11" data-duration="1.13" data-track-index="1"><div class="center"><div class="miniTitle" id="playlistsHeading">Playlists Made For You</div></div></div>
+<div id="showcase" class="clip" data-start="3.24" data-duration="1.50" data-track-index="1"><div class="scene"><h2 id="showcaseTitle">Made For You</h2><div id="showcaseCards"><div class="mix-card" id="mix0"><div class="mix-art" style="--cropX:-489px;--cropY:-443px;--accent:#36eed6"></div><div class="mix-bottom"><span>Daily Mix 01</span><div>Travis Scott, Drake, Metro Boomin...</div></div></div><div class="mix-card" id="mix1"><div class="mix-art" style="--cropX:-676px;--cropY:-442px;--accent:#f86263"></div><div class="mix-bottom"><span>Daily Mix 02</span><div>Dua Lipa, The Weeknd, Billie Eilish...</div></div></div><div class="mix-card" id="mix2"><div class="mix-art" style="--cropX:-864px;--cropY:-440px;--accent:#b6b7bb"></div><div class="mix-bottom"><span>Daily Mix 03</span><div>Frank Ocean, Tyler, The Creator...</div></div></div><div class="mix-card" id="mix3"><div class="mix-art" style="--cropX:-1050px;--cropY:-440px;--accent:#c6eb36"></div><div class="mix-bottom"><span>Daily Mix 04</span><div>Tame Impala, Arctic Monkeys...</div></div></div><div class="mix-card" id="mix4"><div class="mix-art" style="--cropX:-1235px;--cropY:-440px;--accent:#32c7f2"></div><div class="mix-bottom"><span>Daily Mix 05</span><div>J. Cole, Central Cee, Stormzy...</div></div></div></div></div></div>
+<div id="discover" class="clip" data-start="4.74" data-duration=".86" data-track-index="1"><div class="center"><div id="discoverText" class="typ">Discover new sounds</div></div></div>
+<div id="mosaic" class="clip" data-start="5.60" data-duration="2.13" data-track-index="1"><div class="scene"><div id="mosaicTexture"></div><div id="mosaicShade"></div><h2 id="mosaicTitle">Every week.</h2></div></div>
+<div id="playerScene" class="clip" data-start="7.73" data-duration="3.15" data-track-index="1"><div class="center" data-layout-allow-overlap><div id="player" class="player">
+<div class="player-head"><div class="album"></div><div class="trackmeta"><strong>Pink + White</strong><small>Frank Ocean</small></div><div class="waveicon"><span></span><span></span><span></span><span></span><span></span></div></div>
+<div class="times" style="margin-top:5px"><span>2:19</span><span>3:04</span></div>
+<div class="progress"><div class="filled"></div></div>
+<div class="player-bottom"><span class="device">◉</span><span class="sym"><svg viewBox="0 0 40 40" width="28" height="28" fill="#fff"><path d="M2 9v22h4V9zm8 11L32 7v26Z"/></svg></span><span class="sym play"><svg viewBox="0 0 40 40" width="28" height="28" fill="#fff"><path d="M9 4L35 20 9 36Z"/></svg></span><span class="sym"><svg viewBox="0 0 40 40" width="28" height="28" fill="#fff"><path d="M34 9v22h4V9zM30 20L8 7v26Z"/></svg></span><span class="playerplus" id="playerPlus"><svg viewBox="0 0 40 40" width="28" height="28" fill="none" stroke="#c8f4d4" stroke-width="3.4"><circle cx="20" cy="20" r="14"/><path d="M20 12v16M12 20h16"/></svg></span></div></div></div></div>
+<div id="collect" class="clip" data-start="8.94" data-duration="1.90" data-track-index="3" data-layout-allow-overlap><div class="center"><h2 id="collectText" class="typ">Collect what you love</h2></div></div>
+<div id="likeScene" class="clip" data-start="10.88" data-duration="1.09" data-track-index="4"><div class="scene">
+<div id="greencheck" class="greencheck"><svg viewBox="0 0 48 48" fill="none" stroke="#093818" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 25l9 9 17-18"/></svg></div>
+<div id="likedToast"><span class="square">♥</span><span>Added to Liked Songs</span><span class="change">Change</span></div>
+</div></div>
+<div id="feel" class="clip" data-start="11.97" data-duration=".55" data-track-index="1"><div class="center"><h2 id="feelText" class="typ">Feel every <span class="green">word.</span></h2></div></div>
+<div id="lyrics" class="clip" data-start="12.52" data-duration="1.58" data-track-index="1"><div class="scene"><div id="lyricCard"><div class="lyricTop"><span>Lyrics</span><span class="lyricIcons">◉ ◈</span></div><div class="lyricFaint">Words can carry more.</div><div class="lyricMain">Feel every word.</div><div class="lyricSub">With the lyrics from Spotify.</div><div class="lyricBottom"></div></div></div></div>
+<div id="outro" class="clip" data-start="14.10" data-duration="1.75" data-track-index="1"><div class="center"><div id="endLogo"><svg class="spot-mark" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="#1ed760"/><path d="M20 37C40 29 67 32 82 42" fill="none" stroke="#0c1810" stroke-width="9" stroke-linecap="round"/><path d="M22 53c20-7 40-4 57 6" fill="none" stroke="#0c1810" stroke-width="7.5" stroke-linecap="round"/><path d="M27 68c17-5 34-2 47 7" fill="none" stroke="#0c1810" stroke-width="6" stroke-linecap="round"/></svg><span>Spotify</span></div><div id="byline">Concept ad by <strong>SymonEdits</strong></div></div></div>
+<audio id="originalAudio" class="clip" data-start="0" data-duration="15.85" data-track-index="20" data-volume="1" src="__ORIGINAL_SOUND_URL__"></audio>
+<audio id="testcompat1" class="clip" data-start="4" data-duration=".1" data-track-index="23" data-volume="0" src="https://assets.mixkit.co/active_storage/sfx/2582/2582-preview.mp3"></audio>
+<audio id="testcompat2" class="clip" data-start="10.8" data-duration=".1" data-track-index="23" data-volume="0" src="https://assets.mixkit.co/active_storage/sfx/2605/2605-preview.mp3"></audio>
+</div>
+<script>
+window.__timelines=window.__timelines||{};
+const tl=gsap.timeline({paused:true});
+function show(q,t,from,to,d,e='expo.out'){tl.fromTo(q,from,{...to,duration:d,ease:e},t)}
+tl.fromTo('#lightA',{x:0,y:0,scale:1.08},{x:-245,y:260,scale:1.3,duration:5.9,ease:'sine.inOut'},0);
+tl.to('#lightA',{x:210,y:-140,scale:1.15,duration:5.1,ease:'sine.inOut'},5.9);
+tl.to('#lightA',{x:-110,y:200,scale:1.34,duration:4.85,ease:'sine.inOut'},11);
+tl.fromTo('#lightB',{x:0,y:0,scale:1},{x:340,y:-210,scale:1.2,duration:7.3,ease:'sine.inOut'},0);
+tl.to('#lightB',{x:-100,y:120,scale:.9,duration:8.55,ease:'sine.inOut'},7.3);
+tl.fromTo('#lightC',{x:50,y:-130,opacity:.32},{x:-410,y:50,opacity:.86,duration:9.2,ease:'sine.inOut'},0);
+tl.to('#lightC',{x:-50,y:40,opacity:.6,duration:6.65,ease:'sine.inOut'},9.2);
+show('#openingLine',.2,{opacity:0,y:42,scale:.62,filter:'blur(19px)'},{opacity:1,y:0,scale:1,filter:'blur(0px)'},.49);
+show('#openingLine .extra',.90,{opacity:0,filter:'blur(9px)'},{opacity:1,filter:'blur(0px)'},.29);
+show('#openingLine .apple',1.03,{opacity:0,filter:'blur(11px)'},{opacity:1,filter:'blur(0px)'},.34);
+tl.to('#openingLine',{x:-840,scale:1.51,filter:'blur(9px)',opacity:0,duration:.60,ease:'power3.in'},1.46);
+show('#playlistsHeading',2.23,{opacity:0,scale:.61,filter:'blur(13px)'},{opacity:1,scale:1,filter:'blur(0px)'},.54);
+tl.to('#playlistsHeading',{scale:1.38,x:-90,opacity:0,filter:'blur(12px)',duration:.30,ease:'power3.in'},2.92);
+show('#showcaseTitle',3.29,{opacity:0,x:120,filter:'blur(10px)'},{opacity:1,x:0,filter:'blur(0px)'},.29);
+show('#showcaseCards',3.28,{opacity:0,x:970,scale:.91,filter:'blur(19px)'},{opacity:1,x:0,scale:1,filter:'blur(0px)'},.84);
+tl.fromTo('.mix-card',{opacity:0,y:35,scale:.84},{opacity:1,y:0,scale:1,duration:.55,ease:'power4.out',stagger:.10},3.33);
+tl.to('#showcaseCards',{x:-1070,scale:1.30,filter:'blur(15px)',opacity:0,duration:.32,ease:'power3.in'},4.48);
+show('#discoverText',4.79,{opacity:0,scale:.75,filter:'blur(14px)'},{opacity:1,scale:1,filter:'blur(0px)'},.42);
+tl.to('#discoverText',{x:-280,scale:1.23,filter:'blur(12px)',opacity:0,duration:.25,ease:'power3.in'},5.34);
+show('#mosaicTexture',5.66,{opacity:0,scale:.75,x:400,y:210,rotation:-10,filter:'blur(23px)'},{opacity:1,scale:1.1,x:0,y:0,rotation:-4,filter:'blur(0px)'},.77);
+show('#mosaicTitle',5.84,{opacity:0,scale:.7,y:110,rotation:-13,filter:'blur(15px)'},{opacity:1,scale:1,y:0,rotation:-11,filter:'blur(0px)'},.5);
+tl.to('#mosaicTexture',{x:-220,y:-185,scale:1.45,rotation:-14,duration:1.1,ease:'power2.inOut'},6.50);
+tl.to('#mosaicTitle',{x:-280,y:-200,scale:1.5,opacity:0,filter:'blur(21px)',duration:.32,ease:'power3.in'},7.37);
+tl.to('#mosaicTexture',{x:-550,y:-450,scale:1.85,opacity:0,filter:'blur(15px)',duration:.27,ease:'power3.in'},7.45);
+show('#player',7.79,{opacity:0,scale:.40,rotationY:-17,rotation:-4,filter:'blur(18px)',x:140,y:80},{opacity:1,scale:.87,rotationY:-8,rotation:-4,filter:'blur(0px)',x:0,y:0},.63);
+tl.to('#player',{scale:1.03,rotation:-2,rotationY:0,x:-30,y:30,duration:.85,ease:'power2.inOut'},8.54);
+show('#collectText',8.99,{opacity:0,scale:.72,filter:'blur(13px)'},{opacity:1,scale:1,filter:'blur(0px)'},.47);
+tl.to('#player',{scale:1.34,x:-100,y:80,duration:.64,ease:'power2.inOut'},9.29);
+tl.to('#collectText',{opacity:0,scale:1.32,x:-140,filter:'blur(11px)',duration:.22,ease:'power3.in'},10.30);
+tl.to('#player',{scale:3.5,x:-1230,y:-430,rotation:0,rotationY:0,filter:'blur(17px)',opacity:0,duration:.61,ease:'power3.in'},10.32);
+show('#greencheck',10.90,{opacity:0,scale:.16,rotation:-35,filter:'blur(17px)'},{opacity:1,scale:1,rotation:0,filter:'blur(0px)'},.39,'back.out(1.2)');
+show('#likedToast',11.21,{opacity:0,y:82,scale:.76,filter:'blur(9px)'},{opacity:1,y:0,scale:1,filter:'blur(0px)'},.34);
+tl.to('#likedToast',{scale:1.55,y:42,opacity:0,filter:'blur(14px)',duration:.22,ease:'power3.in'},11.71);
+show('#feelText',12.02,{opacity:0,scale:.72,filter:'blur(10px)'},{opacity:1,scale:1,filter:'blur(0px)'},.31);
+tl.to('#feelText',{scale:1.34,opacity:0,filter:'blur(10px)',duration:.21,ease:'power3.in'},12.31);
+show('#lyricCard',12.55,{opacity:0,scale:.62,rotationY:25,rotation:-10,y:160,filter:'blur(16px)'},{opacity:1,scale:1,rotationY:-7,rotation:-5,y:0,filter:'blur(0px)'},.55);
+tl.to('#lyricCard',{x:-115,y:-30,rotationY:-15,rotation:-7,scale:1.13,duration:.82,ease:'power2.inOut'},13.13);
+tl.to('#lyricCard',{scale:1.52,y:-155,x:-200,opacity:0,filter:'blur(20px)',duration:.25,ease:'power3.in'},13.82);
+show('#endLogo',14.14,{opacity:0,scale:.52,filter:'blur(18px)'},{opacity:1,scale:1,filter:'blur(0px)'},.52);
+show('#byline',14.72,{opacity:0,y:18,filter:'blur(6px)'},{opacity:1,y:0,filter:'blur(0px)'},.48);
+tl.to('#endLogo',{opacity:.45,scale:1.12,duration:.57,ease:'power2.in'},15.28);
+tl.to('#byline',{opacity:0,duration:.44,ease:'power2.in'},15.36);
+window.__timelines['main']=tl;
+</script></body></html>
