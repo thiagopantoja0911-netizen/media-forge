@@ -81,7 +81,7 @@ async function statusOf(id) {
 }
 async function capabilities() {
   const probe=spawnSync(ffprobeBin,["-version"],{encoding:"utf8",timeout:3000});
-  const cvPresent=existsSync(join(here,"node_modules","@techstark","opencv-js"));
+  const cvPresent=existsSync(join(here,"node_modules","@techstark","opencv-js")) || existsSync(join(here,"..","node_modules","@techstark","opencv-js"));
   return {ffprobe:probe.status===0,opencv:cvPresent,
     engineReady:probe.status===0&&cvPresent&&existsSync(ffmpegBin),
     engine:"OpenCV WebAssembly (Node 22)",cvVersion:cvPresent?"5.0.0-WASM":null,
