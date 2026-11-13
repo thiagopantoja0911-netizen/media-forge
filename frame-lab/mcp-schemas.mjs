@@ -41,5 +41,5 @@ export const FRAME_LAB_MCP_TOOLS=[
   },required:["project_id"]}}
 ];
 export const FRAME_LAB_MCP_NAMES=new Set(FRAME_LAB_MCP_TOOLS.map(tool=>tool.name));
-export const FRAME_LAB_READ_TOOLS=new Set(["frame_lab_capabilities","frame_lab_list_projects",
+export const FRAME_LAB_MCP_READ_TOOLS=new Set(["frame_lab_capabilities","frame_lab_list_projects",
   "frame_lab_upload_status","frame_lab_status","frame_lab_report"]);
