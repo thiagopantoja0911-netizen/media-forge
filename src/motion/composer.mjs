@@ -53,11 +53,11 @@ function sceneFile(plan, scene, index) {
     const start = seconds(event.startFrame), arrive = seconds(event.peakFrame - event.startFrame), settle = seconds(event.endFrame - event.peakFrame);
     if (event.action === "enter") {
       // The opening headline is visible on frame zero. Later scenes reveal by words.
-      if (index > 0) tweens.push(`tl.fromTo(${js(q("headline") + " .word")},{y:24,opacity:0},{y:0,opacity:1,duration:${arrive},stagger:${Math.min(.06,arrive/8)},ease:"power4.out"},${start});`);
+      if (index > 0 && !["photo","footage"].includes(scene.type)) tweens.push(`tl.fromTo(${js(q("headline") + " .word")},{y:24,opacity:0},{y:0,opacity:1,duration:${arrive},stagger:${Math.min(.06,arrive/8)},ease:"power4.out"},${start});`);
       if (scene.type === "widget") tweens.push(`tl.fromTo(${js(q("visual") + " .card")},{y:45,scale:.94},{y:0,scale:1,duration:${arrive},stagger:.055,ease:"expo.out"},${start});`);
       if (scene.type === "product") tweens.push(`tl.fromTo(${js(q("product"))},{rotationY:-20,rotation:-8,scale:.82},{rotationY:0,rotation:0,scale:1,duration:${arrive},ease:"power4.out"},${start});`);
       if (scene.type === "collage") [0,1,2].forEach(i=>tweens.push(`tl.fromTo(${js(q("tile-"+i))},{x:${(i-1)*100},rotation:${(i-1)*16},scale:.75},{x:0,rotation:${(i-1)*7},scale:1,duration:${arrive},ease:"expo.out"},${start+i*.04});`));
-      if (["photo","footage"].includes(scene.type)) tweens.push(`tl.fromTo(${js(q("headline") + " .word")},{opacity:0,filter:"blur(6px)"},{opacity:1,filter:"blur(0px)",duration:.2,stagger:.08,ease:"power4.out"},${start});`);
+      if (index > 0 && ["photo","footage"].includes(scene.type)) tweens.push(`tl.fromTo(${js(q("headline") + " .word")},{opacity:0,filter:"blur(6px)"},{opacity:1,filter:"blur(0px)",duration:.2,stagger:.08,ease:"power4.out"},${start});`);
       if (scene.type === "kinetic") tweens.push(`tl.fromTo(${js(q("motif"))},{scale:.35,x:80},{scale:1,x:0,duration:${arrive},ease:"expo.out"},${start});`);
       if (scene.type === "end-card") tweens.push(`tl.fromTo(${js(q("rule"))},{scaleX:0},{scaleX:1,duration:${arrive},ease:"power3.out"},${start});`);
     }
@@ -116,7 +116,7 @@ export async function buildMotionComposition(plan, suppliedFiles = []) {
   // Preserve requested levels in standard mode, and cap beds/transients under speech for cinematic narration.
   const voiced=plan.audioMode==="voice-led";
   const audio=(plan.audioCues??[]).map((c,i)=>{
-    const volume=plan.productionMode==="cinematic" ? Math.min(c.volume,c.role==="music"?(voiced?.16:.7):c.role==="sfx"?.65:1) : c.volume;
+    const volume=plan.productionMode==="cinematic" ? Math.min(c.volume,c.role==="music"?(voiced ? 0.16 : 0.7):c.role==="sfx" ? 0.65 : 1) : c.volume;
     const fade=c.role==="music" ? ' data-fade-in="0.35" data-fade-out="0.8"' : "";
     return `<audio id="audio-${c.id}" class="clip" src="${html(c.src)}" data-start="${frameSeconds(c.startFrame,plan.fps)}" data-duration="${frameSeconds(c.endFrame-c.startFrame,plan.fps)}" data-track-index="${30+i}" data-volume="${volume}"${fade}></audio>`;
   });
