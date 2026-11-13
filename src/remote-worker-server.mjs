@@ -168,6 +168,15 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           if(!/^[0-9a-f]{64}$/.test(expectedSha)||digest!==expectedSha)
             throw new Error("Artifact checksum mismatch");
           await rename(tmp,target);
+          // The artifact originated from a signed Windows worker lease. Start the
+          // all-frame comparison on the server without requiring another UI click.
+          // If the analyzer is busy, preserve the artifact and allow safe retry.
+          try {
+            const { startAnalysis } = await import("../frame-lab/handler.mjs");
+            await startAnalysis(projectId);
+          } catch (e) {
+            console.error("Frame Lab automatic compare deferred:",e.message);
+          }
           reply(response,200,{ok:true,id,frameLabProjectId:projectId,size,sha256:digest});
         }finally{await rm(tmp,{force:true}).catch(()=>{});}
         return true;
