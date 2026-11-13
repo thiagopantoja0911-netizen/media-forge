@@ -5,7 +5,7 @@ import { buildMotionComposition } from "../src/motion/composer.mjs";
 
 function cinematicFixture() {
   const scenes=[];
-  const lengths=[150,150,180,180,180,180,180,150];
+  const lengths=[150,150,120,210,180,210,120,210];
   const kinds=["footage","footage","photo","footage","product","footage","photo","footage"];
   const transition=["cut","whip","cut","dip","match-cut","whip","cut","dip"];
   let start=0;
@@ -31,7 +31,7 @@ function cinematicFixture() {
     {id:"voice",role:"voice",src:"assets/voice.mp3",startFrame:0,endFrame:1170,volume:1,provenance:"Own narration"},
     {id:"music",role:"music",src:"assets/score.wav",startFrame:0,endFrame:1350,volume:.7,provenance:"Original licensed score"},
     {id:"sweep",role:"sfx",src:"assets/sweep.wav",startFrame:45,endFrame:60,volume:.5,provenance:"Licensed recording",eventId:"camera-1"},
-    {id:"impact",role:"sfx",src:"assets/impact.wav",startFrame:525,endFrame:540,volume:.5,provenance:"Licensed recording",eventId:"camera-4"}
+    {id:"impact",role:"sfx",src:"assets/impact.wav",startFrame:465,endFrame:480,volume:.5,provenance:"Licensed recording",eventId:"camera-4"}
   ];
   return {format:"mediaforge-motion-v1",productionMode:"cinematic",title:"Ação é essencial",
     width:1080,height:1920,fps:30,totalFrames:1350,audioMode:"voice-led",
