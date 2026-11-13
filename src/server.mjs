@@ -247,6 +247,21 @@ const server = createServer(async (request, response) => {
     const parts = url.pathname.split("/").filter(Boolean);
     if(await handleRemoteWorker({request,response,url,jobsDir,projectsRoot,workerStatusFile})) return;
 
+    if (url.pathname === "/frame-lab" || url.pathname.startsWith("/frame-lab/")) {
+      try {
+        // Lazy import isolates optional OpenCV/FFmpeg dependencies from the primary MediaForge service.
+        const { handleFrameLab } = await import("../frame-lab/handler.mjs");
+        await handleFrameLab({ request, response, url, isAdminSession });
+      } catch (error) {
+        console.error("Frame Lab integrated handler failed:", error?.stack || error);
+        if (!response.headersSent) send(response, 503, { ok:false, error:"FRAME_LAB_UNAVAILABLE" });
+        else response.destroy();
+      }
+      return;
+    }
+
+
+
     if (url.pathname === "/mcp") {
       return handleVideosSecretsMcp({
         request,
