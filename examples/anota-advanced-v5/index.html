@@ -1,0 +1,138 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><title>ANOTA AI — Motion Avançado Conceitual</title><style>
+*{box-sizing:border-box}html,body{margin:0;background:#eef8fc;color:#103b59;overflow:hidden;font-family:Arial,Helvetica,sans-serif}
+#main{position:relative;isolation:isolate;overflow:hidden;width:1080px;height:1920px;background:#e9f7ff}
+.clip{position:absolute;inset:0;overflow:hidden}.stage{position:absolute;inset:0;overflow:hidden}
+.ic{height:95px;width:95px;flex:none;display:block}.logoShape{height:170px;width:165px;flex:none;display:block}
+.brand{display:flex;align-items:center;gap:17px;color:#36aff4;white-space:nowrap;font-size:135px;letter-spacing:-.09em;font-weight:400}.brand b{font-weight:700;color:#0c4165}
+.h{font-weight:900;font-size:133px;line-height:1.07;letter-spacing:-.083em;margin:0}
+.ey{font-size:25px;font-weight:800;letter-spacing:.17em}.accent{color:#1594ed}.sub{font-size:35px;line-height:1.25;font-weight:600}
+#s1 .stage{background:#f5fcff}
+#s1 .ey{position:absolute;top:175px;left:86px;color:#4486a9}
+#s1 .rule{position:absolute;left:88px;top:125px;background:#1689df;width:195px;height:12px;border-radius:20px}
+#hero{position:absolute;top:315px;left:78px;font-size:143px}
+#s1 .sub{position:absolute;top:720px;left:88px;color:#4f8cab}
+#inbox{position:absolute;left:130px;top:905px;width:820px;height:645px;border-radius:66px;background:#fff;border:2px solid #d6edf7;box-shadow:0 35px 110px #2184ae36;padding:43px}
+#inbox .head{height:99px;display:flex;align-items:center;gap:15px;font-size:38px;font-weight:900;color:#1a6587;border-bottom:2px solid #e4f3fa}
+#inbox .head .ic{height:61px;width:61px}
+.inMsg{position:absolute;left:45px;background:#e7f5ff;padding:22px 30px;border-radius:24px;font-size:30px;font-weight:800;color:#245a7c;max-width:730px;box-shadow:0 10px 25px #0c3d5a17}
+#msg0{top:193px}#msg1{top:315px;left:100px}#msg2{top:437px;left:60px}
+#s2 .stage{background:linear-gradient(150deg,#0d3757,#07253d)}
+#s2 .ey{position:absolute;top:157px;left:85px;color:#9cceeb}
+#s2 h2{position:absolute;top:267px;left:80px;color:#fff;font-size:128px}
+#s2 .sub{position:absolute;top:625px;left:87px;color:#b1dff4}
+#chatPanel{position:absolute;top:845px;left:128px;width:832px;height:736px;border-radius:63px;background:white;overflow:hidden;box-shadow:0 49px 100px #06152693;color:#123e5e}
+#chatPanel .bar{height:148px;background:#168ce7;color:white;display:flex;align-items:center;gap:24px;padding:34px;font-weight:900;font-size:37px}
+#chatPanel .bar .ic{height:76px;width:76px}
+.chat{font-size:33px;line-height:1.28;font-weight:800;padding:26px 30px;border-radius:25px}
+#userMsg{position:absolute;top:232px;left:44px;background:#e4f3fb}
+#aiMsg{position:absolute;top:410px;right:44px;background:#168de4;color:#fff}
+#chatPanel .hint{position:absolute;bottom:40px;left:43px;font-size:22px;color:#5192b4}
+#s3 .stage{background:linear-gradient(155deg,#d5f1ff,#fff 58%,#b7e8ff)}
+#s3 .ey{position:absolute;top:162px;left:86px;color:#528caa}
+#s3 h2{position:absolute;top:295px;left:82px;color:#0a4065}
+#audioCard{position:absolute;top:804px;left:107px;height:475px;width:863px;border-radius:64px;background:#137ac0;box-shadow:0 29px 92px #0a6da362;color:#fff}
+#audioCard .title{position:absolute;top:57px;left:46px;display:flex;align-items:center;gap:27px;font-size:36px;font-weight:900}
+#audioCard .title .ic{height:67px;width:67px}
+#waveform{position:absolute;top:219px;left:69px;width:726px;height:116px;display:flex;justify-content:space-between;align-items:center;gap:7px}
+#waveform i{width:12px;height:var(--h);display:block;border-radius:40px;background:#d7f5ff}
+#transcribed{position:absolute;left:122px;top:1410px;width:833px;background:white;border-radius:31px;padding:36px;font-size:44px;line-height:1.18;color:#145079;font-weight:900;box-shadow:0 20px 65px #17688d33}
+#s4 .stage{background:#f5fbff}
+#s4 .ey{position:absolute;left:87px;top:175px;color:#568eb0}
+#s4 h2{position:absolute;left:83px;top:286px}
+#s4 .sub{position:absolute;left:88px;top:664px;color:#3f7b9c}
+#order{position:absolute;left:113px;top:858px;width:855px;height:715px;background:#fff;border:2px solid #dbedf7;box-shadow:0 38px 110px #257bb438;border-radius:60px;padding:55px}
+#order .id{font-size:27px;font-weight:900;letter-spacing:.12em;color:#1587d1}
+#order .title{font-size:61px;letter-spacing:-.065em;color:#144365;font-weight:900;margin-top:34px}
+.orderRow{margin-top:30px;padding-bottom:25px;border-bottom:2px solid #e5f1f8;display:flex;justify-content:space-between;color:#215579;font-size:33px;font-weight:800}
+.orderRow i{font-style:normal;color:#138fe0}
+#confirmed{position:absolute;bottom:51px;left:48px;right:48px;background:#dbf7eb;color:#167d59;border-radius:25px;padding:24px 32px;display:flex;align-items:center;gap:25px;font-size:33px;font-weight:900}
+#confirmed .ic{height:46px;width:46px}
+#s5 .stage{background:#0b3555}
+#s5 .ey{position:absolute;left:84px;top:163px;color:#add9ed}
+#s5 h2{position:absolute;top:279px;left:80px;color:white;font-size:131px}
+#s5 .sub{position:absolute;top:664px;left:91px;color:#9acde8}
+#kitchen{position:absolute;left:110px;top:835px;width:850px;height:700px;background:#f9fcff;border-radius:60px;overflow:hidden;box-shadow:0 40px 110px #031222a4;color:#13405e}
+#kitchen .bar{height:145px;padding:32px 38px;background:#e1f3fc;display:flex;align-items:center;justify-content:space-between;font-size:35px;font-weight:900}
+#kitchen .bar .ic{height:68px;width:68px;color:#1489d9}
+.kRow{margin:45px 35px 0;padding:34px 32px;border:2px solid #d7edf8;border-radius:28px;display:flex;align-items:center;gap:21px;font-size:34px;font-weight:800;box-shadow:0 12px 30px #2b79ac1e}
+.kRow .ic{height:60px;width:60px;color:#1585d7}.kRow small{font-size:22px;color:#408ab1;margin-left:auto}
+#kitchen .track{margin:50px 39px;background:#dfedf5;border-radius:100px;height:17px}
+#kitchen .track .fill{background:#168ee5;width:74%;height:100%;border-radius:100px}
+#s6 .stage{background:#eef9ff}
+#s6 .ey{position:absolute;top:156px;left:87px;color:#5d8ba5}
+#s6 h2{position:absolute;top:288px;left:81px;color:#0f4163}
+#s6 .sub{position:absolute;top:661px;left:89px;color:#3e819d}
+#tileStage{position:absolute;left:88px;top:835px;display:grid;grid-template-columns:repeat(2,439px);grid-template-rows:repeat(2,385px);gap:25px;perspective:1400px}
+.tile{width:439px;height:385px;border:2px solid #c9e5f4;border-radius:54px;background:#fff;box-shadow:0 22px 60px #216e9c2c;color:#134c70;padding:45px;display:flex;flex-direction:column;align-items:flex-start}
+.tile .tileIc{background:#daf1ff;color:#1786cf;border-radius:30px;width:108px;height:108px;display:flex;align-items:center;justify-content:center}
+.tile .tileIc .ic{height:73px;width:73px}
+.tile strong{font-size:32px;letter-spacing:-.04em;margin-top:33px}
+.tile small{font-size:27px;color:#5890ad;font-weight:700;margin-top:15px}
+#tile1{background:#0c527f;color:white}#tile1 .tileIc{background:#187ec9;color:white}#tile1 small{color:#a7d9f8}
+#s7 .stage{background:linear-gradient(142deg,#70cafd,#1488d7 59%,#084772)}
+#s7 .ey{position:absolute;top:195px;left:87px;color:#ebf8ff}
+#s7 h2{position:absolute;left:77px;top:490px;font-size:145px;color:#fff}
+#s7 .subtitle{position:absolute;left:89px;top:1230px;font-size:39px;line-height:1.26;font-weight:800;color:#d1f4ff}
+#s8 .stage{background:#f8fdff}
+#s8 .ring{position:absolute;width:900px;height:900px;left:110px;top:285px;border-radius:50%;background:#e2f4ff;box-shadow:0 0 0 115px #effaff}
+#endBrand{position:absolute;left:85px;top:810px}
+#endBrand .brand{font-size:142px}
+#endBrand .logoShape{height:181px;width:179px}
+#endClaim{position:absolute;left:89px;top:1135px;font-size:82px;font-weight:900;line-height:1.1;letter-spacing:-.067em;color:#0e4365}
+#endCTA{position:absolute;left:95px;top:1512px;background:#1489e3;color:#fff;border-radius:90px;padding:25px 45px;font-size:38px;font-weight:900}
+#endNote{position:absolute;left:93px;bottom:110px;font-size:21px;color:#6194b0;letter-spacing:.1em;font-weight:700}
+</style><script src="assets/gsap.min.js"></script></head><body>
+<div id="main" data-composition-id="main" data-start="0" data-duration="17" data-width="1080" data-height="1920">
+<section id="s1" class="clip" data-start="0" data-duration="2" data-track-index="1"><div class="stage"><div class="rule"></div><div class="ey">SEU DELIVERY NÃO PARA</div><h1 class="h" id="hero">E as mensagens<br>também não.</h1><p class="sub">Seu cliente quer pedir agora.</p><div id="inbox"><div class="head"><svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h35v28H23L10 47V37H8zM17 19h18M17 28h15"/></svg> Novas conversas</div><div class="inMsg" id="msg0">Tem cardápio?</div><div class="inMsg" id="msg1">Quero 2 combos!</div><div class="inMsg" id="msg2">Entrega no meu bairro?</div></div></div></section>
+<section id="s2" class="clip" data-start="2" data-duration="2.1" data-track-index="1"><div class="stage"><div class="ey">A RESPOSTA CHEGA</div><h2 class="h" id="h2">A IA atende.<br>Você vende.</h2><p class="sub">Atendimento integrado ao WhatsApp.</p><div id="chatPanel"><div class="bar"><svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12h38v30H7zM26 12V5M19 5h14M19 25h1M32 25h1M18 34q8 6 16 0"/></svg> Atendimento automático</div><div class="chat" id="userMsg">Quero um combo com batata!</div><div class="chat" id="aiMsg">Claro! Vou montar o pedido.</div><div class="hint">INTERFACE ILUSTRATIVA</div></div></div></section>
+<section id="s3" class="clip" data-start="4.1" data-duration="2.1" data-track-index="1"><div class="stage"><div class="ey">ATÉ POR ÁUDIO</div><h2 class="h" id="h3">A IA entende<br>o que você fala.</h2><div id="audioCard"><div class="title"><svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 23v8M12 15v24M19 7v40M26 16v24M33 9v36M40 15v25M47 23v8"/></svg> Áudio do cliente</div><div id="waveform"><i style="--h:18px"></i><i style="--h:99px"></i><i style="--h:87px"></i><i style="--h:40px"></i><i style="--h:106px"></i><i style="--h:71px"></i><i style="--h:61px"></i><i style="--h:108px"></i><i style="--h:52px"></i><i style="--h:79px"></i><i style="--h:104px"></i><i style="--h:30px"></i><i style="--h:93px"></i><i style="--h:95px"></i><i style="--h:28px"></i><i style="--h:103px"></i><i style="--h:81px"></i><i style="--h:50px"></i><i style="--h:108px"></i><i style="--h:63px"></i><i style="--h:69px"></i><i style="--h:107px"></i><i style="--h:42px"></i><i style="--h:86px"></i><i style="--h:100px"></i><i style="--h:20px"></i><i style="--h:98px"></i><i style="--h:89px"></i><i style="--h:38px"></i><i style="--h:106px"></i><i style="--h:73px"></i><i style="--h:59px"></i><i style="--h:108px"></i><i style="--h:54px"></i><i style="--h:77px"></i><i style="--h:104px"></i><i style="--h:32px"></i><i style="--h:92px"></i><i style="--h:96px"></i></div></div><div id="transcribed">“Quero adicionar uma bebida”</div></div></section>
+<section id="s4" class="clip" data-start="6.2" data-duration="2.45" data-track-index="1"><div class="stage"><div class="ey">E TUDO VIRA PEDIDO</div><h2 class="h" id="h4">Pedido<br>organizado.</h2><p class="sub">Itens e observações, tudo no fluxo.</p><div id="order"><div class="id">PEDIDO · SIMULAÇÃO</div><div class="title">2 × Combo da casa</div><div class="orderRow" id="row0">Batata média <i>✓</i></div><div class="orderRow" id="row1">Refrigerante <i>✓</i></div><div class="orderRow" id="row2">Sem cebola <i>✓</i></div><div id="confirmed"><svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 26l14 14L46 12"/></svg> Pedido registrado</div></div></div></section>
+<section id="s5" class="clip" data-start="8.65" data-duration="2.2" data-track-index="1"><div class="stage"><div class="ey">PRONTO PARA A OPERAÇÃO</div><h2 class="h" id="h5">Direto para<br>a cozinha.</h2><p class="sub">Sem redigitar o pedido.</p><div id="kitchen"><div class="bar">Painel da cozinha <svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 39h45M10 38q0-28 16-28t17 28M20 7h11"/></svg></div><div class="kRow" id="krow0"><svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5h31v42l-7-4-7 4-7-4-8 4-3-4zM18 18h17M18 26h17M18 35h11"/></svg> Pedido 0286 <small>Em preparo</small></div><div class="kRow" id="krow1"><svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 26l14 14L46 12"/></svg> Itens confirmados <small>✓</small></div><div class="track"><div class="fill"></div></div></div></div></section>
+<section id="s6" class="clip" data-start="10.85" data-duration="2.45" data-track-index="1"><div class="stage"><div class="ey">UM SISTEMA. TUDO CONECTADO.</div><h2 class="h" id="h6">Sua operação,<br>em ordem.</h2><p class="sub">Atendimento, produção e gestão.</p><div id="tileStage"><div class="tile" id="tile0"><div class="tileIc"><svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h35v28H23L10 47V37H8zM17 19h18M17 28h15"/></svg></div><strong>ATENDIMENTO</strong><small>24h</small></div><div class="tile" id="tile1"><div class="tileIc"><svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 39h45M10 38q0-28 16-28t17 28M20 7h11"/></svg></div><strong>COZINHA</strong><small>Em fluxo</small></div><div class="tile" id="tile2"><div class="tileIc"><svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10h28v30H5zM33 23h11l5 10v7H33M17 45h1M42 45h1"/></svg></div><strong>DELIVERY</strong><small>Pedidos</small></div><div class="tile" id="tile3"><div class="tileIc"><svg class="ic " viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 45V7M7 45h42M15 34l11-12 9 6 12-18"/></svg></div><strong>GESTÃO</strong><small>Centralizada</small></div></div></div></section>
+<section id="s7" class="clip" data-start="13.3" data-duration="1.6" data-track-index="1"><div class="stage"><div class="ey">MENOS CAOS. MAIS CONTROLE.</div><h2 class="h" id="h7">ATENDE.<br>ORGANIZA.<br>VENDE.</h2><div class="subtitle">Tudo conectado para seu restaurante.</div></div></section>
+<section id="s8" class="clip" data-start="14.9" data-duration="2.1" data-track-index="1"><div class="stage"><div class="ring" id="endRing"></div><div id="endBrand"><div class="brand"><svg class="logoShape" viewBox="0 0 110 122" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 32Q16 17 33 17h59q13 0 13 16v57q0 16-15 16H48l-18 13v-13h-1q-13 0-13-14z"/><path d="M28 20Q62 2 90 17q17 12 13 28"/><circle cx="43" cy="65" r="17"/><circle cx="81" cy="65" r="17"/><path d="M60 65h4"/></svg><span>anota <b>AI</b></span></div></div><div id="endClaim">Seu delivery.<br>No automático.</div><div id="endCTA">anota.ai →</div><div id="endNote">FILME CONCEITUAL · NÃO OFICIAL</div></div></section>
+<audio id="music" class="clip" data-start="0" data-duration="17" data-track-index="20" data-volume=".64" data-fade-in=".21" data-fade-out="1.05" src="https://assets.mixkit.co/music/1167/1167.mp3"></audio>
+<audio id="air1" class="clip" data-start="1.81" data-duration=".80" data-track-index="21" data-volume=".24" src="https://assets.mixkit.co/active_storage/sfx/1461/1461-preview.mp3"></audio>
+<audio id="air2" class="clip" data-start="6.05" data-duration=".71" data-track-index="21" data-volume=".23" src="https://assets.mixkit.co/active_storage/sfx/2605/2605-preview.mp3"></audio>
+<audio id="click-confirm" class="clip" data-start="7.77" data-duration=".24" data-track-index="21" data-volume=".26" src="https://assets.mixkit.co/active_storage/sfx/2582/2582-preview.mp3"></audio>
+<audio id="air3" class="clip" data-start="10.67" data-duration=".78" data-track-index="21" data-volume=".24" src="https://assets.mixkit.co/active_storage/sfx/1461/1461-preview.mp3"></audio>
+<audio id="air4" class="clip" data-start="14.76" data-duration=".62" data-track-index="21" data-volume=".19" src="https://assets.mixkit.co/active_storage/sfx/166/166-preview.mp3"></audio>
+</div><script>
+window.__timelines=window.__timelines||{};const tl=gsap.timeline({paused:true});
+function enter(id,t,from,seconds=.3,ease='expo.out'){tl.fromTo(id,{opacity:0,...from},{opacity:1,x:0,y:0,scale:1,rotation:0,rotationY:0,filter:'blur(0px)',duration:seconds,ease},t)}
+enter('#hero',.16,{y:105,filter:'blur(14px)'},.40);
+enter('#inbox',.35,{y:265,scale:.76,rotationY:-16,filter:'blur(13px)'},.59);
+enter('#msg0',.58,{x:115,scale:.78},.23);enter('#msg1',.91,{x:140,scale:.78},.23);enter('#msg2',1.20,{x:-110,scale:.8},.22);
+tl.to('#inbox',{x:-200,scale:1.15,rotationY:9,opacity:0,filter:'blur(13px)',duration:.27,ease:'power3.in'},1.71);
+enter('#h2',2.06,{x:-155,filter:'blur(13px)'},.35);
+enter('#chatPanel',2.20,{y:235,scale:.75,rotationY:-15,filter:'blur(13px)'},.54);
+enter('#userMsg',2.63,{x:-120,scale:.78},.24);enter('#aiMsg',3.18,{x:150,scale:.78},.27);
+tl.to('#chatPanel',{scale:1.29,x:-110,opacity:0,filter:'blur(14px)',duration:.24,ease:'power3.in'},3.88);
+enter('#h3',4.16,{x:150,filter:'blur(12px)'},.34);
+enter('#audioCard',4.31,{y:225,scale:.72,rotationY:15,filter:'blur(13px)'},.55);
+enter('#waveform i',4.63,{scaleY:.12},.30);
+enter('#transcribed',5.14,{y:85,scale:.77,filter:'blur(10px)'},.34);
+tl.to('#audioCard',{y:-200,scale:.83,opacity:0,filter:'blur(14px)',duration:.25,ease:'power3.in'},5.95);
+enter('#h4',6.25,{x:-150,filter:'blur(12px)'},.34);
+enter('#order',6.39,{y:265,scale:.72,rotationY:-15,filter:'blur(16px)'},.55);
+enter('#row0',6.87,{x:180,filter:'blur(9px)'},.24);
+enter('#row1',7.20,{x:-170,filter:'blur(9px)'},.24);
+enter('#row2',7.52,{x:160,filter:'blur(9px)'},.24);
+enter('#confirmed',7.85,{y:45,scale:.65},.27,'back.out(1.2)');
+tl.to('#order',{scale:1.13,y:-190,opacity:0,filter:'blur(15px)',duration:.25,ease:'power3.in'},8.34);
+enter('#h5',8.71,{y:-125,filter:'blur(14px)'},.34);
+enter('#kitchen',8.86,{y:255,scale:.69,rotationY:15,filter:'blur(16px)'},.54);
+enter('#krow0',9.25,{x:175,scale:.76},.27);enter('#krow1',9.74,{x:-180,scale:.77},.27);
+tl.to('#kitchen',{x:-140,scale:1.18,opacity:0,filter:'blur(13px)',duration:.25,ease:'power3.in'},10.58);
+enter('#h6',10.92,{x:160,filter:'blur(14px)'},.33);
+enter('#tileStage',11.06,{y:180,scale:.79,rotationY:-12,filter:'blur(13px)'},.46);
+['#tile0','#tile1','#tile2','#tile3'].forEach((id,i)=>enter(id,11.25+i*.24,{y:110,scale:.72,rotationY:i%2?-18:18},.26,'power4.out'));
+tl.to('#tileStage',{x:-100,y:-155,scale:1.19,opacity:0,filter:'blur(15px)',duration:.24,ease:'power3.in'},13.00);
+enter('#h7',13.36,{x:-180,filter:'blur(17px)'},.33);
+tl.to('#h7',{scale:1.35,x:-140,opacity:0,filter:'blur(19px)',duration:.23,ease:'power3.in'},14.65);
+enter('#endRing',14.93,{scale:.26,filter:'blur(14px)'},.70);
+enter('#endBrand',15.04,{scale:.43,rotation:-12,filter:'blur(16px)'},.53);
+enter('#endClaim',15.48,{y:80,filter:'blur(10px)'},.37);
+enter('#endCTA',15.88,{y:65,scale:.73},.26,'back.out(1.15)');
+window.__timelines.main=tl;
+</script></body></html>
