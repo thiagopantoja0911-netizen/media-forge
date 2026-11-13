@@ -3,7 +3,8 @@ import { createReadStream } from "node:fs";
 import { mkdir, readdir, readFile, writeFile, rename, rm, stat, open } from "node:fs/promises";
 import { join } from "node:path";
 import { readProjectPackage } from "./project-bundle.mjs";
-import { FRAME_LAB_MCP_NAMES, FRAME_LAB_MCP_READ_TOOLS } from "./mcp-schemas.mjs";
+import { FRAME_LAB_MCP_NAMES } from "./mcp-schemas.mjs";
+export { FRAME_LAB_MCP_NAMES } from "./mcp-schemas.mjs";
 import { dataRoot, safeDir, readJson, writeJson, fileExists, statusOf, capabilities, startAnalysis } from "./handler.mjs";
 
 const ID=/^[a-f0-9]{32}$/;
