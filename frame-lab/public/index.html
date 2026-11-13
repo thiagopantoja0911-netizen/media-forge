@@ -111,6 +111,20 @@ footer{font-size:11px;color:var(--muted);padding-top:20px;border-top:1px solid v
 <div id="layerSegments" class="row" style="margin-top:12px;align-items:flex-start"></div>
 <p class="muted" style="font-size:11px">A linha do tempo suavizada é sugestão de modelagem; os dados brutos dos objetos e do fundo continuam preservados.</p>
 </section>
+<section class="panel" id="pipelinePanel">
+<h2>Recriação e renderização · MediaForge</h2>
+<p class="muted">Fluxo conectado: referência → análise → projeto editável → worker HyperFrames → MP4 → comparação quadro a quadro. O ZIP deve conter um projeto HyperFrames válido com index.html e assets. O relatório de movimento sozinho não recria os desenhos automaticamente.</p>
+<div class="uploadzone" style="margin-top:12px">
+<label>Projeto editável de reconstrução (.zip) <input type="file" id="projectZip" accept=".zip,application/zip"></label>
+<div class="row"><button id="uploadReconstruction">1 · Importar projeto ZIP</button>
+<button id="submitRender" class="primary">2 · Renderizar no MediaForge</button></div>
+<div class="row"><button id="refreshRender">3 · Verificar renderização</button>
+<button id="compareFinal">4 · Comparar MP4 com referência</button>
+<a id="downloadRender" class="hidden" href="#" download="frame-lab-render.mp4">Baixar MP4 final</a></div>
+</div>
+<p class="muted" id="renderJobStatus">Nenhuma renderização associada ao projeto.</p>
+<small class="muted">A fila de renderização exige confirmação. Quando o worker enviar o MP4 ao servidor, a comparação poderá ser executada no mesmo projeto. Se o worker antigo não conseguir devolver o arquivo, importe o MP4 na área de referência para comparar enquanto atualiza o worker.</small>
+</section>
 </div>
 </div>
 <footer>Frame Lab v2 · análise temporal completa e movimento local estimado · independente da fila de renderização MediaForge.</footer>
@@ -208,7 +222,7 @@ async function selectProject(id){
   try{
     const r=await api(base()+"/objects");objects=r.objects||[];
     const s=await api(base()+"/status");
-    if(s.hasReport)await loadReport();
+    if(s.hasReport){await loadReport();await monitorRender(false);}
     else if(s.running)await monitor();
     else setText("status",JSON.stringify(s.progress));
   }catch(e){err(e)}
@@ -269,6 +283,68 @@ function downloadPlan(){
  const url=URL.createObjectURL(blob),a=document.createElement("a");
  a.href=url;a.download="frame-lab-camadas-"+project+".json";a.click();
  URL.revokeObjectURL(url);
+}
+let renderTimer=null;
+async function importReconstruction(){
+ if(!project)throw new Error("Selecione um projeto com referência analisada.");
+ const file=$("projectZip").files[0];
+ if(!file||!file.name.toLowerCase().endsWith(".zip"))throw new Error("Selecione um ZIP de projeto HyperFrames.");
+ $("uploadReconstruction").disabled=true;
+ try{
+   setText("renderJobStatus","Importando projeto editável...");
+   await api(base()+"/upload/project",{
+     method:"POST",body:file,headers:{"content-type":"application/zip"}
+   });
+   setText("renderJobStatus","Projeto editável enviado. A renderização poderá ser iniciada.");
+ }finally{$("uploadReconstruction").disabled=false}
+}
+async function queueReconstruction(){
+ if(!project||!report)throw new Error("Conclua a análise antes de renderizar.");
+ if(!window.confirm("Enviar o projeto editável para o worker MediaForge e gerar o MP4?"))return;
+ $("submitRender").disabled=true;
+ try{
+   const result=await api(base()+"/render-job",{
+     method:"POST",headers:{"content-type":"application/json"},
+     body:JSON.stringify({confirmRender:true,quality:"standard"})
+   });
+   setText("renderJobStatus","Job "+result.jobId.slice(0,10)+" enviado à fila.");
+   await monitorRender(true);
+ }finally{$("submitRender").disabled=false}
+}
+async function monitorRender(continuous=false){
+ if(!project)return;
+ if(renderTimer){clearInterval(renderTimer);renderTimer=null;}
+ const id=project;
+ const poll=async()=>{
+   if(project!==id)return;
+   const {renderJob}=await api(base()+"/render-job");
+   if(!renderJob){setText("renderJobStatus","Nenhum job de renderização neste projeto.");return false;}
+   setText("renderJobStatus","Worker "+renderJob.status+" · job "+renderJob.id.slice(0,12)+
+     " · "+(renderJob.progress||0)+"%"+
+     (renderJob.error?" · "+(renderJob.error.message||JSON.stringify(renderJob.error)):"")+
+     (renderJob.status==="completed"&&!renderJob.result?.artifactUploaded?
+       " · MP4 no computador do worker; aguarda sincronização do cliente atualizado.":""));
+   if(renderJob.result?.artifactUploaded){
+     $("downloadRender").classList.remove("hidden");
+     $("downloadRender").href=base()+"/video/render";
+     return false;
+   }
+   return ["queued","processing"].includes(renderJob.status);
+ };
+ const continuing=await poll();
+ if(continuous&&continuing)renderTimer=setInterval(()=>poll().then(active=>{
+   if(!active){clearInterval(renderTimer);renderTimer=null}
+ }).catch(e=>{clearInterval(renderTimer);renderTimer=null;err(e)}),3500);
+}
+async function compareCompletedRender(){
+ if(!project)throw new Error("Selecione um projeto.");
+ if(renderTimer){clearInterval(renderTimer);renderTimer=null}
+ $("compareFinal").disabled=true;
+ try{
+   await api(base()+"/compare",{method:"POST"});
+   setText("renderJobStatus","Comparação iniciada. Processando a referência e o MP4 renderizado.");
+   await monitor();
+ }finally{$("compareFinal").disabled=false}
 }
 function move(delta){if(report)showFrame(Math.max(0,Math.min(report.reference.frameCount-1,frame+delta)))}
 function point(event,canvas){
@@ -385,6 +461,10 @@ async function saveSelection(){
 }
 function init(){
   $("newProject").onclick=()=>createProject().catch(err);
+  $("uploadReconstruction").onclick=()=>importReconstruction().catch(err);
+  $("submitRender").onclick=()=>queueReconstruction().catch(err);
+  $("refreshRender").onclick=()=>monitorRender(false).catch(err);
+  $("compareFinal").onclick=()=>compareCompletedRender().catch(err);
   $("projectSelect").onchange=e=>selectProject(e.target.value);
   $("submit").onclick=submit;
   $("reanalyze").onclick=async()=>{
