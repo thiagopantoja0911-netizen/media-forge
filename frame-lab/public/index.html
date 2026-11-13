@@ -404,8 +404,7 @@ async function showFrame(index){
       if(selection)renderBox(ctx,selection,"#ffcb8a","seleção");
     });
     if(pair){paint($("renderView"),images[1]);paint($("diffView"),images[2]);}
-    else {paint($("diffView"),images[1]);}
-    else {for(const name of ["renderView"]){
+    else {paint($("diffView"),images[1]);for(const name of ["renderView"]){
       const c=$(name),x=c.getContext("2d");c.width=report.reference.width;
       c.height=report.reference.height;x.fillStyle="#071118";x.fillRect(0,0,c.width,c.height);
     }}
