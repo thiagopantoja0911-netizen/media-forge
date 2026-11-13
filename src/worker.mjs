@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
-import { inspectRenderedVideo } from "./video-qa.mjs";
+import { inspectRenderedVideo, inspectRenderedAudio } from "./video-qa.mjs";
 
 const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
 const jobsDir = join(dataDir, "jobs");
@@ -56,7 +56,11 @@ async function processJob(job) {
       { ...job.project, width: result.motionReview?.width, height: result.motionReview?.height },
       job.metadata?.expectsAudio === true || result.motionReview?.expectsAudio === true);
     if (technicalQA.status === "failed") throw Object.assign(new Error(technicalQA.issues.join("; ")), { code: "VIDEO_TECHNICAL_QA_FAILED", retryable: false });
-    result.report = { technicalQA, motionReview: result.motionReview, artisticQA: "pending-user-review" };
+    const audioQA = job.metadata?.productionMode === "cinematic" ? await inspectRenderedAudio(result.outputPath) : null;
+    if(audioQA && audioQA.status !== "passed") throw Object.assign(
+      new Error("Cinematic audio QA failed: " + audioQA.issues.join("; ")),
+      {code:"AUDIO_MIX_QA_FAILED",retryable:false});
+    result.report = { technicalQA, audioQA, motionReview: result.motionReview, artisticQA: "pending-user-review" };
     job.status = "completed";
     job.progress = 100;
     job.result = result;
