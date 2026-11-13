@@ -1,5 +1,8 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
-import { readdir, readFile, writeFile, rename, stat } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { pipeline } from "node:stream/promises";
+import { Transform } from "node:stream";
+import { readdir, readFile, writeFile, rename, stat, mkdir, rm } from "node:fs/promises";
 import { join, resolve, relative, sep } from "node:path";
 import { readState, updateState, verifySecret } from "./state-store.mjs";
 
@@ -112,7 +115,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
       });
       reply(response,200,{ok:true,job:job?{...job,workerLease:undefined}:null,leaseId:job?.workerLease?.id||null});return true;
     }
-    const match=/^\/v1\/worker\/jobs\/([a-f0-9]{32})\/(project|progress|complete)$/.exec(path);
+    const match=/^\/v1\/worker\/jobs\/([a-f0-9]{32})\/(project|progress|complete|artifact)$/.exec(path);
     if(match) {
       const id=match[1],action=match[2];
       if(action==="project"&&request.method==="GET"){
@@ -132,6 +135,42 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           files.push({path,contentBase64:data.toString("base64"),sha256:createHash("sha256").update(data).digest("hex")});
         }
         reply(response,200,{ok:true,files});return true;
+      }
+      if(action==="artifact"&&request.method==="POST"){
+        const leaseId=String(request.headers["x-mediaforge-lease"]||"");
+        const job=await loadJob(jobsDir,id);
+        if(!validLease(job,leaseId)){reply(response,409,{ok:false,error:"LEASE_INVALID"});return true;}
+        if(job.metadata?.source!=="frame-lab"||!HEX_ID.test(job.metadata.frameLabProjectId||"")){
+          reply(response,403,{ok:false,error:"NOT_FRAME_LAB_JOB"});return true;
+        }
+        const projectId=job.metadata.frameLabProjectId;
+        const labRoot=resolve(process.env.FRAME_LAB_DATA_DIR ||
+          join(process.env.MEDIAFORGE_DATA_DIR||".mediaforge","frame-lab"));
+        const dir=resolve(labRoot,projectId);
+        const existing=await stat(dir).catch(()=>null);
+        if(!existing?.isDirectory())throw Object.assign(new Error("Frame Lab project missing"),{status:404});
+        const maxBytes=120*1024*1024;
+        const expectedSize=Number(request.headers["content-length"]);
+        if(!Number.isSafeInteger(expectedSize)||expectedSize<128||expectedSize>maxBytes)
+          throw Object.assign(new Error("Artifact content-length required (max 120MB)"),{status:413});
+        const target=join(dir,"render.mp4"),tmp=target+".upload-"+randomUUID();
+        const hash=createHash("sha256");let size=0;
+        const meter=new Transform({transform(chunk,enc,next){
+          size+=chunk.length;
+          if(size>maxBytes)next(Object.assign(new Error("Artifact too large"),{status:413}));
+          else{hash.update(chunk);next(null,chunk);}
+        }});
+        try {
+          await pipeline(request,meter,createWriteStream(tmp,{flags:"wx",mode:0o600}));
+          if(size!==expectedSize)throw new Error("Artifact upload incomplete");
+          const digest=hash.digest("hex");
+          const expectedSha=String(request.headers["x-mediaforge-artifact-sha256"]||"").toLowerCase();
+          if(!/^[0-9a-f]{64}$/.test(expectedSha)||digest!==expectedSha)
+            throw new Error("Artifact checksum mismatch");
+          await rename(tmp,target);
+          reply(response,200,{ok:true,id,frameLabProjectId:projectId,size,sha256:digest});
+        }finally{await rm(tmp,{force:true}).catch(()=>{});}
+        return true;
       }
       if(action==="progress"&&request.method==="POST"){
         const body=await parseBody(request,100_000);
@@ -159,7 +198,9 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
             job.result={mode:"hyperframes-cli",fileName:String(body.fileName||"").slice(0,240),
               size:Number(body.size)||0,sha256:String(body.sha256||"").slice(0,64),
               outputPath:String(body.outputPath||"").slice(0,900),report:body.report||null,
-              workerId:job.workerLease.workerId,location:"windows-local"};
+              workerId:job.workerLease.workerId,
+              location:body.artifactUploaded===true?"frame-lab-hostinger":"windows-local",
+              artifactUploaded:body.artifactUploaded===true};
             delete job.error;
           }else{
             job.error={code:"REMOTE_RENDER_FAILED",message:String(body.error||"Render failed").slice(0,15000)};
