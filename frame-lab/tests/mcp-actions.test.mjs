@@ -60,7 +60,7 @@ test("MCP uploads authored ZIP then creates a protected MediaForge render job",a
  await call("frame_lab_upload_chunk",{project_id:id,upload_id:start.upload_id,offset:0,content_base64:zip.toString("base64")});
  const finished=await call("frame_lab_finish_upload",{project_id:id,upload_id:start.upload_id});
  assert.equal(finished.kind,"project");
- await assert.rejects(call("frame_lab_render",{project_id:id,confirm_render:true}),/Analyze the reference/);
+ await assert.rejects(call("frame_lab_render",{project_id:id,confirm_render:true},{createJob:async()=>({})}),/Analyze the reference/);
  const results=join(root,id,"results");await mkdir(results,{recursive:true});
  await writeFile(join(results,"report.json"),JSON.stringify({
   reference:{width:1080,height:1920,fps:60,duration_s:2,frameCount:120,frames:[
