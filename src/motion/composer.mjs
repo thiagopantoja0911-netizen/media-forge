@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { requireMotionPlan, frameSeconds } from "./plan.mjs";
 import { validateProjectFiles } from "../job-schema.mjs";
+import { validateCinematicMediaAssets } from "./assets-validation.mjs";
 
 const html = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const js = value => JSON.stringify(value).replace(/</g, "\\u003c");
@@ -107,6 +108,7 @@ export async function buildMotionComposition(plan, suppliedFiles = []) {
   if (files.some(f => !/^assets\//.test(f.path ?? "") || f.path === "assets/gsap.min.js")) throw new Error("Supplied files must be assets/ files; gsap is provided by MediaForge");
   const paths = new Set(files.map(f => f.path));
   for (const source of [...plan.scenes.map(s=>s.media),...(plan.audioCues??[]).map(c=>c.src)].filter(Boolean)) if (!paths.has(source)) throw new Error("Missing asset: " + source);
+  validateCinematicMediaAssets(plan,files);
   files.push({path:"assets/gsap.min.js",content:await readFile(new URL("../../assets/gsap.min.js",import.meta.url),"utf8")});
   files.push({path:"motion-plan.json",content:JSON.stringify(plan,null,2)+"\n"});
   files.push({path:"index.motion.json",content:JSON.stringify({assertions:plan.scenes.map(s=>({kind:"appearsBy",selector:`#${s.id}-headline`,bySec:frameSeconds(s.startFrame,plan.fps)+(s.startFrame===0?.05:.85)}))},null,2)});
