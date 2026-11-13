@@ -4,7 +4,7 @@ import { mkdir, readdir, readFile, writeFile, rename, rm, stat, open } from "nod
 import { join } from "node:path";
 import { readProjectPackage } from "./project-bundle.mjs";
 import { FRAME_LAB_MCP_NAMES, FRAME_LAB_MCP_READ_TOOLS } from "./mcp-schemas.mjs";
-import { safeDir, readJson, writeJson, fileExists, statusOf, capabilities, startAnalysis } from "./handler.mjs";
+import { dataRoot, safeDir, readJson, writeJson, fileExists, statusOf, capabilities, startAnalysis } from "./handler.mjs";
 
 const ID=/^[a-f0-9]{32}$/;
 const KINDS=new Set(["reference","render","project"]);
@@ -63,7 +63,7 @@ export async function executeFrameLabMcp(name,args={}, {createJob,getJob}={}){
   }
   if(name==="frame_lab_list_projects"){
     const limit=Math.max(1,Math.min(100,Math.floor(Number(args.limit)||30)));
-    const ids=(await readdir(join(safeDir("0".repeat(32)),".."))).filter(x=>ID.test(x)).slice(-limit).reverse();
+    const ids=(await readdir(dataRoot)).filter(x=>ID.test(x)).slice(-limit).reverse();
     const projects=[];
     for(const id of ids)try{projects.push(await statusOf(id))}catch{}
     return {ok:true,projects};
