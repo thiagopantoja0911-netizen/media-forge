@@ -104,7 +104,7 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     assert.equal(modernList.data.result.cacheScope, "private");
     assert.equal(modernList.data.result.ttlMs, 0);
     assert.deepEqual(modernList.data.result.tools.map(tool => tool.name), [
-      "create_video", "create_cinematic_3d", "renderer_status", "list_videos", "get_video"
+      "create_video", "create_motion_video", "create_cinematic_3d", "renderer_status", "list_videos", "get_video"
     ]);
     for (const tool of modernList.data.result.tools) {
       assert.equal(tool.inputSchema.type, "object");
