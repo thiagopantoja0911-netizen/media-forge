@@ -103,9 +103,22 @@ footer{font-size:11px;color:var(--muted);padding-top:20px;border-top:1px solid v
 <li>Transparência exata não é inferível de uma imagem já composta; reportamos variação de brilho.</li>
 <li>Regiões automáticas são sugestões; rótulos de objetos são confirmados por você.</li></ul>
 </aside></div>
+<section class="panel" id="reconstructionPanel">
+<div class="row between"><div><h2>Reconstrução por camadas / Easing</h2>
+<p class="muted" style="margin:0">Keyframes sugeridos, amostras reais e curvas derivadas de cada frame. A exportação não inventa frames entre as capturas.</p></div>
+<div class="row"><button id="downloadPlan" class="primary">Exportar timeline de camadas</button></div></div>
+<div class="row" style="margin-top:14px"><label>Camada <select id="layerSelect"></select></label>
+<span id="layerMeta" class="muted"></span></div>
+<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+<div class="stat"><span>Frames rastreados</span><b id="layerSamples">—</b></div>
+<div class="stat"><span>Keyframes sugeridos</span><b id="layerKeyframes">—</b></div>
+<div class="stat"><span>Inícios de cena</span><b id="layerCuts">—</b></div></div>
+<div id="layerSegments" class="row" style="margin-top:12px;align-items:flex-start"></div>
+<p class="muted" style="font-size:11px">A linha do tempo suavizada é sugestão de modelagem; os dados brutos dos objetos e do fundo continuam preservados.</p>
+</section>
 </div>
 </div>
-<footer>Frame Lab v1 · análise temporal completa e movimento local estimado · independente da fila de renderização MediaForge.</footer>
+<footer>Frame Lab v2 · análise temporal completa e movimento local estimado · independente da fila de renderização MediaForge.</footer>
 </main>
 <script>
 (function(){
@@ -193,7 +206,7 @@ async function loadReport(){
   $("timeline").max=Math.max(0,report.reference.frameCount-1);$("timeline").value="0";
   $("export").disabled=false;
   setText("roiCount",objects.length+" objetos anotados");
-  drawGraph();await showFrame(0);
+  populateLayers();drawGraph();await showFrame(0);
 }
 async function selectProject(id){
   if(timer)clearInterval(timer);timer=null;
@@ -207,6 +220,63 @@ async function selectProject(id){
     else if(s.running)await monitor();
     else setText("status",JSON.stringify(s.progress));
   }catch(e){err(e)}
+}
+function populateLayers(){
+ const rec=report?.reconstruction;
+ const select=$("layerSelect");select.replaceChildren();
+ if(!rec){setText("layerMeta","Sem plano de reconstrução.");return;}
+ const tracks=[rec.camera,...(rec.objects||[]),...(rec.automaticLayers||[])].filter(Boolean);
+ tracks.forEach((track,i)=>{
+   const opt=document.createElement("option");opt.value=String(i);
+   opt.textContent=(track.type==="automatic-region"?"[Auto] ":"")+String(track.label||track.id);
+   select.append(opt);
+ });
+ setText("layerCuts",(rec.sceneCuts||[]).length);
+ renderLayer();
+}
+function renderLayer(){
+ const rec=report?.reconstruction;if(!rec)return;
+ const tracks=[rec.camera,...(rec.objects||[]),...(rec.automaticLayers||[])].filter(Boolean);
+ const track=tracks[Number($("layerSelect").value)||0];if(!track)return;
+ const isAuto=track.type==="automatic-region";
+ setText("layerSamples",track.rawSampleCount??track.samples?.length??0);
+ setText("layerKeyframes",track.keyframes?.length??"sugestão");
+ setText("layerMeta",isAuto?
+  "Região automática: identidade temporária, verificação manual necessária.":
+  String(track.startFrame)+"–"+String(track.endFrame)+" · "+
+  String(track.segments?.length||0)+" segmentos temporais");
+ const box=$("layerSegments");box.replaceChildren();
+ const keys=(track.keyframes||[]).slice(0,160);
+ for(const k of keys){
+   const button=document.createElement("button");
+   button.title="Ir para frame "+k.frame;
+   button.textContent=String(k.frame)+"f / "+num(k.time_s,3)+"s";
+   button.onclick=()=>showFrame(k.frame);box.append(button);
+ }
+ if(isAuto){
+   const p=document.createElement("small");p.className="muted";
+   p.textContent="Rastreamento automático por região, não máscara perfeita de um objeto.";
+   box.append(p);
+ }
+ const segmentBox=document.createElement("div");segmentBox.style.width="100%";
+ const segments=(track.segments||[]).slice(0,40);
+ for(const seg of segments){
+   const el=document.createElement("div");el.className="obj";
+   const label=document.createElement("strong");
+   label.textContent=String(seg.startFrame)+" → "+String(seg.endFrame)+" frames";
+   const desc=document.createElement("em");
+   desc.textContent="Easing estimado: "+seg.estimatedEase+
+    " · desvio por suavização "+num(seg.maxSmoothDeviationPx,3)+"px";
+   el.append(label,desc);segmentBox.append(el);
+ }
+ box.append(segmentBox);
+}
+function downloadPlan(){
+ if(!report?.reconstruction)return;
+ const blob=new Blob([JSON.stringify(report.reconstruction,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="frame-lab-camadas-"+project+".json";a.click();
+ URL.revokeObjectURL(url);
 }
 function move(delta){if(report)showFrame(Math.max(0,Math.min(report.reference.frameCount-1,frame+delta)))}
 function point(event,canvas){
@@ -365,6 +435,8 @@ function init(){
   $("saveROI").onclick=()=>saveSelection().catch(err);
   $("clearROI").onclick=()=>{selection=null;$("saveROI").disabled=true;
     $("clearROI").disabled=true;setText("selectionInfo","");showFrame(frame);};
+  $("downloadPlan").onclick=downloadPlan;
+  $("layerSelect").onchange=renderLayer;
   $("export").onclick=()=>{if(!report)return;const blob=new Blob([JSON.stringify(report,null,2)],
     {type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");
     a.href=url;a.download="frame-lab-"+project+".json";a.click();URL.revokeObjectURL(url);};
