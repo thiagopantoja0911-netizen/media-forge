@@ -132,7 +132,7 @@ def auto_regions(flow, global_x, global_y):
                         vectors - np.array([global_x, global_y]), axis=1)))})
     return sorted(out, key=lambda q:q["area"], reverse=True)[:36]
 
-def metric_motion(prev, curr):
+def metric_motion(prev, curr, heatmap_path=None):
     # Dense optical flow at native pixel resolution, on every adjacent source frame.
     flow = cv2.calcOpticalFlowFarneback(
         prev, curr, None, pyr_scale=.5, levels=4, winsize=15,
@@ -145,6 +145,15 @@ def metric_motion(prev, curr):
     res = flow - np.array([global_x, global_y], dtype=np.float32)
     residual_mag = cv2.magnitude(res[:, :, 0], res[:, :, 1])
     mag = cv2.magnitude(flow[:, :, 0], flow[:, :, 1])
+    if heatmap_path:
+        # Hue = direction; value is log-amplified to make ~0.1px motion visible.
+        angle = cv2.phase(flow[:, :, 0], flow[:, :, 1], angleInDegrees=True)
+        hsv = np.empty((h, w, 3), dtype=np.uint8)
+        hsv[:, :, 0] = (angle * .5).astype(np.uint8)
+        hsv[:, :, 1] = 230
+        hsv[:, :, 2] = (255 * np.clip(np.log1p(mag * 10) / np.log1p(80), 0, 1)).astype(np.uint8)
+        heat = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        cv2.imwrite(str(heatmap_path), heat, [cv2.IMWRITE_WEBP_QUALITY, 85])
     return {
         "camera_dx_px": finite(global_x),
         "camera_dy_px": finite(global_y),
@@ -210,6 +219,9 @@ def analyze_clip(path, kind, root, rois):
     objects = normalize_objects(rois, width, height) if kind == "reference" else []
     prev = None
     rows = []
+    flow_dir = root / "frames_flow"
+    if kind == "reference":
+        flow_dir.mkdir(parents=True, exist_ok=True)
     tic = time.monotonic()
     while True:
         ok, frame = capture.read()
@@ -225,9 +237,11 @@ def analyze_clip(path, kind, root, rois):
         t = pts[i] if i < len(pts) else i / fps
         entry = {"frame": i, "time_s": finite(t), "objects": []}
         if prev is not None:
-            entry.update(metric_motion(prev, gray))
+            entry.update(metric_motion(prev, gray, flow_dir / ("%06d.webp" % i) if kind == "reference" else None))
             entry["objects"] = track_objects(prev, gray, objects, i)
         else:
+            if kind == "reference":
+                cv2.imwrite(str(flow_dir / ("%06d.webp" % i)), np.zeros_like(frame))
             entry.update({"camera_dx_px":0, "camera_dy_px":0,
                           "flow_mean_px":0, "flow_p95_px":0,
                           "residual_mean_px":0, "residual_p95_px":0,
@@ -238,6 +252,47 @@ def analyze_clip(path, kind, root, rois):
             save_json(root / "progress.json", {"status":"processing","stage":kind,
                           "processedFrames":i+1,"elapsedSeconds":finite(time.monotonic()-tic)})
     capture.release()
+    # Frame-based position, velocity, acceleration and jerk for easing reconstruction.
+    last_object = {}
+    cumul_x = cumul_y = 0.0
+    last_vel_x = last_vel_y = 0.0
+    last_acc_x = last_acc_y = 0.0
+    for i, row in enumerate(rows):
+        dt = max(.00001, row["time_s"] - rows[i-1]["time_s"]) if i else 1.0 / fps
+        dx = row["camera_dx_px"] or 0.0
+        dy = row["camera_dy_px"] or 0.0
+        cumul_x += dx; cumul_y += dy
+        vx, vy = dx / dt, dy / dt
+        ax, ay = (vx-last_vel_x)/dt, (vy-last_vel_y)/dt
+        row["camera_kinematics"] = {
+            "x_px":finite(cumul_x),"y_px":finite(cumul_y),
+            "velocity_x_px_s":finite(vx),"velocity_y_px_s":finite(vy),
+            "acceleration_x_px_s2":finite(ax),"acceleration_y_px_s2":finite(ay),
+            "jerk_x_px_s3":finite((ax-last_acc_x)/dt),
+            "jerk_y_px_s3":finite((ay-last_acc_y)/dt)
+        }
+        last_vel_x,last_vel_y,last_acc_x,last_acc_y=vx,vy,ax,ay
+        for obj in row["objects"]:
+            state = last_object.get(obj["id"], {"x":0.0,"y":0.0,"rotation":0.0,
+              "scale_x":1.0,"scale_y":1.0,"vx":0.0,"vy":0.0,"ax":0.0,"ay":0.0})
+            odx, ody = obj["dx"] or 0.0, obj["dy"] or 0.0
+            state["x"]+=odx;state["y"]+=ody
+            state["rotation"]+=obj["rotation_deg"] or 0.0
+            state["scale_x"]*=obj["scale_x"] if obj["scale_x"] is not None else 1.0
+            state["scale_y"]*=obj["scale_y"] if obj["scale_y"] is not None else 1.0
+            ovx, ovy=odx/dt,ody/dt
+            oax,oay=(ovx-state["vx"])/dt,(ovy-state["vy"])/dt
+            obj["kinematics"]={
+              "x_px":finite(state["x"]),"y_px":finite(state["y"]),
+              "rotation_deg":finite(state["rotation"]),
+              "scale_x":finite(state["scale_x"]),"scale_y":finite(state["scale_y"]),
+              "velocity_x_px_s":finite(ovx),"velocity_y_px_s":finite(ovy),
+              "acceleration_x_px_s2":finite(oax),"acceleration_y_px_s2":finite(oay),
+              "jerk_x_px_s3":finite((oax-state["ax"])/dt),
+              "jerk_y_px_s3":finite((oay-state["ay"])/dt)
+            }
+            state["vx"],state["vy"],state["ax"],state["ay"]=ovx,ovy,oax,oay
+            last_object[obj["id"]]=state
     if not rows:
         raise RuntimeError("No frames decoded in " + kind)
     return {"width":width,"height":height,"fps":finite(fps),
