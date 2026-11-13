@@ -1,51 +1,47 @@
-# MediaForge — Frame Lab (isolated analysis environment)
+# MediaForge Frame Lab v2 — ambiente isolado de reconstrução temporal
 
-A separate Node 22 app with a Python 3 / OpenCV analysis engine. This project does not call MediaForge's render worker or mutate the production jobs queue.
+Aplicação Node.js 22 com OpenCV WebAssembly, Sharp e FFmpeg/FFprobe empacotados. Este laboratório não modifica o MediaForge principal nem usa a fila de produção.
 
-## What is truly inspected
+## Precisão
 
-- Every decoded reference frame is retained as a WebP; frame-to-frame analysis never skips a source frame.
-- Uses all native-resolution pixels for Farneback dense optical flow; foreground proposals are relative to estimated background flow.
-- Subpixel feature tracks for labeled objects: pyramidal LK + robust affine transform estimate (X/Y translation, rotation, scale X/Y, shear proxy, deformation residual); phase correlation fallback.
-- At every frame boundary, compute each object's position, velocity, acceleration and jerk, to identify easing and changes in rhythm.
-- Store an amplified optical flow heatmap on every reference frame, useful for motions below one pixel per frame.
-- A separate reconstruction can be paired by nearest presentation timestamp; renders and reference frames remain separate; pixel differences are saved and never replaced with source footage.
-- Full per-frame JSON report and WebP frame sequence for manual inspection. Web UI offers exactly ±1 frame navigation and ROI annotation.
-- Analysis does NOT imply reconstructing temporal information missing between captured frames; alpha and 3D geometry cannot be recovered exactly from flattened pixels.
+- Processa todos os frames decodificados em resolução nativa, sem subamostragem temporal.
+- Fluxo óptico denso entre frames adjacentes; mapa ampliado para deslocamentos abaixo de um pixel.
+- Separa movimento global aproximado (fundo/câmera) e regiões móveis relativas ao fundo.
+- Marcação manual de até 40 objetos com estimativa afim por frame: deslocamento fracionário, escala X/Y, rotação, cisalhamento, deformação residual.
+- Registra velocidade, aceleração, jerk e brilho aparente de cada objeto.
+- Sugere camadas automáticas por continuidade de caixas e movimento; identidade é provisória.
+- O campo reconstruction do JSON inclui amostras brutas por frame, curvas suavizadas sugeridas, keyframes de 0,25 px, easing heurístico, possíveis cortes e trilhas por objeto.
+- Compara cada frame de referência a um frame renderizado pelo timestamp mais próximo, preservando erro de sincronização e diferença de pixels.
+- UI com navegação ±1 frame, escolha de objetos, plano de camadas e exportação JSON.
 
-## Deployment
+A referência gravada limita a informação temporal: estados entre frames não são conhecidos exatamente. Subpixel, transparência, profundidade 3D, máscaras complexas e curvas originais podem ter múltiplas soluções; medidas são estimativas, não reconstrução garantida.
 
-Node >=22; Python >=3.10 with pip/venv and OpenCV; ffprobe recommended for VFR timestamps. npm run build installs requirements into a private .venv (Python OpenCV + numpy).
+## Produção
 
-Configure a strong 24+ character FRAME_LAB_KEY only in server environment, never Git; NODE_ENV=production. If the Hostinger build environment does not have Python/venv support, build should fail closed rather than publish a misleading analysis UI. Set FRAME_LAB_DATA_DIR to a writable private persistent directory outside public HTML. Do not reuse the MediaForge queue, storage or worker tokens.
+- Runtime: Node 22; dependências @techstark/opencv-js, sharp, ffmpeg-static, @derhuerst/ffprobe-static.
+- Não precisa de Python. O arquivo analyze.py é legado experimental e não é usado pelo servidor.
+- NODE_ENV=production; FRAME_LAB_KEY com 24+ caracteres em variável privada Hostinger; FRAME_LAB_DATA_DIR persistente e fora de public_html.
+- Upload máximo padrão 120 MiB; máximo 12.000 frames; máximo 1920x1080 pixels nativos por proteção de CPU/memória.
+- Um job em execução por vez. A API exige x-frame-lab-key para qualquer acesso a vídeos, frames ou relatórios.
 
-Run in Docker with a private key via your container secrets manager if Python is not available on managed Node hosting.
+Deploy isolado: rootDirectory frame-lab, Node 22, entryFile server.mjs, branch feature/frame-lab-subpixel-20261113. Não modificar o deployment mediaforge.salevo.site.
 
 ## API
 
-The UI at /frame-lab uses x-frame-lab-key per API request; the key stays in page memory and is not sent via URL/local storage.
-
-- GET /health: Node process health (no private data).
-- POST /api/auth: verify key.
-- GET /api/capabilities: check OpenCV/ffprobe availability (authenticated).
-- POST /api/projects: create isolated random project id.
-- POST /api/projects/:id/upload/reference: raw video bytes; optional /render; max 120 MB by default.
-- POST /api/projects/:id/objects: up to 40 labeled bounding boxes and start frames.
-- POST /api/projects/:id/analyze: launch bounded one-at-a-time full-frame analysis.
-- GET /api/projects/:id/status: progress.
-- GET /api/projects/:id/report: exhaustive data.
-- GET /api/projects/:id/frames/:kind/:index: each WebP (reference, render, diff, flow).
-
-All private endpoints require the configured key. Scripts accept only a fixed input media path and do not execute user commands.
-
-## Local
-
-    cd frame-lab
-    npm run build
-    FRAME_LAB_KEY=a-new-random-24-plus-char-key npm start
-
-The video itself must be supplied via the UI. The previous ChatGPT conversation's binary upload is not automatically available to the isolated service.
+GET /health (liveness sem dados privados)
+POST /api/auth (autenticação)
+GET /api/capabilities (FFprobe/OpenCV efetivos)
+POST /api/projects (criar projeto)
+POST /api/projects/:id/upload/reference (subir fonte)
+POST /api/projects/:id/upload/render (subir render, opcional)
+POST /api/projects/:id/objects (marcar objetos e frame inicial)
+POST /api/projects/:id/analyze (analisar integralmente)
+GET /api/projects/:id/status (acompanhar)
+GET /api/projects/:id/report (JSON de frames, objetos, easing, comparações)
+GET /api/projects/:id/frames/:kind/:index (WebP reference/render/diff/flow)
 
 ## QA
 
-Run GitHub Actions workflow Frame Lab QA, which verifies Python/Node syntax and a synthetic moving-object clip with every captured frame; check the status before merging. First deployment should remain isolated from mediaforge.salevo.site.
+Executar cd frame-lab && npm install && npm test. Workflow CI frame-lab-qa.yml instala o motor Node real, faz testes da API, da matemática e passa 13/13 frames sintéticos pelo FFmpeg/OpenCV para comparar fielmente as saídas.
+
+Chaves nunca no repositório. A interface guarda a chave somente em memória da aba.
