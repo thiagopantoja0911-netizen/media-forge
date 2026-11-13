@@ -1,0 +1,39 @@
+name: Frame Lab QA
+on:
+  push:
+    branches: ['feature/frame-lab-*']
+    paths:
+      - 'frame-lab/**'
+      - '.github/workflows/frame-lab-qa.yml'
+  pull_request:
+    paths:
+      - 'frame-lab/**'
+      - '.github/workflows/frame-lab-qa.yml'
+  workflow_dispatch:
+jobs:
+  frame-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: frame-lab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python image analysis
+        run: |
+          python -m pip install --no-cache-dir -r requirements.txt
+      - name: Verify syntax
+        run: |
+          node --check server.mjs
+          node --check setup.mjs
+          python -m py_compile analyze.py
+      - name: Node API security tests
+        run: node --test tests/api.test.mjs
+      - name: Synthetic per-frame optical flow and comparison
+        run: python tests/synthetic.py
