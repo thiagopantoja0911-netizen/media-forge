@@ -27,5 +27,7 @@ Nature: unofficial personal motion-design concept, submitted by the user as a fi
 - Second check: remaining mosaic text occlusion; resolved with a dedicated timed overlay.
 - Third check passed; render initially failed because 1920×1080 required non-integer 1.5× scale from 1280×720.
 - MediaForge Premium Motion requires 60 FPS. Rendering as landscape-1440p (2560×1440; integer 2×) and 60 FPS is a compatibility workaround. Output is **not** identical in frame rate or pixel size to the reference; compare after resizing/downsampling and frame-time alignment.
-- Current render job: 83c077e1af304dee842b4e4d246374a4 (Windows MediaForge, quality high, preflight enabled).
+- Job 83c077e1af304dee842b4e4d246374a4 completed rendering, but the strict cinematic audio QA rejected the output as too quiet: -37.6 LUFS.
+- Original audio was retained and its digital gain increased by parallel, identical, exactly synchronized audio lanes. This is a gain workaround within the HTML/media-mix API; no new material is inserted.
+- Current test job: ed5c9a993ac84fec81ad472ddc4f31c4 (Windows MediaForge, landscape-1440p, 60FPS, high, preflight).
 - Visual comparison to the source and listening review remain separate from automated FFprobe/FFmpeg QA.
