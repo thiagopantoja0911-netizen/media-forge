@@ -50,12 +50,7 @@ footer{font-size:11px;color:var(--muted);padding-top:20px;border-top:1px solid v
 <p>Engenharia reversa de movimento — cada quadro, cada objeto, cada transformação.</p></div>
 <div class="badge" id="engineBadge">Motor ainda não verificado</div></header>
 <main>
-<section id="keyWrap" class="card"><div class="kicker">Acesso privado</div><h2>Entrar no laboratório</h2>
-<p class="muted">A análise é protegida por uma chave do servidor. Os vídeos enviados ficam fora da pasta pública.</p>
-<input id="key" type="password" placeholder="Chave de acesso ao Frame Lab" autocomplete="off">
-<div class="row" style="margin-top:12px"><button id="login" class="primary">Acessar ambiente</button><span id="authError" class="muted"></span></div>
-</section>
-<div id="workspace" class="hidden">
+<div id="workspace">
 <section class="card">
 <div class="row between"><div><h2>Importar referência</h2><p class="muted" style="margin:0">O analisador percorre todos os frames decodificados; nenhum salto temporal.</p></div>
 <button class="quiet" id="newProject">Novo projeto</button></div>
@@ -124,28 +119,25 @@ footer{font-size:11px;color:var(--muted);padding-top:20px;border-top:1px solid v
 (function(){
 "use strict";
 const $=id=>document.getElementById(id);
-let key="", project="", report=null, frame=0, objects=[], selection=null, dragging=null, timer=null, loadNonce=0;
+let project="", report=null, frame=0, objects=[], selection=null, dragging=null, timer=null, loadNonce=0;
 const setText=(id,value)=>{$(id).textContent=String(value)};
 const num=(n,d=3)=>Number.isFinite(Number(n))?Number(n).toFixed(d):"—";
 const err=e=>{setText("status",String(e.message||e));console.error(e)};
 async function api(url,options={}){
-  const r=await fetch(url,{...options,headers:{"x-frame-lab-key":key,...(options.headers||{})},cache:"no-store"});
+  const r=await fetch(url,{...options,headers:{...(options.headers||{})},credentials:"same-origin",cache:"no-store"});
   const data=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(data.error||data.detail||"HTTP "+r.status);
   return data;
 }
-function base(){return "/api/projects/"+project}
-async function login(){
-  const candidate=$("key").value;
-  const r=await fetch("/api/auth",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key:candidate})});
-  if(!r.ok){setText("authError","Chave inválida.");return}
-  key=candidate; $("key").value="";$("keyWrap").classList.add("hidden");$("workspace").classList.remove("hidden");
-  const caps=await api("/api/capabilities");setText("engineBadge",caps.engineReady?"OpenCV ativo / frame a frame":"OpenCV não instalado no servidor");
-  if(!caps.engineReady)setText("status","Motor não disponível neste servidor. Instale opencv-python-headless + numpy no Python configurado; os arquivos podem ser enviados, mas a análise ainda não inicia.");
-  await projects();
+function base(){return "/frame-lab/api/projects/"+project}
+async function boot(){
+ const caps=await api("/frame-lab/api/capabilities");
+ setText("engineBadge",caps.engineReady?"OpenCV ativo / frame a frame":"Motor de análise indisponível");
+ if(!caps.engineReady)setText("status","O motor de análise ainda não está disponível nesta instância.");
+ await projects();
 }
 async function projects(){
-  const r=await api("/api/projects");const sel=$("projectSelect");
+  const r=await api("/frame-lab/api/projects");const sel=$("projectSelect");
   sel.innerHTML='<option value="">— selecione —</option>';
   for(const item of r.projects){
     const o=document.createElement("option");o.value=item.id;
@@ -155,7 +147,7 @@ async function projects(){
   if(project)sel.value=project;
 }
 async function createProject(){
-  const p=await api("/api/projects",{method:"POST"});
+  const p=await api("/frame-lab/api/projects",{method:"POST"});
   project=p.id;report=null;objects=[];frame=0;selection=null;
   $("inspection").classList.add("hidden");$("reanalyze").disabled=false;
   setText("status","Projeto "+project.slice(0,12)+" criado.");
@@ -291,7 +283,7 @@ function renderBox(ctx,roi,color,label){
   ctx.fillStyle=color;ctx.fillText(label,roi.x+4,Math.max(15,roi.y-5));ctx.restore();
 }
 async function fetchFrame(kind,index){
-  const res=await fetch(base()+"/frames/"+kind+"/"+index,{headers:{"x-frame-lab-key":key}});
+  const res=await fetch(base()+"/frames/"+kind+"/"+index,{credentials:"same-origin"});
   if(!res.ok)throw new Error("Quadro indisponível: "+kind+"/"+index);
   const b=await res.blob();
   try {return await createImageBitmap(b)}
@@ -392,8 +384,6 @@ async function saveSelection(){
   await showFrame(frame);
 }
 function init(){
-  $("login").onclick=()=>login().catch(err);
-  $("key").onkeydown=e=>{if(e.key==="Enter")login().catch(err)};
   $("newProject").onclick=()=>createProject().catch(err);
   $("projectSelect").onchange=e=>selectProject(e.target.value);
   $("submit").onclick=submit;
@@ -442,6 +432,7 @@ function init(){
     a.href=url;a.download="frame-lab-"+project+".json";a.click();URL.revokeObjectURL(url);};
 }
 init();
+boot().catch(err);
 })();
 </script>
 </body></html>
