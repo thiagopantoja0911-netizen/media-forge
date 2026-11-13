@@ -125,20 +125,20 @@ async function startAnalysis(id) {
   await writeJson(join(resultDir,"progress.json"),{status:"queued"});
   const args=["-u",analyzer,"--reference",join(dir,"reference.mp4"),"--output",resultDir];
   if(await fileExists(join(dir,"render.mp4")))args.push("--render",join(dir,"render.mp4"));
-  const process=spawn(python,args,{
+  const child=spawn(python,args,{
     cwd:dir,stdio:["ignore","pipe","pipe"],
     env:{...process.env,OMP_NUM_THREADS:"1",OPENBLAS_NUM_THREADS:"1",PYTHONUNBUFFERED:"1"}
   });
   let message="", closed=false;
-  running.set(id,process);
+  running.set(id,child);
   const collect=(chunk)=>{message=(message+String(chunk)).slice(-4000);};
-  process.stdout.on("data",collect);
-  process.stderr.on("data",collect);
-  process.on("error",async error=>{
+  child.stdout.on("data",collect);
+  child.stderr.on("data",collect);
+  child.on("error",async error=>{
     if(closed)return;closed=true;running.delete(id);
     await writeJson(join(resultDir,"progress.json"),{status:"failed",error:String(error.message).slice(0,300)});
   });
-  process.on("close",async code=>{
+  child.on("close",async code=>{
     if(closed)return;closed=true;running.delete(id);
     const current=await readJson(join(resultDir,"progress.json"),null);
     if(code!==0 && current?.status!=="failed") {
