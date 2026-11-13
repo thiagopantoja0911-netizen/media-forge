@@ -44,6 +44,11 @@ jobs:
         run: |
           node scripts/compose-motion.mjs examples/motion/widget-study.json .mediaforge/motion-ci
           npx --yes hyperframes@0.9.30 check .mediaforge/motion-ci --json
+      - name: Install FFmpeg for cinematic media smoke
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -n 1
       - name: Test cinematic motion playback with real media and audio
         timeout-minutes: 8
         run: |
