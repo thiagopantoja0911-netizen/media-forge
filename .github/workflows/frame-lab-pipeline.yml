@@ -31,6 +31,6 @@ jobs:
       - name: All original MediaForge regressions
         run: node --test --test-concurrency=1 test/*.test.mjs
       - name: Frame Lab authenticated bridge, ZIP import and queue
-        run: node --test --test-concurrency=1 frame-lab/tests/bridge.test.mjs frame-lab/tests/pipeline.test.mjs frame-lab/tests/curves.test.mjs
+        run: node --test --test-concurrency=1 frame-lab/tests/bridge.test.mjs frame-lab/tests/pipeline.test.mjs frame-lab/tests/curves.test.mjs frame-lab/tests/artifact.test.mjs
       - name: Real video render-comparison analyzer
         run: node --test --test-concurrency=1 frame-lab/tests/synthetic-node.test.mjs
