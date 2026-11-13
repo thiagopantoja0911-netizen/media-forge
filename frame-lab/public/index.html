@@ -74,7 +74,7 @@ footer{font-size:11px;color:var(--muted);padding-top:20px;border-top:1px solid v
 <input id="timeline" type="range" class="trackbar" min="0" max="0" value="0" step="1" aria-label="Posição do quadro">
 <canvas id="graph" width="1400" height="88" title="Clique para navegar até o frame"></canvas>
 <div class="row between" style="margin-top:7px"><span id="graphNote">Movimento residual por frame; não é animação inventada.</span>
-<label class="tick"><input type="checkbox" id="regions">Mostrar regiões móveis estimadas</label></div>
+<div class="row"><label class="tick"><input type="checkbox" id="regions">Regiões de movimento</label><label class="tick"><input type="checkbox" id="showFlow">Fluxo óptico ampliado</label></div></div>
 </section>
 <div class="cols">
 <section class="panel"><h2>Referência original</h2><div class="canvasFrame" data-label="FONTE / PIXELS"><canvas id="sourceView" width="1280" height="720"></canvas></div><small class="muted">Arraste no quadro para delimitar um objeto. Ele será rastreado a partir deste frame.</small></section>
@@ -254,7 +254,8 @@ async function showFrame(index){
   const myNonce=++loadNonce;
   try{
     const refs=[fetchFrame("reference",frame)];
-    if(pair)refs.push(fetchFrame("render",pair.renderFrame),fetchFrame("diff",frame));
+    if(pair)refs.push(fetchFrame("render",pair.renderFrame));
+    refs.push(fetchFrame($("showFlow").checked || !pair?"flow":"diff",frame));
     const images=await Promise.all(refs);
     if(myNonce!==loadNonce){images.forEach(i=>i.close());return}
     paint($("sourceView"),images[0],ctx=>{
@@ -265,7 +266,8 @@ async function showFrame(index){
       if(selection)renderBox(ctx,selection,"#ffcb8a","seleção");
     });
     if(pair){paint($("renderView"),images[1]);paint($("diffView"),images[2]);}
-    else {for(const name of ["renderView","diffView"]){
+    else {paint($("diffView"),images[1]);}
+    else {for(const name of ["renderView"]){
       const c=$(name),x=c.getContext("2d");c.width=report.reference.width;
       c.height=report.reference.height;x.fillStyle="#071118";x.fillRect(0,0,c.width,c.height);
     }}
@@ -335,6 +337,7 @@ function init(){
   $("back1").onclick=()=>move(-1);$("forward1").onclick=()=>move(1);
   $("back10").onclick=()=>move(-10);$("forward10").onclick=()=>move(10);
   $("regions").onchange=()=>showFrame(frame);
+  $("showFlow").onchange=()=>showFrame(frame);
   document.addEventListener("keydown",e=>{
     if(!report||["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))return;
     if(e.key==="ArrowLeft"){e.preventDefault();move(e.shiftKey?-10:-1);}
