@@ -40,7 +40,15 @@ function cinematicFixture() {
 }
 function filesFor(plan){
   const paths=new Set([...plan.scenes.map(s=>s.media),...plan.audioCues.map(c=>c.src)]);
-  return [...paths].map(path=>({path,contentBase64:Buffer.from("asset fixture data "+path).toString("base64")}));
+  return [...paths].map(path=>{
+    const ext=path.split(".").pop();
+    const header=ext==="mp4" ? Buffer.from([0,0,0,24,102,116,121,112])
+      : ext==="jpg" ? Buffer.from([255,216,255,224])
+      : ext==="mp3" ? Buffer.from("ID3")
+      : ext==="wav" ? Buffer.from("RIFF1234WAVE")
+      : Buffer.from("NOT_MEDIA");
+    return {path,contentBase64:Buffer.concat([header,Buffer.alloc(64)]).toString("base64")};
+  });
 }
 test("cinematic gate accepts varied moving footage, camera direction and real sound cues",()=>{
   const review=validateMotionPlan(cinematicFixture());
