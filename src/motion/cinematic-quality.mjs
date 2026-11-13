@@ -1,6 +1,7 @@
 // Media-first cinematic production gate. Enforced before the Windows job is queued.
 // Does not claim artistic quality: it prevents known slideshow and silent-render failures.
-import { frameSeconds, fpsValue } from "./plan.mjs";
+const fpsValue = value => { const [n,d="1"]=String(value).split("/"); return Number(n)/Number(d); };
+const frameSeconds = (frames,fps) => frames / fpsValue(fps);
 
 const movingTypes = new Set(["footage", "widget", "product", "collage"]);
 const stagedTypes = new Set(["kinetic", "end-card"]);
