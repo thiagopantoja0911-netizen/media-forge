@@ -3,6 +3,8 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, readdir, readFile, writeFile, stat, rename, rm, access } from "node:fs/promises";
 import { spawn, spawnSync } from "node:child_process";
+import ffmpegStatic from "ffmpeg-static";
+import ffprobeStatic from "@derhuerst/ffprobe-static";
 import { join, resolve, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { Transform } from "node:stream";
@@ -15,9 +17,9 @@ const host = process.env.FRAME_LAB_HOST || "0.0.0.0";
 const port = Number(process.env.PORT || process.env.FRAME_LAB_PORT || 8791);
 const secret = String(process.env.FRAME_LAB_KEY || "");
 const uploadLimit = Math.min(Number(process.env.FRAME_LAB_UPLOAD_LIMIT_BYTES || 120 * 1024 * 1024), 300 * 1024 * 1024);
-const bundledPython=process.platform==="win32"?join(here,".venv","Scripts","python.exe"):join(here,".venv","bin","python");
-const python = process.env.FRAME_LAB_PYTHON || (existsSync(bundledPython)?bundledPython:"python3");
-const analyzer = join(here, "analyze.py");
+const ffmpegBin=ffmpegStatic?.default||ffmpegStatic;
+const ffprobeBin=ffprobeStatic?.path||ffprobeStatic?.default?.path||ffprobeStatic;
+const analyzer = join(here, "analyze-node.mjs");
 const running = new Map();
 const ID = /^[a-f0-9]{32}$/;
 const KINDS = new Set(["reference", "render"]);
@@ -90,11 +92,11 @@ async function statusOf(id) {
     renderedFrames:report?.render?.frameCount||0};
 }
 async function capabilities() {
-  const ffmpeg=spawnSync("ffprobe",["-version"],{encoding:"utf8",timeout:3000});
-  const cv=spawnSync(python,["-c","import cv2; print(cv2.__version__)"],{encoding:"utf8",timeout:5000});
-  return {ffprobe:ffmpeg.status===0,opencv:cv.status===0,
-    engineReady:cv.status===0,python:python,
-    cvVersion:cv.status===0?cv.stdout.trim().split("\n")[0]:null,
+  const probe=spawnSync(ffprobeBin,["-version"],{encoding:"utf8",timeout:3000});
+  const cvPresent=existsSync(join(here,"node_modules","@techstark","opencv-js"));
+  return {ffprobe:probe.status===0,opencv:cvPresent,
+    engineReady:probe.status===0&&cvPresent&&existsSync(ffmpegBin),
+    engine:"OpenCV WebAssembly (Node 22)",cvVersion:cvPresent?"5.0.0-WASM":null,
     noTemporalSampling:true,sourceResolution:true,subpixelEstimated:true,
     server:"Frame Lab — isolated from MediaForge production jobs"};
 }
@@ -125,9 +127,9 @@ async function startAnalysis(id) {
   await rm(resultDir,{recursive:true,force:true});
   await mkdir(resultDir,{recursive:true});
   await writeJson(join(resultDir,"progress.json"),{status:"queued"});
-  const args=["-u",analyzer,"--reference",join(dir,"reference.mp4"),"--output",resultDir];
+  const args=[analyzer,"--reference",join(dir,"reference.mp4"),"--output",resultDir];
   if(await fileExists(join(dir,"render.mp4")))args.push("--render",join(dir,"render.mp4"));
-  const child=spawn(python,args,{
+  const child=spawn(process.execPath,args,{
     cwd:dir,stdio:["ignore","pipe","pipe"],
     env:{...process.env,OMP_NUM_THREADS:"1",OPENBLAS_NUM_THREADS:"1",PYTHONUNBUFFERED:"1"}
   });
