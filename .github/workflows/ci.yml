@@ -20,6 +20,7 @@ jobs:
       - run: node --check src/legacy-studio.mjs
       - run: node --check src/creator-media.mjs
       - run: node --check src/video-qa.mjs
+      - run: node --check src/motion/assets-validation.mjs
       - run: node --check src/motion/cinematic-quality.mjs
       - run: node --check src/motion/plan.mjs
       - run: node --check src/motion/composer.mjs
