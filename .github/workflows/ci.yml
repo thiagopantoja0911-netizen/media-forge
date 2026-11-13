@@ -20,6 +20,7 @@ jobs:
       - run: node --check src/legacy-studio.mjs
       - run: node --check src/creator-media.mjs
       - run: node --check src/video-qa.mjs
+      - run: node --check scripts/check-cinematic-motion.mjs
       - run: node --check src/motion/assets-validation.mjs
       - run: node --check src/motion/cinematic-quality.mjs
       - run: node --check src/motion/plan.mjs
@@ -43,6 +44,11 @@ jobs:
         run: |
           node scripts/compose-motion.mjs examples/motion/widget-study.json .mediaforge/motion-ci
           npx --yes hyperframes@0.9.30 check .mediaforge/motion-ci --json
+      - name: Test cinematic motion playback with real media and audio
+        timeout-minutes: 8
+        run: |
+          node scripts/check-cinematic-motion.mjs .mediaforge/cinematic-ci
+          npx --yes hyperframes@0.9.30 check .mediaforge/cinematic-ci --json
       - name: Check generated Forge Midjourney composition with HyperFrames
         run: node scripts/check-creator-composition.mjs
       - name: Check real-media HyperFrames composition and snapshots
