@@ -104,7 +104,11 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     assert.equal(modernList.data.result.cacheScope, "private");
     assert.equal(modernList.data.result.ttlMs, 0);
     assert.deepEqual(modernList.data.result.tools.map(tool => tool.name), [
-      "create_video", "create_motion_video", "create_cinematic_3d", "renderer_status", "list_videos", "get_video"
+      "create_video", "create_motion_video", "create_cinematic_3d", "renderer_status", "list_videos", "get_video",
+      "frame_lab_capabilities", "frame_lab_create_project", "frame_lab_list_projects",
+      "frame_lab_start_upload", "frame_lab_upload_chunk", "frame_lab_upload_status",
+      "frame_lab_finish_upload", "frame_lab_analyze", "frame_lab_status",
+      "frame_lab_report", "frame_lab_render", "frame_lab_compare"
     ]);
     for (const tool of modernList.data.result.tools) {
       assert.equal(tool.inputSchema.type, "object");
@@ -117,6 +121,31 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     assert.equal(modernCall.data.result.resultType, "complete");
     assert.equal(modernCall.data.result.content[0].type, "text");
     assert.equal(typeof JSON.parse(modernCall.data.result.content[0].text).online, "boolean");
+
+    const frameLabCapabilities=await call("tools/call",MODERN,{
+      params:{name:"frame_lab_capabilities",arguments:{}}
+    });
+    assert.equal(frameLabCapabilities.status,200,JSON.stringify(frameLabCapabilities.data));
+    const caps=JSON.parse(frameLabCapabilities.data.result.content[0].text);
+    assert.equal(typeof caps.engineReady,"boolean");
+    const createdFrameLab=await call("tools/call",MODERN,{
+      params:{name:"frame_lab_create_project",arguments:{}}
+    });
+    assert.equal(createdFrameLab.status,200,JSON.stringify(createdFrameLab.data));
+    const projectId=JSON.parse(createdFrameLab.data.result.content[0].text).id;
+    assert.match(projectId,/^[a-f0-9]{32}$/);
+    const frameStatus=await call("tools/call",MODERN,{
+      params:{name:"frame_lab_status",arguments:{project_id:projectId}}
+    });
+    assert.equal(frameStatus.status,200);
+    assert.equal(JSON.parse(frameStatus.data.result.content[0].text).hasReference,false);
+    const frameUpload=await call("tools/call",MODERN,{
+      params:{name:"frame_lab_start_upload",arguments:{
+        project_id:projectId,kind:"reference",total_bytes:1024,sha256:"a".repeat(64)
+      }}
+    });
+    assert.equal(frameUpload.status,200);
+    assert.match(JSON.parse(frameUpload.data.result.content[0].text).upload_id,/^[a-f0-9]{32}$/);
 
     // Premium Motion is the safe default for new promotional videos.
     // A silent HTML stub must be blocked before it reaches the Windows worker.
@@ -153,7 +182,7 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
 
     const legacyList = await call("tools/list", LEGACY);
     assert.equal(legacyList.status, 200, JSON.stringify(legacyList.data));
-    assert.equal(legacyList.data.result.tools.length, 6);
+    assert.equal(legacyList.data.result.tools.length, 18);
     assert.equal(legacyList.data.result.resultType, undefined);
   } finally {
     server.kill("SIGTERM");
