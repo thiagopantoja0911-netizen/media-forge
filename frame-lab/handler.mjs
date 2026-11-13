@@ -74,8 +74,9 @@ async function statusOf(id) {
   const progress=await readJson(join(dir,"results","progress.json"),{status:"waiting"});
   const hasRef=await fileExists(join(dir,"reference.mp4"));
   const hasRender=await fileExists(join(dir,"render.mp4"));
+  const hasProject=await fileExists(join(dir,"project.zip"));
   const report=await readJson(join(dir,"results","report.json"),null);
-  return {id,hasReference:hasRef,hasRender,hasReport:Boolean(report),
+  return {id,hasReference:hasRef,hasProject,hasRender,hasReport:Boolean(report),
     running:running.has(id),progress,
     referenceFrames:report?.reference?.frameCount||0,
     renderedFrames:report?.render?.frameCount||0};
@@ -153,7 +154,7 @@ async function serveFrame(response,id,kind,index) {
 }
 // MCP actions share these tested Frame Lab primitives and storage.
 export { dataRoot, safeDir, readJson, writeJson, fileExists, statusOf, capabilities, startAnalysis };
-export async function handleFrameLab({request,response,url,isAdminSession,createJob,getJob}){
+export async function handleFrameLab({request,response,url,isAdminSession,createJob,getJob,getWorkerStatus}){
   const fullPath=url.pathname;
   if(!(fullPath==="/frame-lab" || fullPath.startsWith("/frame-lab/"))) return false;
   const path=fullPath.slice("/frame-lab".length)||"/";
@@ -178,12 +179,22 @@ export async function handleFrameLab({request,response,url,isAdminSession,create
     if(request.method==="GET" && (path==="/"||path==="/frame-lab")) {
       return html(response,await readFile(join(here,"public","index.html"),"utf8"));
     }
+    if(request.method==="GET" && path==="/quick-flow.js") {
+      response.writeHead(200,{"content-type":"text/javascript; charset=utf-8",
+        "cache-control":"no-store","x-content-type-options":"nosniff"});
+      response.end(await readFile(join(here,"public","quick-flow.js"),"utf8"));
+      return;
+    }
     if(request.method==="GET" && path==="/health") {
       return json(response,200,{ok:true,service:"frame-lab",running:running.size});
     }
     if(!path.startsWith("/api/"))return json(response,404,{error:"Not found"});
     if(path==="/api/capabilities" && request.method==="GET")
       return json(response,200,await capabilities());
+    if(path==="/api/worker-status" && request.method==="GET") {
+      if(typeof getWorkerStatus!=="function")throw statusError("Worker status unavailable",503);
+      return json(response,200,await getWorkerStatus());
+    }
     if(path==="/api/projects" && request.method==="GET") {
       const ids=(await readdir(dataRoot)).filter(id=>ID.test(id)).slice(-100).reverse();
       const projects=[];
