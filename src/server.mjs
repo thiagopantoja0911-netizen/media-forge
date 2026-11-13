@@ -251,7 +251,13 @@ const server = createServer(async (request, response) => {
       try {
         // Lazy import isolates optional OpenCV/FFmpeg dependencies from the primary MediaForge service.
         const { handleFrameLab } = await import("../frame-lab/handler.mjs");
-        await handleFrameLab({ request, response, url, isAdminSession });
+        await handleFrameLab({
+          request,response,url,isAdminSession,createJob,
+          getJob:async id=>{try{return await loadJob(id)}catch(e){
+            if(e.code==="ENOENT"||e.code==="INVALID_JOB_ID")return null;
+            throw e;
+          }}
+        });
       } catch (error) {
         console.error("Frame Lab integrated handler failed:", error?.stack || error);
         if (!response.headersSent) send(response, 503, { ok:false, error:"FRAME_LAB_UNAVAILABLE" });
