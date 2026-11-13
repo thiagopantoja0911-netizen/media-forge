@@ -3,6 +3,7 @@
    Dense flow, regional affine motion with fractional pixel estimates, per-frame easing curves.
    This is a measurement tool, not a guarantee of missing in-between frames or alpha recovery. */
 import cvModule from "@techstark/opencv-js";
+import { summarizeMotion } from "./motion-curves.mjs";
 import sharp from "sharp";
 import ffmpegStatic from "ffmpeg-static";
 import ffprobeStatic from "@derhuerst/ffprobe-static";
@@ -260,6 +261,13 @@ function motionFrom(cv,prev,next,w,h,objects,frameIndex){
       fx.push(x);fy.push(y);mags.push(Math.hypot(x,y));
     }
     const gx=median(fx),gy=median(fy);
+    let changed=0, sumLuma=0;
+    const step=Math.max(1,Math.floor(w*h/10000));
+    let measured=0;
+    for(let i=0;i<w*h;i+=step){
+      const diff=Math.abs(next[i]-prev[i]);sumLuma+=diff;
+      if(diff>24)changed++;measured++;
+    }
     let subpixel=0;
     for(let i=0;i<fx.length;i++){
       const mag=Math.hypot(fx[i],fy[i]);
@@ -281,6 +289,8 @@ function motionFrom(cv,prev,next,w,h,objects,frameIndex){
       fit.opacity=null;obj.rect=nextRect;tracks.push(fit);
     }
     return {
+      frame_mean_luma_diff:round(sumLuma/measured),
+      changed_pixel_fraction:round(changed/measured),
       camera_dx_px:round(gx),camera_dy_px:round(gy),
       flow_mean_px:round(avg(mags)),flow_p95_px:round(med95(mags)),
       residual_mean_px:round(avg(resMags)),
@@ -342,7 +352,8 @@ async function analyzeClip(path,kind,rois){
       Object.assign(row,metrics);
       if(kind==="reference")await webp(heat,w,h,join(flowFolder,name),78);
     }else{
-      Object.assign(row,{camera_dx_px:0,camera_dy_px:0,flow_mean_px:0,
+      Object.assign(row,{frame_mean_luma_diff:0,changed_pixel_fraction:0,
+        camera_dx_px:0,camera_dy_px:0,flow_mean_px:0,
         flow_p95_px:0,residual_mean_px:0,residual_p95_px:0,
         subpixel_motion_fraction:0,regions:[],objects:[]});
       if(kind==="reference")await webp(Buffer.alloc(w*h*3),w,h,join(flowFolder,name),78);
@@ -407,6 +418,7 @@ async function main(){
       "Automatic moving regions are proposals; stable object identity needs labeled ROIs.",
       "Paired renders are matched by nearest presentation timestamp, with per-frame timeDeltaMs."
     ],reference,render:rendered,comparison};
+  report.reconstruction=summarizeMotion(report,{pixelTolerance:.25});
   await atomic(join(root,"report.json"),report);
   await progress({status:"completed",referenceFrames:reference.frameCount,
     renderFrames:rendered?.frameCount||0,comparedFrames:comparison.length});
