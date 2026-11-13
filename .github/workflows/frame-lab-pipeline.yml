@@ -1,0 +1,36 @@
+name: Frame Lab Full Pipeline QA
+on:
+  push:
+    branches:
+      - feature/frame-lab-full-pipeline-20261113
+    paths:
+      - src/**
+      - frame-lab/**
+      - package.json
+      - .github/workflows/frame-lab-pipeline.yml
+  workflow_dispatch:
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Syntax
+        run: |
+          node --check src/server.mjs
+          node --check src/remote-worker-server.mjs
+          node --check src/remote-worker-client.mjs
+          node --check frame-lab/handler.mjs
+          node --check frame-lab/project-bundle.mjs
+          node --check frame-lab/analyze-node.mjs
+          node --check frame-lab/motion-curves.mjs
+      - name: All original MediaForge regressions
+        run: node --test --test-concurrency=1 test/*.test.mjs
+      - name: Frame Lab authenticated bridge, ZIP import and queue
+        run: node --test --test-concurrency=1 frame-lab/tests/bridge.test.mjs frame-lab/tests/pipeline.test.mjs frame-lab/tests/curves.test.mjs
+      - name: Real video render-comparison analyzer
+        run: node --test --test-concurrency=1 frame-lab/tests/synthetic-node.test.mjs
