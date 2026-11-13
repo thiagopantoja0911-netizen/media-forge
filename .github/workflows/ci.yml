@@ -2,7 +2,7 @@ name: MediaForge CI
 
 on:
   push:
-    branches: [main, feature/conexoes-mediaforge-primeiro, feat/reference-motion-quality]
+    branches: [main, feature/conexoes-mediaforge-primeiro, feat/reference-motion-quality, feat/mediaforge-cinematic-motion-audio-v2-20261112]
   pull_request:
     branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro, feat/forge-real-render-pipeline-20261111]
 
@@ -20,6 +20,7 @@ jobs:
       - run: node --check src/legacy-studio.mjs
       - run: node --check src/creator-media.mjs
       - run: node --check src/video-qa.mjs
+      - run: node --check src/motion/cinematic-quality.mjs
       - run: node --check src/motion/plan.mjs
       - run: node --check src/motion/composer.mjs
       - run: node --check scripts/analyze-reference.mjs
