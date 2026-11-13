@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frame Lab — MediaForge</title>
+<style>
+:root{color-scheme:dark;--bg:#070b10;--panel:#111923;--border:#25323d;--muted:#8c9baa;--text:#f2f5f8;--lime:#b9f779;--cyan:#88cde0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,Segoe UI,Arial,sans-serif}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(ellipse at 82% 0%,#16332950,transparent 50%)}
+a{color:var(--cyan)}button,input{font:inherit}button{background:#202c34;color:var(--text);border:1px solid #40515e;border-radius:8px;padding:9px 13px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--lime)}button:disabled{opacity:.4;cursor:not-allowed}button.primary{background:var(--lime);color:#111b0d;border-color:transparent;font-weight:750}
+button.quiet{border-color:transparent;background:transparent}input[type=file]{font-size:12px;max-width:100%;color:var(--muted)}
+input[type=password],input[type=text]{background:#091017;color:var(--text);border:1px solid var(--border);padding:11px;border-radius:8px;width:100%}
+header{max-width:1500px;margin:auto;padding:25px 24px 22px;display:flex;align-items:end;justify-content:space-between;border-bottom:1px solid var(--border);gap:24px}
+.eyebrow{color:var(--lime);letter-spacing:.23em;font-size:11px;font-weight:800;text-transform:uppercase}
+header h1{font-size:clamp(26px,4vw,46px);letter-spacing:-.065em;line-height:1.1;margin:7px 0}
+header p{color:var(--muted);margin:0;font-size:13px}
+.badge{border:1px solid #315443;color:var(--lime);padding:7px 10px;border-radius:18px;font-size:11px;white-space:nowrap}
+main{max-width:1500px;margin:auto;padding:20px 24px 60px}.hidden{display:none!important}
+section.card,.panel{background:linear-gradient(160deg,#131d26,#0c1218);border:1px solid var(--border);border-radius:14px;padding:18px;margin:0 0 17px}
+h2{font-size:16px;margin:0 0 6px;letter-spacing:-.025em}h3{margin:0 0 8px;font-size:13px}.muted{color:var(--muted)}small{font-size:11px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.between{justify-content:space-between}.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.grid2{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px}
+.uploadzone{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:12px;align-items:end}
+.uploadzone label{display:block;font-size:12px;color:var(--muted);min-width:0}.uploadzone label input{display:block;margin-top:8px}
+#keyWrap{max-width:450px;margin:8vh auto}.kicker{font-size:11px;color:var(--lime);letter-spacing:.18em;text-transform:uppercase}
+#sourceView,#renderView,#diffView{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:16/9;background:#05090c;cursor:crosshair;border-radius:8px}
+.canvasFrame{position:relative;background:#03070b;padding:8px;border-radius:12px;border:1px solid #314049}
+.canvasFrame:before{content:attr(data-label);position:absolute;left:18px;top:16px;padding:3px 9px;background:#071117c9;color:#d4f4dc;border-radius:4px;font-size:10px;letter-spacing:.12em;z-index:2;pointer-events:none}
+#renderView,#diffView{cursor:default}
+.trackbar{width:100%;accent-color:var(--lime);margin:15px 0}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}
+.stat{padding:12px;background:#080f15;border:1px solid #1c2c35;border-radius:8px}
+.stat b{display:block;font-size:16px;font-variant-numeric:tabular-nums;margin:3px 0}
+.stat span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
+#graph{width:100%;height:88px;display:block;border-radius:8px;background:#081218;cursor:crosshair}
+#status{white-space:pre-wrap;overflow-wrap:anywhere;padding:8px 10px;background:#0a141c;border:1px solid var(--border);border-radius:6px;min-height:38px;color:var(--cyan);font-size:12px}
+#currentObjects{display:grid;gap:7px;margin:8px 0}
+.obj{padding:10px;border:1px solid #34454c;border-radius:9px;background:#091319;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px}
+.obj strong{color:#d2efaa}.obj em{font-style:normal;color:var(--muted);font-variant-numeric:tabular-nums}
+ul{padding-left:18px;margin:7px 0;font-size:12px;color:var(--muted)}#graphNote{font-size:11px;color:var(--muted)}
+#log{max-height:130px;overflow:auto;font-size:11px;color:#adbac5;white-space:pre-wrap}
+label.tick{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}
+select{padding:8px;background:#0b131a;color:var(--text);border:1px solid #354850;border-radius:7px}
+footer{font-size:11px;color:var(--muted);padding-top:20px;border-top:1px solid var(--border)}
+@media(max-width:1050px){.grid2,.cols,.uploadzone{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}header{padding:20px;display:block}main{padding:16px}}
+</style>
+</head>
+<body>
+<header><div><div class="eyebrow">MediaForge / Engineering</div><h1>Frame Lab<span style="color:var(--lime)">.</span></h1>
+<p>Engenharia reversa de movimento — cada quadro, cada objeto, cada transformação.</p></div>
+<div class="badge" id="engineBadge">Motor ainda não verificado</div></header>
+<main>
+<section id="keyWrap" class="card"><div class="kicker">Acesso privado</div><h2>Entrar no laboratório</h2>
+<p class="muted">A análise é protegida por uma chave do servidor. Os vídeos enviados ficam fora da pasta pública.</p>
+<input id="key" type="password" placeholder="Chave de acesso ao Frame Lab" autocomplete="off">
+<div class="row" style="margin-top:12px"><button id="login" class="primary">Acessar ambiente</button><span id="authError" class="muted"></span></div>
+</section>
+<div id="workspace" class="hidden">
+<section class="card">
+<div class="row between"><div><h2>Importar referência</h2><p class="muted" style="margin:0">O analisador percorre todos os frames decodificados; nenhum salto temporal.</p></div>
+<button class="quiet" id="newProject">Novo projeto</button></div>
+<div class="uploadzone" style="margin-top:12px">
+<label>Vídeo de referência (.mp4) <input type="file" id="sourceFile" accept="video/mp4,video/quicktime,video/*"></label>
+<label>Renderização para comparar (opcional) <input type="file" id="renderFile" accept="video/mp4,video/*"></label>
+<button class="primary" id="submit">Enviar e analisar</button></div>
+<div class="row between" style="margin-top:12px"><label class="muted">Projetos <select id="projectSelect"><option value="">— selecione —</option></select></label>
+<button id="reanalyze" disabled>Reanalisar com objetos marcados</button></div>
+<p id="status" role="status">Aguardando projeto.</p>
+</section>
+<div id="inspection" class="hidden">
+<section class="card">
+<div class="row between"><div><h2>Inspector / Linha do tempo integral</h2><p class="muted" id="frameMeta">—</p></div>
+<div class="row"><button id="back10" title="Voltar 10 frames">−10</button><button id="back1" title="Voltar exatamente 1 frame">−1</button><b id="counter">—</b><button id="forward1" title="Avançar exatamente 1 frame">+1</button><button id="forward10" title="Avançar 10 frames">+10</button></div></div>
+<input id="timeline" type="range" class="trackbar" min="0" max="0" value="0" step="1" aria-label="Posição do quadro">
+<canvas id="graph" width="1400" height="88" title="Clique para navegar até o frame"></canvas>
+<div class="row between" style="margin-top:7px"><span id="graphNote">Movimento residual por frame; não é animação inventada.</span>
+<label class="tick"><input type="checkbox" id="regions">Mostrar regiões móveis estimadas</label></div>
+</section>
+<div class="cols">
+<section class="panel"><h2>Referência original</h2><div class="canvasFrame" data-label="FONTE / PIXELS"><canvas id="sourceView" width="1280" height="720"></canvas></div><small class="muted">Arraste no quadro para delimitar um objeto. Ele será rastreado a partir deste frame.</small></section>
+<section class="panel"><h2>Reconstrução no mesmo instante</h2><div class="canvasFrame" data-label="RENDER / ALINHADO"><canvas id="renderView" width="1280" height="720"></canvas></div><small class="muted" id="renderTiming">Tempo de apresentação correspondente à referência.</small></section>
+</div>
+<div class="grid2">
+<section class="panel"><div class="row between"><h2>Diferença entre quadros</h2><small class="muted">Mapa térmico de diferença por pixel</small></div>
+<div class="canvasFrame" data-label="DELTA / PIXEL"><canvas id="diffView" width="1280" height="720"></canvas></div>
+<div class="stats">
+<div class="stat"><span>Movimento câmera X/Y</span><b id="camera">—</b></div>
+<div class="stat"><span>Movimento local p95</span><b id="residual">—</b></div>
+<div class="stat"><span>Subpixel 0–1px</span><b id="subpixel">—</b></div>
+<div class="stat"><span>Erro visual médio</span><b id="mae">—</b></div>
+</div></section>
+<aside class="panel">
+<h2>Camadas e microtransformações</h2>
+<p class="muted" style="margin:4px 0">Marque cada objeto individualmente. O rastreamento calcula deslocamento fracionário, escala por eixo, rotação, cisalhamento e resíduo de deformação.</p>
+<div class="row"><button id="saveROI" disabled class="primary">Salvar seleção</button><button id="clearROI" disabled>Cancelar</button></div>
+<div id="selectionInfo" class="muted" style="font-size:11px;margin:7px 0"></div>
+<h3>Movimentos detectados neste quadro</h3><div id="currentObjects"><span class="muted">Sem objetos anotados.</span></div>
+<div class="row between"><button id="export" disabled>Exportar relatório JSON</button><span id="roiCount" class="muted"></span></div>
+<h3 style="margin-top:18px">Limites físicos da análise</h3>
+<ul><li>Todos os frames gravados são processados, sem saltar quadros.</li>
+<li>O fluxo óptico pode medir deslocamentos fracionários, mas sujeito a compressão e textura.</li>
+<li>Movimento entre dois frames gravados não pode ser recuperado com certeza.</li>
+<li>Transparência exata não é inferível de uma imagem já composta; reportamos variação de brilho.</li>
+<li>Regiões automáticas são sugestões; rótulos de objetos são confirmados por você.</li></ul>
+</aside></div>
+</div>
+</div>
+<footer>Frame Lab v1 · análise temporal completa e movimento local estimado · independente da fila de renderização MediaForge.</footer>
+</main>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+let key="", project="", report=null, frame=0, objects=[], selection=null, dragging=null, timer=null, loadNonce=0;
+const setText=(id,value)=>{$(id).textContent=String(value)};
+const num=(n,d=3)=>Number.isFinite(Number(n))?Number(n).toFixed(d):"—";
+const err=e=>{setText("status",String(e.message||e));console.error(e)};
+async function api(url,options={}){
+  const r=await fetch(url,{...options,headers:{"x-frame-lab-key":key,...(options.headers||{})},cache:"no-store"});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(data.error||data.detail||"HTTP "+r.status);
+  return data;
+}
+function base(){return "/api/projects/"+project}
+async function login(){
+  const candidate=$("key").value;
+  const r=await fetch("/api/auth",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({key:candidate})});
+  if(!r.ok){setText("authError","Chave inválida.");return}
+  key=candidate; $("key").value="";$("keyWrap").classList.add("hidden");$("workspace").classList.remove("hidden");
+  const caps=await api("/api/capabilities");setText("engineBadge",caps.engineReady?"OpenCV ativo / frame a frame":"OpenCV não instalado no servidor");
+  if(!caps.engineReady)setText("status","Motor não disponível neste servidor. Instale opencv-python-headless + numpy no Python configurado; os arquivos podem ser enviados, mas a análise ainda não inicia.");
+  await projects();
+}
+async function projects(){
+  const r=await api("/api/projects");const sel=$("projectSelect");
+  sel.innerHTML='<option value="">— selecione —</option>';
+  for(const item of r.projects){
+    const o=document.createElement("option");o.value=item.id;
+    o.textContent=item.id.slice(0,10)+" · "+(item.referenceFrames?item.referenceFrames+" frames":item.progress.status);
+    sel.append(o);
+  }
+  if(project)sel.value=project;
+}
+async function createProject(){
+  const p=await api("/api/projects",{method:"POST"});
+  project=p.id;report=null;objects=[];frame=0;selection=null;
+  $("inspection").classList.add("hidden");$("reanalyze").disabled=false;
+  setText("status","Projeto "+project.slice(0,12)+" criado.");
+  await projects();
+  return project;
+}
+async function upload(kind,file){
+  if(!file)return;
+  setText("status","Enviando "+kind+": "+file.name+" ("+(file.size/1048576).toFixed(1)+" MiB)...");
+  await api(base()+"/upload/"+kind,{method:"POST",body:file,
+    headers:{"content-type":"application/octet-stream"}});
+}
+async function submit(){
+  const source=$("sourceFile").files[0],render=$("renderFile").files[0];
+  if(!source){setText("status","Selecione o vídeo de referência.");return}
+  $("submit").disabled=true;
+  try{
+    await createProject();await upload("reference",source);
+    if(render)await upload("render",render);
+    setText("status","Análise iniciada. Nenhum frame será pulado.");
+    await api(base()+"/analyze",{method:"POST"});
+    await monitor();
+  }catch(e){err(e)}
+  finally{$("submit").disabled=false}
+}
+async function monitor(){
+  if(timer)clearInterval(timer);
+  let ticks=0;
+  timer=setInterval(async ()=>{
+    try{
+      const result=await api(base()+"/status");
+      const p=result.progress||{};
+      setText("status",p.status+" · "+(p.stage||"")+
+        (p.processedFrames?" · "+p.processedFrames+" frames processados":"")+
+        (p.error?" · "+p.error:""));
+      if(p.status==="completed"||p.status==="failed"||(!result.running&&++ticks>2&&p.status==="waiting")){
+        clearInterval(timer);timer=null;
+        if(result.hasReport){await loadReport();}
+        await projects();
+      }
+    }catch(e){clearInterval(timer);timer=null;err(e)}
+  },1800);
+}
+async function loadReport(){
+  if(!project)return;
+  report=await api(base()+"/report");frame=0;
+  $("inspection").classList.remove("hidden");
+  $("timeline").max=Math.max(0,report.reference.frameCount-1);$("timeline").value="0";
+  $("export").disabled=false;
+  setText("roiCount",objects.length+" objetos anotados");
+  drawGraph();await showFrame(0);
+}
+async function selectProject(id){
+  if(timer)clearInterval(timer);timer=null;
+  project=id;report=null;selection=null;
+  $("inspection").classList.add("hidden");$("reanalyze").disabled=!id;
+  if(!id)return;
+  try{
+    const r=await api(base()+"/objects");objects=r.objects||[];
+    const s=await api(base()+"/status");
+    if(s.hasReport)await loadReport();
+    else if(s.running)await monitor();
+    else setText("status",JSON.stringify(s.progress));
+  }catch(e){err(e)}
+}
+function move(delta){if(report)showFrame(Math.max(0,Math.min(report.reference.frameCount-1,frame+delta)))}
+function point(event,canvas){
+  const b=canvas.getBoundingClientRect();
+  return {x:Math.max(0,Math.min(canvas.width,(event.clientX-b.left)*canvas.width/b.width)),
+    y:Math.max(0,Math.min(canvas.height,(event.clientY-b.top)*canvas.height/b.height))};
+}
+function renderBox(ctx,roi,color,label){
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=Math.max(1,ctx.canvas.width/700);
+  ctx.strokeRect(roi.x,roi.y,roi.w,roi.h);
+  ctx.font="bold "+Math.max(10,ctx.canvas.width/65)+"px system-ui";
+  ctx.fillStyle=color;ctx.fillText(label,roi.x+4,Math.max(15,roi.y-5));ctx.restore();
+}
+async function fetchFrame(kind,index){
+  const res=await fetch(base()+"/frames/"+kind+"/"+index,{headers:{"x-frame-lab-key":key}});
+  if(!res.ok)throw new Error("Quadro indisponível: "+kind+"/"+index);
+  const b=await res.blob();
+  try {return await createImageBitmap(b)}
+  catch {throw new Error("Não foi possível decodificar quadro "+kind)}
+}
+function paint(canvas,image,overlay){
+  if(!image)return;
+  canvas.width=image.width;canvas.height=image.height;
+  const ctx=canvas.getContext("2d");
+  ctx.drawImage(image,0,0);
+  if(overlay)overlay(ctx);
+  image.close();
+}
+async function showFrame(index){
+  if(!report)return;
+  frame=Math.max(0,Math.min(report.reference.frameCount-1,Math.floor(index)));
+  $("timeline").value=frame;const row=report.reference.frames[frame];
+  setText("counter",(frame+1)+" / "+report.reference.frameCount);
+  setText("frameMeta","Frame "+frame+" · "+num(row.time_s,6)+" s · "+
+    report.reference.width+"×"+report.reference.height+" · "+
+    num(report.reference.fps,3)+" FPS · sem amostragem temporal");
+  setText("camera",num(row.camera_dx_px)+" / "+num(row.camera_dy_px)+" px");
+  setText("residual",num(row.residual_p95_px)+" px");
+  setText("subpixel",num(100*row.subpixel_motion_fraction,1)+"%");
+  const pair=report.comparison?.[frame];
+  setText("mae",pair?num(pair.maeRgb,2)+" / 255":"Sem render");
+  setText("renderTiming",pair?
+    "Render frame "+pair.renderFrame+" · defasagem "+num(pair.timeDeltaMs,2)+" ms":
+    "Envie um segundo vídeo para comparar.");
+  const myNonce=++loadNonce;
+  try{
+    const refs=[fetchFrame("reference",frame)];
+    if(pair)refs.push(fetchFrame("render",pair.renderFrame),fetchFrame("diff",frame));
+    const images=await Promise.all(refs);
+    if(myNonce!==loadNonce){images.forEach(i=>i.close());return}
+    paint($("sourceView"),images[0],ctx=>{
+      for(const obj of (row.objects||[]))if(obj.bbox){
+        const b=obj.bbox;renderBox(ctx,{x:b[0],y:b[1],w:b[2],h:b[3]},"#b9f779",obj.label);}
+      if($("regions").checked)for(const [i,r] of(row.regions||[]).entries()){
+        if(i>18)break;renderBox(ctx,r,"#88cde0","mov. "+i);}
+      if(selection)renderBox(ctx,selection,"#ffcb8a","seleção");
+    });
+    if(pair){paint($("renderView"),images[1]);paint($("diffView"),images[2]);}
+    else {for(const name of ["renderView","diffView"]){
+      const c=$(name),x=c.getContext("2d");c.width=report.reference.width;
+      c.height=report.reference.height;x.fillStyle="#071118";x.fillRect(0,0,c.width,c.height);
+    }}
+    drawObjects(row);drawGraph();
+  }catch(e){err(e)}
+}
+function drawObjects(row){
+  const box=$("currentObjects");box.replaceChildren();
+  const list=row.objects||[];
+  if(!list.length){
+    const p=document.createElement("p");p.className="muted";
+    p.textContent="Sem trajetórias anotadas neste frame. Use o arraste para criar uma.";
+    box.append(p);return;
+  }
+  for(const obj of list){
+    const el=document.createElement("div");el.className="obj";
+    const s=document.createElement("strong");s.textContent=obj.label;
+    const t=document.createElement("em");
+    t.textContent="Δ "+num(obj.dx,3)+", "+num(obj.dy,3)+" px | rot "+num(obj.rotation_deg,3)+
+       "° | Sx "+num(obj.scale_x,4)+" | Sy "+num(obj.scale_y,4)+
+       " | deform. "+num(obj.deformation_residual_px,3)+" px"+
+       " | brilho "+num(obj.brightness_delta,2);
+    el.append(s,t);box.append(el);
+  }
+}
+function drawGraph(){
+  if(!report)return;
+  const c=$("graph"),ctx=c.getContext("2d"),w=c.width,h=c.height;
+  ctx.fillStyle="#081218";ctx.fillRect(0,0,w,h);
+  const rows=report.reference.frames,max=Math.max(.5,...rows.map(x=>x.residual_p95_px||0));
+  ctx.strokeStyle="#b9f779";ctx.lineWidth=2;ctx.beginPath();
+  rows.forEach((r,i)=>{
+    const x=i*w/Math.max(1,rows.length-1);
+    const y=h-8-(Math.min(1,(r.residual_p95_px||0)/max)*(h-16));
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  });
+  ctx.stroke();ctx.strokeStyle="#88cde0";ctx.lineWidth=1.5;
+  const pos=frame*w/Math.max(1,rows.length-1);
+  ctx.beginPath();ctx.moveTo(pos,0);ctx.lineTo(pos,h);ctx.stroke();
+}
+async function saveSelection(){
+  if(!selection||!project)return;
+  const label=prompt("Nome do objeto/camada (ex.: capa 02, botão +, letra):","Objeto "+(objects.length+1));
+  if(label===null)return;
+  objects.push({...selection,id:String(Date.now())+"-"+objects.length,
+    label:label||"Objeto "+(objects.length+1),startFrame:frame});
+  await api(base()+"/objects",{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({objects})});
+  setText("roiCount",objects.length+" objetos anotados");
+  setText("selectionInfo","Objeto salvo. Clique em Reanalisar para rastrear todos os frames seguintes.");
+  selection=null;$("saveROI").disabled=true;$("clearROI").disabled=true;
+  await showFrame(frame);
+}
+function init(){
+  $("login").onclick=()=>login().catch(err);
+  $("key").onkeydown=e=>{if(e.key==="Enter")login().catch(err)};
+  $("newProject").onclick=()=>createProject().catch(err);
+  $("projectSelect").onchange=e=>selectProject(e.target.value);
+  $("submit").onclick=submit;
+  $("reanalyze").onclick=async()=>{
+    if(!project)return;
+    try{await api(base()+"/analyze",{method:"POST"});$("inspection").classList.add("hidden");
+      setText("status","Reanalisando todas as frames com as novas marcações.");await monitor();}
+    catch(e){err(e)}
+  };
+  $("timeline").oninput=e=>showFrame(Number(e.target.value));
+  $("back1").onclick=()=>move(-1);$("forward1").onclick=()=>move(1);
+  $("back10").onclick=()=>move(-10);$("forward10").onclick=()=>move(10);
+  $("regions").onchange=()=>showFrame(frame);
+  document.addEventListener("keydown",e=>{
+    if(!report||["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))return;
+    if(e.key==="ArrowLeft"){e.preventDefault();move(e.shiftKey?-10:-1);}
+    if(e.key==="ArrowRight"){e.preventDefault();move(e.shiftKey?10:1);}
+  });
+  $("graph").onclick=e=>{
+    if(!report)return;
+    const rect=e.currentTarget.getBoundingClientRect();
+    showFrame(Math.round((e.clientX-rect.left)/rect.width*(report.reference.frameCount-1)));
+  };
+  const source=$("sourceView");
+  source.onpointerdown=e=>{if(!report)return;const p=point(e,source);
+    dragging=p;selection={x:p.x,y:p.y,w:2,h:2};
+    source.setPointerCapture(e.pointerId);};
+  source.onpointermove=e=>{
+    if(!dragging)return;
+    const p=point(e,source);
+    selection={x:Math.min(dragging.x,p.x),y:Math.min(dragging.y,p.y),
+      w:Math.max(2,Math.abs(dragging.x-p.x)),h:Math.max(2,Math.abs(dragging.y-p.y))};
+    setText("selectionInfo","ROI "+num(selection.x,0)+","+num(selection.y,0)+" · "+
+      num(selection.w,0)+"×"+num(selection.h,0)+" px · início frame "+frame);
+  };
+  source.onpointerup=e=>{dragging=null;if(selection){
+    $("saveROI").disabled=false;$("clearROI").disabled=false;showFrame(frame);}};
+  $("saveROI").onclick=()=>saveSelection().catch(err);
+  $("clearROI").onclick=()=>{selection=null;$("saveROI").disabled=true;
+    $("clearROI").disabled=true;setText("selectionInfo","");showFrame(frame);};
+  $("export").onclick=()=>{if(!report)return;const blob=new Blob([JSON.stringify(report,null,2)],
+    {type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");
+    a.href=url;a.download="frame-lab-"+project+".json";a.click();URL.revokeObjectURL(url);};
+}
+init();
+})();
+</script>
+</body></html>
