@@ -81,3 +81,48 @@ export async function inspectRenderedVideo(path, project, expectsAudio = false) 
     });
   });
 }
+
+
+/**
+ * Audio QA checks the actual rendered mix, not just the existence of an AAC track.
+ * It cannot prove the narration's words or SFX are audible; artistic listening remains separate.
+ */
+export function evaluateAudioLoudness({integratedLufs,truePeakDb}={}) {
+  const i=Number(integratedLufs), tp=Number(truePeakDb);
+  if(!Number.isFinite(i)||!Number.isFinite(tp)) return {
+    status:"failed",kind:"ffmpeg-loudnorm-analysis",integratedLufs:null,truePeakDb:null,
+    issues:["Mix sem loudness mensurável (possível silêncio)."],warnings:[]
+  };
+  const issues=[],warnings=[];
+  if(i < -25) issues.push("Mix muito baixa ("+i.toFixed(1)+" LUFS).");
+  else if(i < -19) warnings.push("Mix baixa para social; revisar reprodução em celular.");
+  if(i > -10) issues.push("Mix excessivamente alta ("+i.toFixed(1)+" LUFS).");
+  else if(i > -13) warnings.push("Mix alta para social; conferir inteligibilidade.");
+  if(tp > -1) issues.push("Pico verdadeiro acima de -1 dBTP ("+tp.toFixed(1)+" dBTP).");
+  return {status:issues.length?"failed":"passed",kind:"ffmpeg-loudnorm-analysis",
+    integratedLufs:i,truePeakDb:tp,issues,warnings,artisticReview:"pending"};
+}
+
+export async function inspectRenderedAudio(path,{timeoutMs=90000}={}) {
+  const executable=process.env.FFMPEG_BIN||"ffmpeg";
+  return new Promise(resolve=>{
+    let output="",settled=false;
+    const complete=result=>{if(!settled){settled=true;resolve(result);}};
+    const child=spawn(executable,["-hide_banner","-nostats","-i",path,"-vn","-map","0:a:0",
+      "-af","loudnorm=I=-16:TP=-1:LRA=11:print_format=json","-f","null","-"],
+      {windowsHide:true,shell:false});
+    const timer=setTimeout(()=>{child.kill();complete({status:"unverified",kind:"ffmpeg-loudnorm-analysis",issues:["Audio QA timeout"],warnings:[]})},timeoutMs);
+    child.on("error",error=>{clearTimeout(timer);complete({status:"unverified",kind:"ffmpeg-loudnorm-analysis",issues:["FFmpeg unavailable: "+error.message],warnings:[]})});
+    child.stderr.on("data",buf=>{output+=buf.toString();if(output.length>500000)output=output.slice(-150000)});
+    child.on("close",code=>{
+      clearTimeout(timer);
+      if(settled)return;
+      if(code!==0){complete({status:"unverified",kind:"ffmpeg-loudnorm-analysis",issues:["FFmpeg exited "+code],warnings:[]});return;}
+      const field=key=>{
+        const hits=[...output.matchAll(new RegExp('"'+key+'"\\s*:\\s*"([^"]+)"',"g"))];
+        return hits.length?Number(hits.at(-1)[1]):NaN;
+      };
+      complete(evaluateAudioLoudness({integratedLufs:field("input_i"),truePeakDb:field("input_tp")}));
+    });
+  });
+}
