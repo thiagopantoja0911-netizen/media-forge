@@ -14,6 +14,7 @@ import { handlePanel, isAdminSession } from "./panel.mjs";
 import { handleStudio } from "./studio.mjs";
 import { handleStudioApi } from "./studio-api.mjs";
 import { handleRemoteWorker } from "./remote-worker-server.mjs";
+import {handleSignedVideoDownload,signedVideoDownload} from "./video-artifact-delivery.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
@@ -246,6 +247,7 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url, "http://" + (request.headers.host ?? "localhost"));
     const parts = url.pathname.split("/").filter(Boolean);
     if(await handleRemoteWorker({request,response,url,jobsDir,projectsRoot,workerStatusFile})) return;
+    if(await handleSignedVideoDownload({request,response,url,getJob:async id=>{try{return await loadJob(id)}catch(e){if(e.code==="ENOENT"||e.code==="INVALID_JOB_ID")return null;throw e;}}}))return;
 
     if (url.pathname === "/frame-lab" || url.pathname.startsWith("/frame-lab/")) {
       try {
@@ -351,7 +353,7 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && parts[0] === "v1" && parts[1] === "jobs" && parts[2]) {
       if(!(await requireApiScope(request,response,"videos:read")))return;
       const job = await loadJob(parts[2]);
-      return send(response, 200, { ok: true, job });
+      return send(response, 200, { ok: true, job, artifact:await signedVideoDownload(job) });
     }
 
     return send(response, 404, { ok: false, error: "not_found" });

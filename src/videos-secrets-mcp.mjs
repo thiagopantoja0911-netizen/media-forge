@@ -5,6 +5,7 @@ import { buildMotionComposition } from "./motion/composer.mjs";
 import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./premium-motion-baseline.mjs";
 import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
 import { planFromShortBrief } from "./creative-director.mjs";
+import {signedVideoDownload} from "./video-artifact-delivery.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
@@ -437,7 +438,7 @@ export async function handleVideosSecretsMcp({
       if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
       const job = await getJob(String(args.id ?? ""));
       if (!job) return writeResult(response, id, textResult("Trabalho não encontrado.", true, version), version);
-      return writeResult(response, id, textResult({ job }, false, version), version);
+      return writeResult(response, id, textResult({ job, artifact:await signedVideoDownload(job) }, false, version), version);
     }
 
     return writeError(response, id, -32602, "Unsupported tool", 400, version);

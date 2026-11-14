@@ -5,6 +5,7 @@ import { Transform } from "node:stream";
 import { readdir, readFile, writeFile, rename, stat, mkdir, rm } from "node:fs/promises";
 import { join, resolve, relative, sep } from "node:path";
 import { readState, updateState, verifySecret } from "./state-store.mjs";
+import {deliveredVideoRoot,deliveredVideoPath,MAX_DELIVERED_VIDEO_BYTES} from "./video-artifact-delivery.mjs";
 
 const HEX_ID = /^[a-f0-9]{32}$/;
 const LEASE_MS = 120_000;
@@ -140,44 +141,55 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
         const leaseId=String(request.headers["x-mediaforge-lease"]||"");
         const job=await loadJob(jobsDir,id);
         if(!validLease(job,leaseId)){reply(response,409,{ok:false,error:"LEASE_INVALID"});return true;}
-        if(job.metadata?.source!=="frame-lab"||!HEX_ID.test(job.metadata.frameLabProjectId||"")){
-          reply(response,403,{ok:false,error:"NOT_FRAME_LAB_JOB"});return true;
+        const lab=job.metadata?.source==="frame-lab" && HEX_ID.test(job.metadata.frameLabProjectId||"");
+        let target,dir;
+        if(lab){
+          const root=resolve(process.env.FRAME_LAB_DATA_DIR||join(process.env.MEDIAFORGE_DATA_DIR||".mediaforge","frame-lab"));
+          dir=resolve(root,job.metadata.frameLabProjectId);
+          const existing=await stat(dir).catch(()=>null);
+          if(!existing?.isDirectory())throw Object.assign(new Error("Frame Lab project missing"),{status:404});
+          target=join(dir,"render.mp4");
+        }else{
+          dir=deliveredVideoRoot();
+          await mkdir(dir,{recursive:true,mode:0o700});
+          target=deliveredVideoPath(id);
         }
-        const projectId=job.metadata.frameLabProjectId;
-        const labRoot=resolve(process.env.FRAME_LAB_DATA_DIR ||
-          join(process.env.MEDIAFORGE_DATA_DIR||".mediaforge","frame-lab"));
-        const dir=resolve(labRoot,projectId);
-        const existing=await stat(dir).catch(()=>null);
-        if(!existing?.isDirectory())throw Object.assign(new Error("Frame Lab project missing"),{status:404});
-        const maxBytes=120*1024*1024;
+        const maxBytes=lab?120*1024*1024:MAX_DELIVERED_VIDEO_BYTES;
         const expectedSize=Number(request.headers["content-length"]);
         if(!Number.isSafeInteger(expectedSize)||expectedSize<128||expectedSize>maxBytes)
-          throw Object.assign(new Error("Artifact content-length required (max 120MB)"),{status:413});
-        const target=join(dir,"render.mp4"),tmp=target+".upload-"+randomUUID();
+          throw Object.assign(new Error("Artifact content-length invalid or exceeds limit"),{status:413});
+        const expectedSha=String(request.headers["x-mediaforge-artifact-sha256"]||"").toLowerCase();
+        if(!/^[a-f0-9]{64}$/.test(expectedSha))
+          throw Object.assign(new Error("Artifact checksum required"),{status:422});
+        const tmp=target+".upload-"+randomUUID();
         const hash=createHash("sha256");let size=0;
         const meter=new Transform({transform(chunk,enc,next){
           size+=chunk.length;
           if(size>maxBytes)next(Object.assign(new Error("Artifact too large"),{status:413}));
           else{hash.update(chunk);next(null,chunk);}
         }});
-        try {
+        try{
           await pipeline(request,meter,createWriteStream(tmp,{flags:"wx",mode:0o600}));
           if(size!==expectedSize)throw new Error("Artifact upload incomplete");
           const digest=hash.digest("hex");
-          const expectedSha=String(request.headers["x-mediaforge-artifact-sha256"]||"").toLowerCase();
-          if(!/^[0-9a-f]{64}$/.test(expectedSha)||digest!==expectedSha)
-            throw new Error("Artifact checksum mismatch");
+          if(digest!==expectedSha)throw new Error("Artifact checksum mismatch");
+          // Never overwrite an already delivered artifact from an earlier lease.
+          const existing=await stat(target).catch(()=>null);
+          if(existing)throw Object.assign(new Error("Artifact already exists"),{status:409});
           await rename(tmp,target);
-          // The artifact originated from a signed Windows worker lease. Start the
-          // all-frame comparison on the server without requiring another UI click.
-          // If the analyzer is busy, preserve the artifact and allow safe retry.
-          try {
-            const { startAnalysis } = await import("../frame-lab/handler.mjs");
-            await startAnalysis(projectId);
-          } catch (e) {
-            console.error("Frame Lab automatic compare deferred:",e.message);
+          await updateState(async()=>{
+            const current=await loadJob(jobsDir,id);
+            if(!validLease(current,leaseId))throw Object.assign(new Error("LEASE_INVALID"),{status:409});
+            current.artifactReceived={sha256:digest,size,location:lab?"frame-lab-hostinger":"mediaforge-hostinger"};
+            await saveJob(jobsDir,current);
+          });
+          if(lab){
+            try{
+              const {startAnalysis}=await import("../frame-lab/handler.mjs");
+              await startAnalysis(job.metadata.frameLabProjectId);
+            }catch(e){console.error("Frame Lab automatic compare deferred:",e.message);}
           }
-          reply(response,200,{ok:true,id,frameLabProjectId:projectId,size,sha256:digest});
+          reply(response,200,{ok:true,id,frameLabProjectId:lab?job.metadata.frameLabProjectId:null,size,sha256:digest,location:lab?"frame-lab-hostinger":"mediaforge-hostinger"});
         }finally{await rm(tmp,{force:true}).catch(()=>{});}
         return true;
       }
@@ -204,11 +216,16 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           job.status=body.success===true?"completed":"failed";
           job.progress=body.success===true?100:0;
           if(body.success===true){
+            if(body.artifactUploaded===true){
+              const stored=job.artifactReceived;
+              if(!stored||stored.sha256!==body.sha256||stored.size!==body.size)
+                throw Object.assign(new Error("ARTIFACT_RECEIPT_MISMATCH"),{status:409});
+            }
             job.result={mode:"hyperframes-cli",fileName:String(body.fileName||"").slice(0,240),
               size:Number(body.size)||0,sha256:String(body.sha256||"").slice(0,64),
               outputPath:String(body.outputPath||"").slice(0,900),report:body.report||null,
               workerId:job.workerLease.workerId,
-              location:body.artifactUploaded===true?"frame-lab-hostinger":"windows-local",
+              location:body.artifactUploaded===true?(job.metadata?.source==="frame-lab"?"frame-lab-hostinger":"mediaforge-hostinger"):"windows-local",
               artifactUploaded:body.artifactUploaded===true};
             delete job.error;
           }else{
