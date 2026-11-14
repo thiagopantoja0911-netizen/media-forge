@@ -1,4 +1,5 @@
-import { access, mkdir } from "node:fs/promises";
+import { access, mkdir, readFile } from "node:fs/promises";
+import { enforceDynamicMotionPlan } from "../motion/dynamic-motion-gate.mjs";
 import { spawn } from "node:child_process";
 import { isAbsolute, join, relative, resolve } from "node:path";
 
@@ -86,6 +87,26 @@ export async function renderWithHyperFrames(job) {
   }
 
   await access(join(projectDir, "index.html"));
+
+  // Gate is opt-in per stored job field for backward compatibility with jobs
+  // queued before the new API default was introduced.
+  let motionReport = null;
+  if (job.project.motionProfile === "dynamic-motion-v1") {
+    let plan;
+    try { plan = JSON.parse(await readFile(join(projectDir, "motion-plan.json"), "utf8")); }
+    catch (cause) {
+      const error = new Error("dynamic-motion-v1 requires a valid motion-plan.json in the project folder");
+      error.code = "DYNAMIC_MOTION_PLAN_REQUIRED";
+      error.cause = cause;
+      throw error;
+    }
+    motionReport = enforceDynamicMotionPlan(plan);
+    if (Math.abs(plan.durationSeconds - job.project.durationSeconds) > 0.04) {
+      const error = new Error("motion plan duration differs from requested output duration");
+      error.code = "DYNAMIC_MOTION_PLAN_DURATION_MISMATCH";
+      throw error;
+    }
+  }
   await mkdir(outputRoot, { recursive: true });
 
   const outputName = job.project.outputName ?? job.id + ".mp4";
@@ -103,6 +124,7 @@ export async function renderWithHyperFrames(job) {
 
   return {
     mode: "hyperframes-cli",
+    motionReport,
     outputPath,
     lint: lint.stdout.trim() || null,
     renderLog: render.stdout.trim() || null

@@ -99,3 +99,9 @@ GET /health retorna o estado do orquestrador.
 - Tokens e chaves ficam fora do Git.
 - Jobs e assets devem ser tratados como dados não confiáveis.
 - Projetos de terceiros serão integrados por adaptadores versionados e revisados.
+
+## Dynamic Motion (padrão para novos vídeos HyperFrames)
+
+O perfil `dynamic-motion-v1` impede que o MediaForge aceite novos jobs de vídeo que só tenham slides, fades e brilho de fundo. O POST `/v1/jobs` requer `motion-plan.json` junto de `index.html`, com 3 camadas, 2 movimentos de câmera/10s, 2 transições causais/10s, eventos significativos (fora de glow de fundo) e nenhum trecho ocioso superior a 0,8s (exceto pausas de leitura explicitadas). A validação acontece também antes do renderer.
+
+Use `examples/dynamic-motion-plan.json` como base e `docs/DYNAMIC_MOTION_DEFAULT.md` para a regra completa. Para filme estático, contemplativo ou acessível, declarar `project.motionProfile="study"` e justificar no projeto. Jobs antigos sem `motionProfile` mantêm compatibilidade na etapa do worker; somente jobs novos da API recebem o default dinâmico. A validação é estrutural e **não substitui inspeção dos frames e revisão artística após render**. O código no repositório só passa a valer no worker Windows após deploy/sincronização.

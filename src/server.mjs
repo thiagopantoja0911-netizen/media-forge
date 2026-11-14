@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { validateDynamicMotionPlan } from "./motion/dynamic-motion-gate.mjs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -52,6 +53,7 @@ function normalizePayload(input) {
     aspectRatio: input.aspectRatio ?? input.aspect_ratio,
     outputs: ["video"],
     renderer: "hyperframes",
+    motionProfile: input.motionProfile ?? input.motion_profile,
     outputName: input.outputName ?? input.output_name
   };
 
@@ -114,8 +116,31 @@ const server = createServer(async (request, response) => {
         return send(response, 400, { ok: false, errors: fileValidation.errors });
       }
 
-      const id = randomUUID();
       const inputProject = payload.project;
+      // Social/commercial HyperFrames jobs default to a real motion plan.
+      // 'study' is an explicit opt-out for intentionally calm or accessible films.
+      const isVideo = (inputProject.outputs ?? ["video"]).includes("video");
+      const mode = inputProject.motionProfile ?? (isVideo && (inputProject.renderer ?? "hyperframes") === "hyperframes"
+        ? "dynamic-motion-v1" : "study");
+      if (mode === "dynamic-motion-v1") {
+        const file = payload.projectFiles?.find((item) => item.path === "motion-plan.json");
+        if (!file || typeof file.content !== "string") {
+          return send(response, 400, { ok: false, code: "DYNAMIC_MOTION_PLAN_REQUIRED",
+            errors: ["dynamic-motion-v1 requires a UTF-8 motion-plan.json alongside index.html"] });
+        }
+        let plan;
+        try { plan = JSON.parse(file.content); }
+        catch { return send(response, 400, { ok: false, code: "INVALID_MOTION_PLAN", errors: ["motion-plan.json is invalid JSON"] }); }
+        const report = validateDynamicMotionPlan(plan);
+        if (Math.abs((plan.durationSeconds ?? 0) - (inputProject.durationSeconds ?? 15)) > 0.04) {
+          report.issues.push("motion plan duration differs from project.durationSeconds");
+          report.ok = false;
+        }
+        if (!report.ok) {
+          return send(response, 400, { ok: false, code: "DYNAMIC_MOTION_GATE_FAILED", errors: report.issues, metrics: report.metrics });
+        }
+      }
+      const id = randomUUID();
       const hasInlineFiles = Boolean(payload.projectFiles);
       const sourceDir = hasInlineFiles ? id : (inputProject.sourceDir ?? null);
       const job = {
@@ -131,6 +156,7 @@ const server = createServer(async (request, response) => {
           aspectRatio: inputProject.aspectRatio ?? "9:16",
           outputs: inputProject.outputs ?? ["video"],
           renderer: inputProject.renderer ?? "hyperframes",
+          motionProfile: mode,
           sourceDir,
           outputName: inputProject.outputName ?? null,
           inlineFiles: hasInlineFiles,
