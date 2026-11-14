@@ -14,7 +14,6 @@ import { handlePanel, isAdminSession } from "./panel.mjs";
 import { handleStudio } from "./studio.mjs";
 import { handleStudioApi } from "./studio-api.mjs";
 import { handleRemoteWorker } from "./remote-worker-server.mjs";
-import { handleMaintenanceAdmin } from "./maintenance-bridge.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
@@ -247,7 +246,6 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url, "http://" + (request.headers.host ?? "localhost"));
     const parts = url.pathname.split("/").filter(Boolean);
     if(await handleRemoteWorker({request,response,url,jobsDir,projectsRoot,workerStatusFile})) return;
-    if(await handleMaintenanceAdmin({request,response,url,isAdminSession})) return;
 
     if (url.pathname === "/frame-lab" || url.pathname.startsWith("/frame-lab/")) {
       try {
