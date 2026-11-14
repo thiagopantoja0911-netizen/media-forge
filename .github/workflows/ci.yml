@@ -2,7 +2,7 @@ name: MediaForge CI
 
 on:
   push:
-    branches: [main, feature/conexoes-mediaforge-primeiro, feat/reference-motion-quality, feat/mediaforge-cinematic-motion-audio-v2-20261112]
+    branches: [main, feature/conexoes-mediaforge-primeiro, feat/reference-motion-quality, feat/mediaforge-cinematic-motion-audio-v2-20261112, feat/chat-only-creative-director-20261114]
   pull_request:
     branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro, feat/forge-real-render-pipeline-20261111]
 
@@ -35,6 +35,7 @@ jobs:
       - run: node --check src/server.mjs
       - run: node --check src/remote-worker-server.mjs
       - run: node --check src/remote-worker-client.mjs
+      - run: node --check src/creative-director.mjs
       - run: node --check src/videos-secrets-mcp.mjs
       - run: node --check src/worker.mjs
       - run: node --check src/renderers/hyperframes.mjs
