@@ -43,6 +43,11 @@ test("authenticated ChatGPT -> API -> Windows remote worker handshake", async()=
       await new Promise(r=>setTimeout(r,100));
     }
     assert.equal(up,true,"server started "+logs);
+    const rejectedAuth=await request(base,"/v1/worker/auth-check",null,"POST",{});
+    assert.equal(rejectedAuth.status,401,"Token preflight cannot be called anonymously");
+    const validAuth=await request(base,"/v1/worker/auth-check",workerToken,"POST",{});
+    assert.equal(validAuth.status,200,JSON.stringify(validAuth.data));
+    assert.equal(validAuth.data.authenticated,true);
     const unauthorized=await request(base,"/v1/jobs",null);
     assert.equal(unauthorized.status,401);
     const payload={
