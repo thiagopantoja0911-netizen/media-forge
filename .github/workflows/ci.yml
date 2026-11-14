@@ -18,5 +18,7 @@ jobs:
       - run: node --check src/server.mjs
       - run: node --check src/worker.mjs
       - run: node --check src/renderers/hyperframes.mjs
-      - run: node --test test/job-schema.test.mjs
+      - run: node --check src/motion/premium-motion.js
+      - run: node --test test/job-schema.test.mjs test/premium-motion.test.mjs
+      - run: node scripts/prepare-motion-demo.mjs
       - run: npm run validate
