@@ -36,7 +36,7 @@ export async function signedVideoDownload(job){
  const expires=Date.now()+LIFE;
  const sig=signature(job.id,expires,result.sha256);
  const base=String(process.env.MEDIAFORGE_PUBLIC_URL||process.env.MEDIAFORGE_OAUTH_ISSUER||"https://mediaforge.salevo.site").replace(/\/+$/,"");
- if(!/^https:\/\/[a-z0-9.-]+(?::443)?$/i.test(base))return null;
+ if(!/^https:\/\/[a-z0-9.-]+(?::443)?$/i.test(base)&&!/^http:\/\/(?:127\.0\.0\.1|localhost):[1-9][0-9]{0,4}$/i.test(base))return null;
  return {url:base+"/v1/video-download/"+job.id+"?expires="+expires+"&signature="+sig,
    expiresAt:new Date(expires).toISOString(),size:st.size,sha256:result.sha256};
 }
