@@ -1,0 +1,31 @@
+{
+  "profile": "dynamic-motion-v1",
+  "durationSeconds": 10,
+  "fps": 60,
+  "intent": "Reel de demonstração de aplicativo com movimento integral da composição",
+  "layers": [
+    {"id":"lighting","role":"background","depth":0.25,"movement":"Luz responde a mudanças de foco, sem contar como única ação"},
+    {"id":"app","role":"midground","depth":1,"movement":"Camera rig acompanha cada estado de UI"},
+    {"id":"interactive","role":"foreground","depth":1.8,"movement":"Objeto de interação conduz transições e cria profundidade"}
+  ],
+  "beats": [
+    {"start":0,"end":2.5,"action":"câmera revela treino e seleciona exercício","stateBefore":"lista","stateAfter":"exercício selecionado"},
+    {"start":2.5,"end":5,"action":"botão de registro reage aos números","stateBefore":"exercício selecionado","stateAfter":"série registrada"},
+    {"start":5,"end":7.6,"action":"botão vira cronômetro que avança","stateBefore":"série registrada","stateAfter":"descanso ativo"},
+    {"start":7.6,"end":10,"action":"mesmo objeto organiza CTA legível","stateBefore":"descanso ativo","stateAfter":"CTA final"}
+  ],
+  "events": [
+    {"id":"cam-intro","start":0,"duration":2,"scope":"camera","kind":"push-in","target":"#camera"},
+    {"id":"stagger-exercises","start":0.1,"duration":1.8,"scope":"ui","kind":"stagger","target":"#workout"},
+    {"id":"cam-track","start":1.9,"duration":2,"scope":"camera","kind":"camera-tracking","target":"#camera"},
+    {"id":"button-register","start":2.1,"duration":1.8,"scope":"ui","kind":"register","target":"#registerButton"},
+    {"id":"morph-timer","start":3.8,"duration":2.1,"scope":"scene","kind":"physical-morph","target":"#carrier"},
+    {"id":"timer-progress","start":5.8,"duration":2,"scope":"ui","kind":"countdown","target":"#timer"},
+    {"id":"brand-cta","start":7.7,"duration":1.1,"scope":"foreground","kind":"endcard","target":"#brand"}
+  ],
+  "transitions": [
+    {"at":2.3,"duration":0.3,"kind":"match-cut","carrier":"#registerButton","cause":"user selected exercise","fromState":"exercício","toState":"registro"},
+    {"at":5.8,"duration":0.3,"kind":"morph","carrier":"#carrier","cause":"user registered series","fromState":"registro","toState":"cronômetro"}
+  ],
+  "holds": [{"start":8.8,"end":10,"reason":"leitura do CTA e preservação do logotipo"}]
+}

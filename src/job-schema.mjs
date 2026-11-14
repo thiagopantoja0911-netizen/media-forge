@@ -100,6 +100,10 @@ export function validateJob(input) {
     errors.push("voice must be an object when provided");
   }
 
+  if (project.motionProfile && !["dynamic-motion-v1", "study"].includes(project.motionProfile)) {
+    errors.push("project.motionProfile must be dynamic-motion-v1 or study");
+  }
+
   if (project.renderer && !["hyperframes", "dry-run"].includes(project.renderer)) {
     errors.push("project.renderer must be hyperframes or dry-run");
   }
