@@ -17,6 +17,21 @@ try {
       [Environment]::SetEnvironmentVariable($matches[1], $matches[2], "Process")
     }
   }
+  # Persist the worker credential encrypted with Windows DPAPI for this user.
+  # It is never passed as a CLI argument or written to logs. Older .env.local
+  # tokens remain readable during migration but are superseded by DPAPI.
+  $credentialPath = Join-Path $InstallDir ".mediaforge\worker-token.dpapi"
+  if (Test-Path -LiteralPath $credentialPath -PathType Leaf) {
+    $encrypted = (Get-Content -LiteralPath $credentialPath -Raw -ErrorAction Stop).Trim()
+    $secureToken = ConvertTo-SecureString -String $encrypted -ErrorAction Stop
+    $tokenPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken)
+    try {
+      $env:MEDIAFORGE_WORKER_TOKEN = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($tokenPointer)
+    } finally {
+      [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($tokenPointer)
+      Remove-Variable -Name secureToken,encrypted -ErrorAction SilentlyContinue
+    }
+  }
   if (-not $env:MEDIAFORGE_REMOTE_URL -or -not $env:MEDIAFORGE_WORKER_TOKEN) {
     throw "Conexão remota incompleta. Verifique MEDIAFORGE_REMOTE_URL e MEDIAFORGE_WORKER_TOKEN."
   }
