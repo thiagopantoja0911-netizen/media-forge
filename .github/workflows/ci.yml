@@ -2,7 +2,7 @@ name: MediaForge CI
 
 on:
   push:
-    branches: [main, feature/conexoes-mediaforge-primeiro, feat/reference-motion-quality, feat/mediaforge-cinematic-motion-audio-v2-20261112, feat/chat-only-creative-director-20261114]
+    branches: [main, feature/conexoes-mediaforge-primeiro, feat/reference-motion-quality, feat/mediaforge-cinematic-motion-audio-v2-20261112, feat/chat-only-creative-director-20261114, fix/mediaforge-windows-worker-restart-dpapi-20261114]
   pull_request:
     branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro, feat/forge-real-render-pipeline-20261111]
 
@@ -76,6 +76,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: DPAPI per-user secure-string smoke (no production secrets)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $secure = ConvertTo-SecureString -String ('TEST-ONLY-' + ('X' * 40)) -AsPlainText -Force
+          $cipher = $secure | ConvertFrom-SecureString
+          $restored = ConvertTo-SecureString -String $cipher
+          $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($restored)
+          try {
+            $check = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+            if ($check -ne ('TEST-ONLY-' + ('X' * 40))) { throw 'DPAPI roundtrip failed' }
+          } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
+          Write-Output 'DPAPI roundtrip passed with disposable synthetic secret.'
       - name: Parse Windows PowerShell 5.1 scripts
         shell: powershell
         run: |
