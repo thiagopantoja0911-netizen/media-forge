@@ -177,6 +177,12 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           const existing=await stat(target).catch(()=>null);
           if(existing)throw Object.assign(new Error("Artifact already exists"),{status:409});
           await rename(tmp,target);
+          await updateState(async()=>{
+            const current=await loadJob(jobsDir,id);
+            if(!validLease(current,leaseId))throw Object.assign(new Error("LEASE_INVALID"),{status:409});
+            current.artifactReceived={sha256:digest,size,location:lab?"frame-lab-hostinger":"mediaforge-hostinger"};
+            await saveJob(jobsDir,current);
+          });
           if(lab){
             try{
               const {startAnalysis}=await import("../frame-lab/handler.mjs");
@@ -210,6 +216,11 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           job.status=body.success===true?"completed":"failed";
           job.progress=body.success===true?100:0;
           if(body.success===true){
+            if(body.artifactUploaded===true){
+              const stored=job.artifactReceived;
+              if(!stored||stored.sha256!==body.sha256||stored.size!==body.size)
+                throw Object.assign(new Error("ARTIFACT_RECEIPT_MISMATCH"),{status:409});
+            }
             job.result={mode:"hyperframes-cli",fileName:String(body.fileName||"").slice(0,240),
               size:Number(body.size)||0,sha256:String(body.sha256||"").slice(0,64),
               outputPath:String(body.outputPath||"").slice(0,900),report:body.report||null,
