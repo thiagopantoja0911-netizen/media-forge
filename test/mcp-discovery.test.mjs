@@ -104,7 +104,7 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     assert.equal(modernList.data.result.cacheScope, "private");
     assert.equal(modernList.data.result.ttlMs, 0);
     assert.deepEqual(modernList.data.result.tools.map(tool => tool.name), [
-      "create_video", "create_motion_video", "create_cinematic_3d", "renderer_status", "list_videos", "get_video",
+      "plan_video_from_brief", "create_video", "create_motion_video", "create_cinematic_3d", "renderer_status", "list_videos", "get_video",
       "frame_lab_capabilities", "frame_lab_create_project", "frame_lab_list_projects",
       "frame_lab_start_upload", "frame_lab_upload_chunk", "frame_lab_upload_status",
       "frame_lab_finish_upload", "frame_lab_analyze", "frame_lab_status",
@@ -113,6 +113,15 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     for (const tool of modernList.data.result.tools) {
       assert.equal(tool.inputSchema.type, "object");
     }
+
+    const creativePlan=await call("tools/call",MODERN,{
+      params:{name:"plan_video_from_brief",arguments:{brand:"Empresa Exemplo",idea:"Criar anúncio para vender serviço de automação de trabalho",goal:"sales"}}
+    });
+    assert.equal(creativePlan.status,200,JSON.stringify(creativePlan.data));
+    const storyboard=JSON.parse(creativePlan.data.result.content[0].text);
+    assert.equal(storyboard.brief.brand,"Empresa Exemplo");
+    assert.equal(storyboard.storyboard.length,5);
+    assert.equal(storyboard.status,"storyboard-only-not-rendered");
 
     const modernCall = await call("tools/call", MODERN, {
       params: { name: "renderer_status", arguments: {} }
