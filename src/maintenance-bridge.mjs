@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { readState, updateState } from "./state-store.mjs";
 
 export const STAGING_BRANCH="feature/conexoes-mediaforge-primeiro";
-export const STAGING_COMMIT="02d9a2e12e79a3059d45773437d488d5aa844969";
+export const STAGING_COMMIT="62ba1062031c689505df2f23ffb55b746ad76c2c";
 const TASK_KINDS=new Set(["diagnose","update-staging"]);
 const LEASE_MS=120000,MAX_TASKS=30;
 const TASK_ID=/^[a-f0-9]{32}$/;
