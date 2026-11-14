@@ -5,6 +5,8 @@ import { resolve, join, relative, sep, basename } from "node:path";
 import { hostname } from "node:os";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
 import { inspectRenderedVideo, inspectRenderedAudio } from "./video-qa.mjs";
+import { executeMaintenanceTask } from "./maintenance-worker.mjs";
+import { spawn } from "node:child_process";
 
 const url=String(process.env.MEDIAFORGE_REMOTE_URL||"").replace(/\/$/,"");
 const token=process.env.MEDIAFORGE_WORKER_TOKEN||"";
@@ -140,6 +142,27 @@ console.log("MediaForge remote Windows worker connecting to",url);
 while(true){
   try{
     await sendHeartbeat();
+    const maintenance=await call("/v1/worker/maintenance/claim","POST",{workerId});
+    if(maintenance.task){
+      const task=maintenance.task;
+      let report=null,error=null;
+      try{report=await executeMaintenanceTask(task);}catch(ex){error=String(ex.message||ex).slice(0,500);}
+      await call("/v1/worker/maintenance/complete","POST",{
+        id:task.id,leaseId:task.leaseId,workerId,success:!error,report,error
+      });
+      if(!error&&report?.restartRequired&&process.platform==="win32"){
+        const root=process.cwd();
+        const script=join(root,"desktop","start-worker-background.ps1");
+        // Separate process gives the completion response time to reach the server.
+        const scriptArg=script.replaceAll("'","''");
+        const rootArg=root.replaceAll("'","''");
+        const child=spawn("powershell.exe",["-NoProfile","-ExecutionPolicy","Bypass","-Command",
+          "Start-Sleep -Seconds 3; & '"+scriptArg+"' -InstallDir '"+rootArg+"'"],
+          {cwd:root,detached:true,windowsHide:true,stdio:"ignore"});
+        child.unref();
+      }
+      continue;
+    }
     const next=await call("/v1/worker/claim","POST",{workerId});
     if(next.job)await processRemote(next.job,next.leaseId);
   }catch(error){console.error("Remote connection error:",error.message);}

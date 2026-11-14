@@ -2,6 +2,7 @@ import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { readdir, readFile, writeFile, rename, stat } from "node:fs/promises";
 import { join, resolve, relative, sep } from "node:path";
 import { readState, updateState, verifySecret } from "./state-store.mjs";
+import { handleMaintenanceWorker } from "./maintenance-bridge.mjs";
 
 const HEX_ID = /^[a-f0-9]{32}$/;
 const LEASE_MS = 120_000;
@@ -70,6 +71,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
   if(!url.pathname.startsWith("/v1/worker/"))return false;
   if(!(await authenticated(request))) {reply(response,401,{ok:false,error:"WORKER_UNAUTHORIZED"});return true;}
   const path=url.pathname;
+  if(await handleMaintenanceWorker({request,response,url}))return true;
   try {
     if(request.method==="POST"&&path==="/v1/worker/heartbeat") {
       const body=await parseBody(request);
