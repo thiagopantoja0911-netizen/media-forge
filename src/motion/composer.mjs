@@ -102,6 +102,7 @@ window.__timelines=window.__timelines||{};window.__timelines[${js(sid)}]=tl;}</s
 }
 
 export async function buildMotionComposition(plan, suppliedFiles = []) {
+  if(plan.visualMode==="procedural-motion") throw new Error("Procedural cinema requires a real authored index.html, GSAP source and assets via create_video; this scene-template composer cannot manufacture it.");
   const review = requireMotionPlan(plan);
   const duration = frameSeconds(plan.totalFrames, plan.fps);
   const files = suppliedFiles.map(f => ({...f}));
