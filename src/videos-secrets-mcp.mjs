@@ -4,6 +4,7 @@ import { buildCinematic3dProject } from "./cinematic-3d.mjs";
 import { buildMotionComposition } from "./motion/composer.mjs";
 import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./premium-motion-baseline.mjs";
 import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
+import { planFromShortBrief } from "./creative-director.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
@@ -12,6 +13,25 @@ const DEFAULT_PROTOCOL = "2025-06-18";
 const NO_CACHE = { ttlMs: 0, cacheScope: "private" };
 
 export const VIDEOS_SECRETS_TOOLS = [
+  {
+    name:"plan_video_from_brief",
+    description:"Diretor criativo automático do MediaForge: informe somente empresa e ideia. Decide objetivo (vendas, likes ou compartilhamentos), três abordagens, roteiro por cena, estilo de câmera, emoção, som e QA. Não gera vídeo ainda; sinaliza assets e alegações sem verificação.",
+    inputSchema:{
+      type:"object",additionalProperties:false,
+      properties:{
+        brand:{type:"string",minLength:2,maxLength:90},
+        idea:{type:"string",minLength:8,maxLength:400},
+        goal:{type:"string",enum:["sales","likes","shares","awareness"]},
+        audience:{type:"string",maxLength:140},
+        brand_url:{type:"string",maxLength:350},
+        logo_asset_path:{type:"string",maxLength:240},
+        duration_seconds:{type:"integer",minimum:10,maximum:40},
+        fps:{type:"integer",enum:[24,25,30,50,60]},
+        aspect_ratio:{type:"string",enum:["9:16","16:9","1:1"]},
+        claims:{type:"array",maxItems:12,items:{type:"object",additionalProperties:false,properties:{text:{type:"string",maxLength:160},source:{type:"string",maxLength:300}},required:["text"]}}
+      },required:["brand","idea"]
+    }
+  },
   {
     name: "create_video",
     description: "Produção de vídeo com Premium Motion como padrão: 60 FPS, high/delivery, preflight, movimento GSAP, trilha e micro-SFX. Para estudo silencioso use production_profile=study; para mídia cinematográfica especializada use create_motion_video.",
@@ -293,6 +313,12 @@ export async function handleVideosSecretsMcp({
       const { executeFrameLabMcp } = await import("../frame-lab/mcp-actions.mjs");
       const result = await executeFrameLabMcp(name, args, { createJob, getJob });
       return writeResult(response, id, textResult(result, false, version), version);
+    }
+
+    if (name === "plan_video_from_brief") {
+      if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
+      const plan = planFromShortBrief(args);
+      return writeResult(response, id, textResult(plan, false, version), version);
     }
 
     if (name === "create_video") {
