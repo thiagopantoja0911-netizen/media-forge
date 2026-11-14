@@ -191,7 +191,8 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
 
     const legacyList = await call("tools/list", LEGACY);
     assert.equal(legacyList.status, 200, JSON.stringify(legacyList.data));
-    assert.equal(legacyList.data.result.tools.length, 18);
+    assert.deepEqual(legacyList.data.result.tools.map(x=>x.name),modernList.data.result.tools.map(x=>x.name));
+    assert.equal(legacyList.data.result.tools.length, 19);
     assert.equal(legacyList.data.result.resultType, undefined);
   } finally {
     server.kill("SIGTERM");
