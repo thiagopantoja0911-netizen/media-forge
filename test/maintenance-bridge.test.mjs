@@ -8,7 +8,7 @@ test("maintenance executor rejects arbitrary commands",async()=>{
 });
 test("maintenance executor locks branch and commit before touching disk",async()=>{
  await assert.rejects(executeMaintenanceTask({kind:"update-staging",branch:"main",expectedCommit:STAGING_COMMIT}),/MAINTENANCE_TARGET_DENIED/);
- await assert.rejects(executeMaintenanceTask({kind:"update-staging",branch:STAGING_BRANCH,expectedCommit:"a".repeat(40)}),/MAINTENANCE_TARGET_DENIED/);
+ await assert.rejects(executeMaintenanceTask({kind:"update-staging",branch:STAGING_BRANCH,expectedCommit:"not-a-commit"}),/MAINTENANCE_TARGET_DENIED/);
 });
 test("executor rejects unexpected repository directory",async()=>{
  await assert.rejects(executeMaintenanceTask({kind:"diagnose",branch:STAGING_BRANCH,expectedCommit:STAGING_COMMIT},process.cwd()),/UNEXPECTED_INSTALL_DIRECTORY/);
