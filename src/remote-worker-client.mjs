@@ -38,7 +38,7 @@ async function call(path, method="GET", body, leaseId) {
     return data;
   }finally{clearTimeout(timeout);}
 }
-async function uploadFrameLabArtifact(jobId,leaseId,outputPath){
+async function uploadDeliveredArtifact(jobId,leaseId,outputPath){
   const fileSize=(await stat(outputPath)).size;
   const sha=await hashFile(outputPath);
   const controller=new AbortController();
@@ -55,7 +55,7 @@ async function uploadFrameLabArtifact(jobId,leaseId,outputPath){
     });
     const data=await response.json();
     if(!response.ok||data.ok!==true||data.sha256!==sha)
-      throw new Error("Frame Lab MP4 upload failed: "+(data.error||response.status));
+      throw new Error("MediaForge MP4 delivery failed: "+(data.error||response.status));
     return data;
   }finally{clearTimeout(timer);}
 }
@@ -120,8 +120,9 @@ async function processRemote(job,leaseId) {
     }
     // Full Frame Lab workflow: the output must return to the web service for real comparison.
     // A failed upload fails the job instead of falsely marking the pipeline completed.
-    const artifactUploaded=job.metadata?.source==="frame-lab"
-      ? Boolean((await uploadFrameLabArtifact(job.id,leaseId,rendered.outputPath)).ok) : false;
+    // Every completed video must be retrievable in ChatGPT, not stranded on Windows.
+    // A failed upload fails the job, instead of falsely reporting completed.
+    const artifactUploaded=Boolean((await uploadDeliveredArtifact(job.id,leaseId,rendered.outputPath)).ok);
     await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
       leaseId,success:true,artifactUploaded,fileName:basename(rendered.outputPath),size:info.size,
       sha256:await hashFile(rendered.outputPath),outputPath:rendered.outputPath,
