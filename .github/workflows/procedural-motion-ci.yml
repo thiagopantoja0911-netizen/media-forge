@@ -1,0 +1,29 @@
+name: Procedural Dynamic Motion regression
+
+on:
+  push:
+    branches:
+      - fix/cinematic-procedural-dynamic-v1-20261114
+  pull_request:
+    branches:
+      - feat/mediaforge-cinematic-motion-audio-v2-20261112
+
+jobs:
+  procedural-motion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax checks
+        run: |
+          node --check src/motion/dynamic-motion-gate.mjs
+          node --check src/motion/procedural-motion.mjs
+          node --check src/motion/plan.mjs
+          node --check src/motion/preflight.mjs
+          node --check src/motion/cinematic-quality.mjs
+      - name: Procedural cinema regression
+        run: node --test test/procedural-motion.test.mjs
+      - name: Existing cinematic regressions
+        run: node --test test/cinematic-motion.test.mjs
