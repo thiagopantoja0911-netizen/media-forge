@@ -1,3 +1,4 @@
+import { reviewProceduralMotion } from "./procedural-motion.mjs";
 // Media-first cinematic production gate. Enforced before the Windows job is queued.
 // Does not claim artistic quality: it prevents known slideshow and silent-render failures.
 const fpsValue = value => { const [n,d="1"]=String(value).split("/"); return Number(n)/Number(d); };
@@ -19,6 +20,9 @@ export function reviewCinematicCraft(plan) {
     return {ok:false,errors:["Cinematic mode requires valid duration and FPS"],warnings,metrics:null};
   }
   const duration=frameSeconds(frames,plan.fps);
+  const proceduralReview=reviewProceduralMotion(plan);
+  const procedural=proceduralReview.enabled && proceduralReview.ok;
+  if(proceduralReview.enabled && !proceduralReview.ok) errors.push(...proceduralReview.issues.map(x=>"Procedural motion: "+x));
   if (duration>=20 && scenes.length<Math.max(5,Math.ceil(duration/6))) {
     errors.push("Cinematic mode: too few shots for the runtime; 45s needs at least 8 distinct shots.");
   }
@@ -46,7 +50,7 @@ export function reviewCinematicCraft(plan) {
     if(scene.type==="footage") motionSeconds+=Math.max(0,length);
     else if(movingTypes.has(scene.type) && Array.isArray(scene.events) && scene.events.some(e=>e && ["state","focus","camera"].includes(e.action))) motionSeconds+=Math.max(0,length);
     else if(scene.type==="photo" && Array.isArray(scene.events) && scene.events.some(e=>e?.action==="camera")) motionSeconds+=Math.max(0,length)*.45;
-    const isStatic=scene.type==="photo"||stagedTypes.has(scene.type);
+    const isStatic=scene.type==="photo"||(stagedTypes.has(scene.type)&&!procedural);
     if(isStatic&&previousStatic) staticRuns++; else if(!isStatic)staticRuns=0;
     if(staticRuns>=2) errors.push(scene.id+": 3 consecutive still/title shots; use moving footage or action");
     previousStatic=isStatic;
@@ -57,7 +61,8 @@ export function reviewCinematicCraft(plan) {
   }
   if(types.size<2 && scenes.length>2) errors.push("Cinematic mode: use contrasting shot types, not identical slides");
   if(transitionKinds.size<2 && scenes.length>=5) errors.push("Cinematic mode: vary motivated transitions; one transition for every cut reads as a template");
-  if(footageSeconds/duration<.30) errors.push("Cinematic mode: include at least 30% actual moving footage; still-photo pans alone are insufficient");
+  if(procedural) motionSeconds=Math.max(motionSeconds,duration*(proceduralReview.metrics?.plannedActiveRatio||0));
+  if(!procedural && footageSeconds/duration<.30) errors.push("Cinematic mode: include at least 30% actual moving footage; still-photo pans alone are insufficient");
   if(photoSeconds/duration>.40) errors.push("Cinematic mode: static photos exceed 40% of runtime");
   if(motionSeconds/duration<.52) errors.push("Cinematic mode: at least 52% of the film needs meaningful visible motion");
   for (const [path,seconds] of usedMedia) if(seconds/duration>.28) errors.push("Cinematic mode: repeated asset dominates the timeline: "+path);
@@ -76,6 +81,6 @@ export function reviewCinematicCraft(plan) {
     const anchor=anchors.get(cue.eventId);
     if(anchor!==undefined&&Math.abs(anchor-cue.startFrame)>Math.ceil(fps*.08))errors.push(cue.id+": SFX must land within 80ms of the visual event peak");
   }
-  const metrics={durationSeconds:duration,shotCount:scenes.length,shotTypes:[...types],footagePct:Math.round(100*footageSeconds/duration),photoPct:Math.round(100*photoSeconds/duration),motionPct:Math.round(100*motionSeconds/duration),sfxCount:sfx.length,musicCount:music.length,voiceCount:voice.length};
+  const metrics={durationSeconds:duration,visualMode:plan.visualMode||"media-first",proceduralCoveragePct:procedural?Math.round(100*(proceduralReview.metrics?.plannedActiveRatio||0)):null,shotCount:scenes.length,shotTypes:[...types],footagePct:Math.round(100*footageSeconds/duration),photoPct:Math.round(100*photoSeconds/duration),motionPct:Math.round(100*motionSeconds/duration),sfxCount:sfx.length,musicCount:music.length,voiceCount:voice.length};
   return {ok:errors.length===0,errors,warnings,metrics,artisticReview:"pending"};
 }

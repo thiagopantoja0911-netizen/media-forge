@@ -22,6 +22,8 @@ export function validateMotionPlan(plan) {
   if (![1,9/16,16/9].some(r=>Math.abs(plan.width/plan.height-r)<.001)) fail("This composer supports 9:16, 16:9 and 1:1; keep other reference ratios in the evidence inventory");
   if (typeof plan.title !== "string" || !plan.title.trim() || plan.title.length > 160) fail("title is required, max 160 characters");
   if (plan.productionMode !== undefined && !["standard","cinematic"].includes(plan.productionMode)) fail("productionMode must be standard or cinematic");
+  if (plan.visualMode !== undefined && !["media-first","procedural-motion"].includes(plan.visualMode)) fail("visualMode must be media-first or procedural-motion");
+  if (plan.visualMode === "procedural-motion" && plan.productionMode !== "cinematic") fail("procedural-motion requires productionMode=cinematic");
   if (!["silent-study", "sound-design", "voice-led"].includes(plan.audioMode)) fail("Choose audioMode: silent-study, sound-design or voice-led");
   if (plan.palette && Object.values(plan.palette).some(v => !/^#[0-9a-f]{6}$/i.test(v))) fail("palette values must be six-digit hex colors");
   const scenes = plan.scenes;
