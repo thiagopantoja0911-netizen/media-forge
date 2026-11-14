@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { buildCinematic3dProject } from "./cinematic-3d.mjs";
 import { buildMotionComposition } from "./motion/composer.mjs";
 import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./premium-motion-baseline.mjs";
+import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
@@ -292,6 +293,8 @@ export async function handleVideosSecretsMcp({
       if (premium) {
         const review = validatePremiumMotionSubmission(args);
         if (!review.ok) return writeError(response, id, -32602, review.errors.join("; "), 422, version);
+        const prequeue = validateWindowsRenderSubmission(args);
+        if (!prequeue.ok) return writeError(response, id, -32602, prequeue.errors.join("; "), 422, version);
       }
       const job = await createJob({
         title: args.title,
