@@ -135,3 +135,4 @@ jobs:
           }
           Remove-Item -LiteralPath $probe,$probeLog -Force
           Write-Host "PowerShell 5.1 native stderr handling OK."
+          $global:LASTEXITCODE = 0
