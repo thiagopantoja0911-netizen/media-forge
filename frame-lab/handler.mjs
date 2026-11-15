@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import ffmpegStatic from "ffmpeg-static";
 import ffprobeStatic from "@derhuerst/ffprobe-static";
 import { resolveFrameLabMediaBinaries } from "./media-binaries.mjs";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, isAbsolute } from "node:path";
 import { existsSync } from "node:fs";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -124,9 +124,13 @@ async function startAnalysis(id) {
   await writeJson(join(resultDir,"progress.json"),{status:"queued"});
   const args=[analyzer,"--reference",join(dir,"reference.mp4"),"--output",resultDir];
   if(await fileExists(join(dir,"render.mp4")))args.push("--render",join(dir,"render.mp4"));
+  const analyzerEnv={...process.env,OMP_NUM_THREADS:"1",OPENBLAS_NUM_THREADS:"1",PYTHONUNBUFFERED:"1"};
+  if(isAbsolute(ffmpegBin)) analyzerEnv.FRAME_LAB_FFMPEG_PATH=ffmpegBin;
+  else {delete analyzerEnv.FRAME_LAB_FFMPEG_PATH;delete analyzerEnv.FFMPEG_PATH;}
+  if(isAbsolute(ffprobeBin)) analyzerEnv.FRAME_LAB_FFPROBE_PATH=ffprobeBin;
+  else {delete analyzerEnv.FRAME_LAB_FFPROBE_PATH;delete analyzerEnv.FFPROBE_PATH;}
   const child=spawn(process.execPath,args,{
-    cwd:dir,stdio:["ignore","pipe","pipe"],
-    env:{...process.env,OMP_NUM_THREADS:"1",OPENBLAS_NUM_THREADS:"1",PYTHONUNBUFFERED:"1"}
+    cwd:dir,stdio:["ignore","pipe","pipe"],env:analyzerEnv
   });
   let message="", closed=false;
   running.set(id,child);
