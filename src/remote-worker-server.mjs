@@ -75,6 +75,9 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
   if(!(await authenticated(request))) {reply(response,401,{ok:false,error:"WORKER_UNAUTHORIZED"});return true;}
   const path=url.pathname;
   try {
+    if(request.method==="POST"&&path==="/v1/worker/auth-check") {
+      reply(response,200,{ok:true,authenticated:true});return true;
+    }
     if(request.method==="POST"&&path==="/v1/worker/heartbeat") {
       const body=await parseBody(request);
       const workerId=String(body.workerId||"").slice(0,100);

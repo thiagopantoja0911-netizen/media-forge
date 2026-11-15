@@ -1,6 +1,6 @@
 param(
   [string]$InstallDir = "$env:LOCALAPPDATA\MediaForge-Staging",
-  [string]$Branch = "feature/conexoes-mediaforge-primeiro"
+  [string]$Branch = "feature/frame-lab-chat-mcp-20261113"
 )
 $ErrorActionPreference = "Stop"
 $InstallDir = [IO.Path]::GetFullPath($InstallDir)
