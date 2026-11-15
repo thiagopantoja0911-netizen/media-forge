@@ -6,9 +6,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ffmpegStatic from "ffmpeg-static";
+import ffprobeStatic from "@derhuerst/ffprobe-static";
+import { resolveFrameLabMediaBinaries } from "../media-binaries.mjs";
 
 const here=fileURLToPath(new URL("../", import.meta.url));
-const ffmpeg=ffmpegStatic?.default||ffmpegStatic;
+const { ffmpegPath: ffmpeg } = resolveFrameLabMediaBinaries({ ffmpegStatic, ffprobeStatic });
+if (!ffmpeg) throw new Error("Frame Lab synthetic test requires executable FFmpeg.");
 
 async function execute(bin,args,{cwd,timeout=180000}={}){
   const child=spawn(bin,args,{cwd,stdio:["ignore","pipe","pipe"]});
