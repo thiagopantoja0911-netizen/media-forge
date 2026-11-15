@@ -111,3 +111,27 @@ jobs:
             }
             Write-Host "PowerShell 5.1 syntax OK: $path"
           }
+
+          # Reproduce Windows PowerShell 5.1 native-stderr behavior with a harmless
+          # command. The runner must log stderr and inspect LASTEXITCODE, not abort.
+          $probe = Join-Path $env:TEMP "mediaforge-native-stderr-probe.cmd"
+          $probeLog = Join-Path $env:TEMP "mediaforge-native-stderr-probe.log"
+          [IO.File]::WriteAllLines(
+            $probe,
+            [string[]]@("@echo off", "echo synthetic stderr from Node 1>&2", "exit /b 7"),
+            [Text.Encoding]::ASCII
+          )
+          $previousPreference = $ErrorActionPreference
+          try {
+            $ErrorActionPreference = "Continue"
+            & $probe *>> $probeLog
+            $probeExitCode = $LASTEXITCODE
+          } finally {
+            $ErrorActionPreference = $previousPreference
+          }
+          if ($probeExitCode -ne 7) { throw "Native stderr probe lost LASTEXITCODE." }
+          if (-not (Select-String -LiteralPath $probeLog -Pattern "synthetic stderr from Node" -Quiet)) {
+            throw "Native stderr was not captured in the worker log."
+          }
+          Remove-Item -LiteralPath $probe,$probeLog -Force
+          Write-Host "PowerShell 5.1 native stderr handling OK."
