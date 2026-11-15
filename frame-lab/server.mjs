@@ -22,6 +22,10 @@ const mediaBinaries = resolveFrameLabMediaBinaries({ ffmpegStatic, ffprobeStatic
 const ffmpegBin = mediaBinaries.ffmpegPath;
 const ffprobeBin = mediaBinaries.ffprobePath;
 const analyzer = join(here, "analyze-node.mjs");
+function hasOpenCvPackage() {
+  return existsSync(join(here,"node_modules","@techstark","opencv-js")) ||
+    existsSync(join(here,"..","node_modules","@techstark","opencv-js"));
+}
 const running = new Map();
 const ID = /^[a-f0-9]{32}$/;
 const KINDS = new Set(["reference", "render"]);
@@ -94,7 +98,7 @@ async function statusOf(id) {
     renderedFrames:report?.render?.frameCount||0};
 }
 async function capabilities() {
-  const cvPresent=existsSync(join(here,"node_modules","@techstark","opencv-js")) || existsSync(join(here,"..","node_modules","@techstark","opencv-js"));
+  const cvPresent=hasOpenCvPackage();
   const ffmpegReady=Boolean(ffmpegBin);
   const ffprobeReady=Boolean(ffprobeBin);
   return {ffmpeg:ffmpegReady,ffprobe:ffprobeReady,opencv:cvPresent,
@@ -127,6 +131,7 @@ async function startAnalysis(id) {
   const dir=safeDir(id);
   if (running.size>0) throw statusError("Another full-frame analysis is running",409);
   if (!ffmpegBin || !ffprobeBin) throw statusError("Frame Lab requires executable FFmpeg and FFprobe; configure FRAME_LAB_FFMPEG_PATH and FRAME_LAB_FFPROBE_PATH or install them on PATH.",503);
+  if (!hasOpenCvPackage()) throw statusError("Frame Lab requires the @techstark/opencv-js WASM package.",503);
   if (!(await fileExists(join(dir,"reference.mp4")))) throw statusError("Reference video missing");
   const resultDir=join(dir,"results");
   await rm(resultDir,{recursive:true,force:true});
