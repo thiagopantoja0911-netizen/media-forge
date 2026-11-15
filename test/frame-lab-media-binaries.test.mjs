@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { relative, resolve, sep } from "node:path";
 import { resolveExecutable, resolveFrameLabMediaBinaries } from "../frame-lab/media-binaries.mjs";
 
 test("media binary resolver skips missing bundled paths and uses a working fallback", () => {
@@ -34,5 +35,28 @@ test("Frame Lab honors explicit executable overrides and reports their source", 
   assert.equal(resolved.ffmpegPath, process.execPath);
   assert.equal(resolved.ffmpegSource, "FRAME_LAB_FFMPEG_PATH");
   assert.equal(resolved.ffprobePath, process.execPath);
+  assert.equal(resolved.ffprobeSource, "FRAME_LAB_FFPROBE_PATH");
+});
+
+test("relative executable overrides are normalized before worker cwd changes", () => {
+  const relativeExecutable = relative(process.cwd(), process.execPath);
+  const relativeOverride = relativeExecutable.startsWith(".")
+    ? relativeExecutable
+    : "." + sep + relativeExecutable;
+  const resolved = resolveFrameLabMediaBinaries({
+    ffmpegStatic: "/missing/bundled/ffmpeg",
+    ffprobeStatic: "/missing/bundled/ffprobe",
+    env: {
+      FRAME_LAB_FFMPEG_PATH: relativeOverride,
+      FFMPEG_PATH: "",
+      FRAME_LAB_FFPROBE_PATH: relativeOverride,
+      FFPROBE_PATH: ""
+    },
+    probeArgs: ["--version"]
+  });
+
+  assert.equal(resolved.ffmpegPath, resolve(relativeOverride));
+  assert.equal(resolved.ffprobePath, resolve(relativeOverride));
+  assert.equal(resolved.ffmpegSource, "FRAME_LAB_FFMPEG_PATH");
   assert.equal(resolved.ffprobeSource, "FRAME_LAB_FFPROBE_PATH");
 });
