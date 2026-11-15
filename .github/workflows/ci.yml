@@ -69,7 +69,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Verify public staging TLS, OAuth and access controls
-        if: github.event_name == 'pull_request' && github.head_ref == 'feature/conexoes-mediaforge-primeiro'
+        if: github.event_name == 'pull_request'
         run: node scripts/staging-health.mjs
 
 
