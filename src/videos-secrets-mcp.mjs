@@ -5,6 +5,7 @@ import { buildMotionComposition } from "./motion/composer.mjs";
 import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./premium-motion-baseline.mjs";
 import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
 import { planFromShortBrief } from "./creative-director.mjs";
+import { buildOnePromptBlueprint } from "./one-prompt-production.mjs";
 import {signedVideoDownload} from "./video-artifact-delivery.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
@@ -16,13 +17,14 @@ const NO_CACHE = { ttlMs: 0, cacheScope: "private" };
 export const VIDEOS_SECRETS_TOOLS = [
   {
     name:"plan_video_from_brief",
-    description:"Diretor criativo automático do MediaForge: informe somente empresa e ideia. Decide objetivo (vendas, likes ou compartilhamentos), três abordagens, roteiro por cena, estilo de câmera, emoção, som e QA. Não gera vídeo ainda; sinaliza assets e alegações sem verificação.",
+    description:"Direção completa via chat: diga apenas empresa e ideia. Entrega estratégia de compra/curtidas/compartilhamento, cinco cenas, roteiro, mapa de assets e sons, câmera, transições e critérios de QA. Planejamento não cria MP4 nem inventa marca, produtos ou métricas.",
     inputSchema:{
       type:"object",additionalProperties:false,
       properties:{
         brand:{type:"string",minLength:2,maxLength:90},
         idea:{type:"string",minLength:8,maxLength:400},
         goal:{type:"string",enum:["sales","likes","shares","awareness"]},
+        voice_mode:{type:"string",enum:["auto","off","pt-BR-female","pt-BR-male"]},
         audience:{type:"string",maxLength:140},
         brand_url:{type:"string",maxLength:350},
         logo_asset_path:{type:"string",maxLength:240},
@@ -319,7 +321,8 @@ export async function handleVideosSecretsMcp({
     if (name === "plan_video_from_brief") {
       if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
       const plan = planFromShortBrief(args);
-      return writeResult(response, id, textResult(plan, false, version), version);
+      const blueprint = buildOnePromptBlueprint(args);
+      return writeResult(response, id, textResult({ ...plan, productionBlueprint:blueprint }, false, version), version);
     }
 
     if (name === "create_video") {
