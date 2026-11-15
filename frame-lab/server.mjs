@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, readdir, readFile, writeFile, stat, rename, rm, access } from "node:fs/promises";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import ffmpegStatic from "ffmpeg-static";
 import ffprobeStatic from "@derhuerst/ffprobe-static";
 import { resolveFrameLabMediaBinaries } from "./media-binaries.mjs";
