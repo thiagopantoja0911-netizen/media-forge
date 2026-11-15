@@ -94,7 +94,7 @@ async function statusOf(id) {
     renderedFrames:report?.render?.frameCount||0};
 }
 async function capabilities() {
-  const cvPresent=existsSync(join(here,"node_modules","@techstark","opencv-js"));
+  const cvPresent=existsSync(join(here,"node_modules","@techstark","opencv-js")) || existsSync(join(here,"..","node_modules","@techstark","opencv-js"));
   const ffmpegReady=Boolean(ffmpegBin);
   const ffprobeReady=Boolean(ffprobeBin);
   return {ffmpeg:ffmpegReady,ffprobe:ffprobeReady,opencv:cvPresent,
