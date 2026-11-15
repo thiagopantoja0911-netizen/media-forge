@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { isAbsolute, resolve } from "node:path";
 
 function asExecutable(value) {
   if (typeof value === "string") {
@@ -34,8 +35,11 @@ export function resolveExecutable(candidates, probeArgs = ["-version"]) {
 }
 
 function select(candidates, probeArgs) {
-  for (const [candidate, source] of candidates) {
-    const path = resolveExecutable([candidate], probeArgs);
+  for (const [candidate, source, configuredPath] of candidates) {
+    const normalized = configuredPath && candidate
+      ? (isAbsolute(asExecutable(candidate)) ? asExecutable(candidate) : resolve(asExecutable(candidate)))
+      : candidate;
+    const path = resolveExecutable([normalized], probeArgs);
     if (path) return { path, source };
   }
   return { path: null, source: null };
@@ -48,16 +52,16 @@ export function resolveFrameLabMediaBinaries({
   probeArgs = ["-version"]
 } = {}) {
   const ffmpeg = select([
-    [env.FRAME_LAB_FFMPEG_PATH, "FRAME_LAB_FFMPEG_PATH"],
-    [env.FFMPEG_PATH, "FFMPEG_PATH"],
-    [ffmpegStatic, "ffmpeg-static"],
-    ["ffmpeg", "PATH"]
+    [env.FRAME_LAB_FFMPEG_PATH, "FRAME_LAB_FFMPEG_PATH", true],
+    [env.FFMPEG_PATH, "FFMPEG_PATH", true],
+    [ffmpegStatic, "ffmpeg-static", true],
+    ["ffmpeg", "PATH", false]
   ], probeArgs);
   const ffprobe = select([
-    [env.FRAME_LAB_FFPROBE_PATH, "FRAME_LAB_FFPROBE_PATH"],
-    [env.FFPROBE_PATH, "FFPROBE_PATH"],
-    [ffprobeStatic, "@derhuerst/ffprobe-static"],
-    ["ffprobe", "PATH"]
+    [env.FRAME_LAB_FFPROBE_PATH, "FRAME_LAB_FFPROBE_PATH", true],
+    [env.FFPROBE_PATH, "FFPROBE_PATH", true],
+    [ffprobeStatic, "@derhuerst/ffprobe-static", true],
+    ["ffprobe", "PATH", false]
   ], probeArgs);
   return {
     ffmpegPath: ffmpeg.path,
