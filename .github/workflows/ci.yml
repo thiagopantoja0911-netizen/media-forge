@@ -37,6 +37,7 @@ jobs:
       - run: node --check frame-lab/handler.mjs
       - run: node --check frame-lab/server.mjs
       - run: node --check frame-lab/analyze-node.mjs
+      - run: node --check scripts/verify-media-tools.mjs
       - run: node --check src/remote-worker-server.mjs
       - run: node --check src/video-artifact-delivery.mjs
       - run: node --check src/remote-worker-client.mjs
@@ -55,6 +56,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
           ffmpeg -version | head -n 1
+      - name: Install static FFmpeg and FFprobe
+        run: npm run media-tools:install
       - name: Run Frame Lab full-frame analysis tests
         run: npm run frame-lab:test
       - name: Test cinematic motion playback with real media and audio
