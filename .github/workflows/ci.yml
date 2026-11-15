@@ -33,6 +33,10 @@ jobs:
       - run: node --check scripts/extract-creator-package.mjs
       - run: node --check src/creator-package.mjs
       - run: node --check src/server.mjs
+      - run: node --check frame-lab/media-binaries.mjs
+      - run: node --check frame-lab/handler.mjs
+      - run: node --check frame-lab/server.mjs
+      - run: node --check frame-lab/analyze-node.mjs
       - run: node --check src/remote-worker-server.mjs
       - run: node --check src/video-artifact-delivery.mjs
       - run: node --check src/remote-worker-client.mjs
