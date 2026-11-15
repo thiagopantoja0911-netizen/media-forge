@@ -5,13 +5,14 @@ param(
   [string]$CurrentDir = "$env:LOCALAPPDATA\MediaForge-Staging",
   [string]$StagingDir = "$env:LOCALAPPDATA\MediaForge-Staging-V2",
   [string]$Branch = "feature/frame-lab-chat-mcp-20261113",
-  [string]$ExpectedCommit = "91e52ecc987a4d6dd4350503ca50a01a892f0e30",
+  [Parameter(Mandatory=$true)][string]$ExpectedCommit,
   [switch]$VerifyAuthentication
 )
 $ErrorActionPreference = "Stop"
 $CurrentDir = [IO.Path]::GetFullPath($CurrentDir)
 $StagingDir = [IO.Path]::GetFullPath($StagingDir)
 if ($CurrentDir -eq $StagingDir) { throw "Origens e destino iguais: recusado." }
+if ($ExpectedCommit -notmatch "^[0-9a-f]{40}$") { throw "Informe SHA-1 completo da revisão homologada (40 caracteres)." }
 if (-not (Test-Path -LiteralPath $CurrentDir -PathType Container)) {
   throw "A instalação original não existe. Não houve alteração."
 }
