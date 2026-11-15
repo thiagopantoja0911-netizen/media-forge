@@ -52,6 +52,13 @@ test("isolated API requires authorization; project and ROI are scoped",async()=>
       body:JSON.stringify({key})});
     assert.equal(login.status,200);
     const headers={"x-frame-lab-key":key,"content-type":"application/json"};
+    const capabilitiesResponse=await fetch(url+"/api/capabilities",{headers});
+    assert.equal(capabilitiesResponse.status,200);
+    const capabilities=await capabilitiesResponse.json();
+    assert.equal(capabilities.ffmpeg,true,"FFmpeg must resolve from bundled path or PATH");
+    assert.equal(capabilities.ffprobe,true,"FFprobe must resolve from bundled path or PATH");
+    assert.equal(capabilities.opencv,true,"OpenCV package must be present");
+    assert.equal(capabilities.engineReady,true,"full-frame analysis engine must be ready");
     const created=await fetch(url+"/api/projects",{method:"POST",headers});
     assert.equal(created.status,201);
     const obj=await created.json();

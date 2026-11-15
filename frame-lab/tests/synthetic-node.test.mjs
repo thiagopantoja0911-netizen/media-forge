@@ -3,15 +3,20 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtemp, mkdir, writeFile, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import ffmpegStatic from "ffmpeg-static";
+import ffprobeStatic from "@derhuerst/ffprobe-static";
+import { resolveFrameLabMediaBinaries } from "../media-binaries.mjs";
 
 const here=fileURLToPath(new URL("../", import.meta.url));
-const ffmpeg=ffmpegStatic?.default||ffmpegStatic;
+const mediaBinaries = resolveFrameLabMediaBinaries({ ffmpegStatic, ffprobeStatic });
+const ffmpeg = mediaBinaries.ffmpegPath;
+const ffprobe = mediaBinaries.ffprobePath;
+if (!ffmpeg || !ffprobe) throw new Error("Frame Lab synthetic test requires executable FFmpeg and FFprobe.");
 
-async function execute(bin,args,{cwd,timeout=180000}={}){
-  const child=spawn(bin,args,{cwd,stdio:["ignore","pipe","pipe"]});
+async function execute(bin,args,{cwd,timeout=180000,env=process.env}={}){
+  const child=spawn(bin,args,{cwd,env,stdio:["ignore","pipe","pipe"]});
   let out="",err="";
   child.stdout.on("data",x=>out+=String(x));
   child.stderr.on("data",x=>err=(err+String(x)).slice(-2500));
@@ -36,9 +41,14 @@ test("all frames, layer tracking, scene proposal and easing summary with WASM", 
     await writeFile(join(temp,"objects.json"),JSON.stringify({objects:[{
       id:"main",label:"Micro motion layer",x:8,y:8,w:130,h:80,startFrame:0
     }]}));
+    const analyzerEnv={...process.env};
+    if(isAbsolute(ffmpeg)) analyzerEnv.FRAME_LAB_FFMPEG_PATH=ffmpeg;
+    else {delete analyzerEnv.FRAME_LAB_FFMPEG_PATH;delete analyzerEnv.FFMPEG_PATH;}
+    if(isAbsolute(ffprobe)) analyzerEnv.FRAME_LAB_FFPROBE_PATH=ffprobe;
+    else {delete analyzerEnv.FRAME_LAB_FFPROBE_PATH;delete analyzerEnv.FFPROBE_PATH;}
     const {out:stdout}=await execute(process.execPath,[
       join(here,"analyze-node.mjs"),"--reference",video,"--render",video,"--output",out
-    ],{cwd:temp,timeout:170000});
+    ],{cwd:temp,timeout:170000,env:analyzerEnv});
     const report=JSON.parse(await readFile(join(out,"report.json"),"utf8"));
     assert.equal(report.reference.frameCount,13);
     assert.equal(report.render.frameCount,13);

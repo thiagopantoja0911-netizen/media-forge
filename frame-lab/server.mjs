@@ -2,10 +2,11 @@ import { createServer } from "node:http";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, readdir, readFile, writeFile, stat, rename, rm, access } from "node:fs/promises";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import ffmpegStatic from "ffmpeg-static";
 import ffprobeStatic from "@derhuerst/ffprobe-static";
-import { join, resolve, dirname } from "node:path";
+import { resolveFrameLabMediaBinaries } from "./media-binaries.mjs";
+import { join, resolve, dirname, isAbsolute } from "node:path";
 import { existsSync } from "node:fs";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -17,9 +18,14 @@ const host = process.env.FRAME_LAB_HOST || "0.0.0.0";
 const port = Number(process.env.PORT || process.env.FRAME_LAB_PORT || 8791);
 const secret = String(process.env.FRAME_LAB_KEY || "");
 const uploadLimit = Math.min(Number(process.env.FRAME_LAB_UPLOAD_LIMIT_BYTES || 120 * 1024 * 1024), 300 * 1024 * 1024);
-const ffmpegBin=ffmpegStatic?.default||ffmpegStatic;
-const ffprobeBin=ffprobeStatic?.path||ffprobeStatic?.default?.path||ffprobeStatic;
+const mediaBinaries = resolveFrameLabMediaBinaries({ ffmpegStatic, ffprobeStatic });
+const ffmpegBin = mediaBinaries.ffmpegPath;
+const ffprobeBin = mediaBinaries.ffprobePath;
 const analyzer = join(here, "analyze-node.mjs");
+function hasOpenCvPackage() {
+  return existsSync(join(here,"node_modules","@techstark","opencv-js")) ||
+    existsSync(join(here,"..","node_modules","@techstark","opencv-js"));
+}
 const running = new Map();
 const ID = /^[a-f0-9]{32}$/;
 const KINDS = new Set(["reference", "render"]);
@@ -92,10 +98,12 @@ async function statusOf(id) {
     renderedFrames:report?.render?.frameCount||0};
 }
 async function capabilities() {
-  const probe=spawnSync(ffprobeBin,["-version"],{encoding:"utf8",timeout:3000});
-  const cvPresent=existsSync(join(here,"node_modules","@techstark","opencv-js"));
-  return {ffprobe:probe.status===0,opencv:cvPresent,
-    engineReady:probe.status===0&&cvPresent&&existsSync(ffmpegBin),
+  const cvPresent=hasOpenCvPackage();
+  const ffmpegReady=Boolean(ffmpegBin);
+  const ffprobeReady=Boolean(ffprobeBin);
+  return {ffmpeg:ffmpegReady,ffprobe:ffprobeReady,opencv:cvPresent,
+    engineReady:ffmpegReady&&ffprobeReady&&cvPresent,
+    ffmpegSource:mediaBinaries.ffmpegSource,ffprobeSource:mediaBinaries.ffprobeSource,
     engine:"OpenCV WebAssembly (Node 22)",cvVersion:cvPresent?"5.0.0-WASM":null,
     noTemporalSampling:true,sourceResolution:true,subpixelEstimated:true,
     server:"Frame Lab — isolated from MediaForge production jobs"};
@@ -122,6 +130,8 @@ async function receiveFile(request, file) {
 async function startAnalysis(id) {
   const dir=safeDir(id);
   if (running.size>0) throw statusError("Another full-frame analysis is running",409);
+  if (!ffmpegBin || !ffprobeBin) throw statusError("Frame Lab requires executable FFmpeg and FFprobe; configure FRAME_LAB_FFMPEG_PATH and FRAME_LAB_FFPROBE_PATH or install them on PATH.",503);
+  if (!hasOpenCvPackage()) throw statusError("Frame Lab requires the @techstark/opencv-js WASM package.",503);
   if (!(await fileExists(join(dir,"reference.mp4")))) throw statusError("Reference video missing");
   const resultDir=join(dir,"results");
   await rm(resultDir,{recursive:true,force:true});
@@ -129,9 +139,13 @@ async function startAnalysis(id) {
   await writeJson(join(resultDir,"progress.json"),{status:"queued"});
   const args=[analyzer,"--reference",join(dir,"reference.mp4"),"--output",resultDir];
   if(await fileExists(join(dir,"render.mp4")))args.push("--render",join(dir,"render.mp4"));
+  const analyzerEnv={...process.env,OMP_NUM_THREADS:"1",OPENBLAS_NUM_THREADS:"1",PYTHONUNBUFFERED:"1"};
+  if(isAbsolute(ffmpegBin)) analyzerEnv.FRAME_LAB_FFMPEG_PATH=ffmpegBin;
+  else {delete analyzerEnv.FRAME_LAB_FFMPEG_PATH;delete analyzerEnv.FFMPEG_PATH;}
+  if(isAbsolute(ffprobeBin)) analyzerEnv.FRAME_LAB_FFPROBE_PATH=ffprobeBin;
+  else {delete analyzerEnv.FRAME_LAB_FFPROBE_PATH;delete analyzerEnv.FFPROBE_PATH;}
   const child=spawn(process.execPath,args,{
-    cwd:dir,stdio:["ignore","pipe","pipe"],
-    env:{...process.env,OMP_NUM_THREADS:"1",OPENBLAS_NUM_THREADS:"1",PYTHONUNBUFFERED:"1"}
+    cwd:dir,stdio:["ignore","pipe","pipe"],env:analyzerEnv
   });
   let message="", closed=false;
   running.set(id,child);
