@@ -50,6 +50,10 @@ export function validateWindowsRenderSubmission(args) {
  }
  if(html){
   const markup=files.filter(f=>/\.html$/i.test(f.path)).map(f=>text(files,f.path)||"").join("\n");
+  // Prevent a false "silent-study" motion report for premium compositions
+  // that actually contain music or effects. Catch it before Windows render.
+  if(plan?.audioMode==="silent-study" && /<audio\b/i.test(markup))
+    errors.push("Audio incompatível: HTML inclui trilha/efeitos, mas motion-plan.json declara audioMode=silent-study. Declare sound-design/voice-led e audioCues correspondentes.");
   // Missing GSAP is a fatal page_error rather than an artistic issue.
   const timelineCall=/\b(?:gsap|window\.gsap)\.timeline\s*\(/.test(markup);
   if(timelineCall&&(!/<script\b[^>]*src=["']assets\/gsap(?:\.min)?\.js["']/i.test(html)|| !names.has("assets/gsap.min.js")))

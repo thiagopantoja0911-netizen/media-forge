@@ -79,3 +79,15 @@ test("remote media URL rejected before queue",()=>{
  index.content=index.content.replace("assets/music.wav","https://media.example/music.wav");
  assert.match(validateWindowsRenderSubmission(args).errors.join(" "),/Mídia HTML ausente ou externa/);
 });
+
+test("rejects silent-study motion label when actual HTML contains audio",()=>{
+ const args=good();
+ const manifest=args.project_files.find(x=>x.path==="motion-plan.json");
+ const plan=JSON.parse(manifest.content);
+ plan.audioMode="silent-study";
+ plan.audioCues=[];
+ manifest.content=JSON.stringify(plan);
+ const result=validateWindowsRenderSubmission(args);
+ assert.equal(result.ok,false);
+ assert.match(result.errors.join(" "),/Audio incompatível.*silent-study/);
+});
