@@ -35,3 +35,9 @@ test("installer refuses non-git populated directory and never rewrites existing 
  assert.match(install,/feature\/frame-lab-chat-mcp-20261113/);
  assert.match(file("update-worker-safe.ps1"),/feature\/frame-lab-chat-mcp-20261113/);
 });
+
+test("runner does not terminate PowerShell 5.1 when Node writes to stderr",()=>{
+ const run=file("run-worker.ps1");
+ assert.match(run,/\$nativeErrorActionPreference\s*=\s*\$ErrorActionPreference/);
+ assert.match(run,/\$ErrorActionPreference\s*=\s*"Continue"[\s\S]*?& node "\.\\src\\remote-worker-client\.mjs" \*>> \$logFile[\s\S]*?\$exitCode\s*=\s*\$LASTEXITCODE[\s\S]*?finally[\s\S]*?\$ErrorActionPreference\s*=\s*\$nativeErrorActionPreference/);
+});
