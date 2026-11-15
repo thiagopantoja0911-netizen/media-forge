@@ -36,8 +36,17 @@ try {
     throw "Conexão remota incompleta. Verifique MEDIAFORGE_REMOTE_URL e MEDIAFORGE_WORKER_TOKEN."
   }
   Add-Content -LiteralPath $logFile -Value ("[{0}] Iniciando worker remoto HyperFrames." -f (Get-Date -Format o))
-  & node ".\src\remote-worker-client.mjs" *>> $logFile
-  $exitCode = $LASTEXITCODE
+  # Windows PowerShell 5.1 can promote native stderr to NativeCommandError when
+  # ErrorActionPreference=Stop. Keep Node stderr in the worker log without
+  # terminating this supervisor; use LASTEXITCODE for the real process result.
+  $nativeErrorActionPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = "Continue"
+    & node ".\src\remote-worker-client.mjs" *>> $logFile
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $nativeErrorActionPreference
+  }
   Add-Content -LiteralPath $logFile -Value ("[{0}] Worker encerrado. Código: {1}" -f (Get-Date -Format o),$exitCode)
 } catch {
   $exitCode = 1
