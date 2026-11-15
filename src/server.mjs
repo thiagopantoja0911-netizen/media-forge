@@ -331,11 +331,14 @@ const server = createServer(async (request, response) => {
 
     if (request.method === "GET" && url.pathname === "/health") {
       response.setHeader("cache-control", "no-store, max-age=0");
+      const worker = await rendererStatus();
       return send(response, 200, {
         ok: true,
         service: "mediaforge-orchestrator",
-        renderer: process.env.MEDIAFORGE_RENDERER ?? "dry-run",
-        worker: await rendererStatus()
+        renderer: worker.online
+          ? worker.renderer
+          : (process.env.MEDIAFORGE_RENDERER ?? "dry-run"),
+        worker
       });
     }
 
