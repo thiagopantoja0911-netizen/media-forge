@@ -36,9 +36,10 @@ export function resolveExecutable(candidates, probeArgs = ["-version"]) {
 
 function select(candidates, probeArgs) {
   for (const [candidate, source, configuredPath] of candidates) {
-    const normalized = configuredPath && candidate
-      ? (isAbsolute(asExecutable(candidate)) ? asExecutable(candidate) : resolve(asExecutable(candidate)))
-      : candidate;
+    const executable = asExecutable(candidate);
+    const normalized = configuredPath && executable
+      ? (isAbsolute(executable) ? executable : resolve(executable))
+      : executable;
     const path = resolveExecutable([normalized], probeArgs);
     if (path) return { path, source };
   }
