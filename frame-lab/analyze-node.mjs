@@ -7,14 +7,19 @@ import { summarizeMotion } from "./motion-curves.mjs";
 import sharp from "sharp";
 import ffmpegStatic from "ffmpeg-static";
 import ffprobeStatic from "@derhuerst/ffprobe-static";
+import { resolveFrameLabMediaBinaries } from "./media-binaries.mjs";
 import { spawn, execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve, dirname } from "node:path";
 
 const execFile=promisify(execFileCb);
-const ffmpeg=ffmpegStatic?.default||ffmpegStatic;
-const ffprobe=ffprobeStatic?.path||ffprobeStatic?.default?.path||ffprobeStatic;
+const mediaBinaries = resolveFrameLabMediaBinaries({ ffmpegStatic, ffprobeStatic });
+const ffmpeg = mediaBinaries.ffmpegPath;
+const ffprobe = mediaBinaries.ffprobePath;
+if (!ffmpeg || !ffprobe) {
+  throw new Error("Frame Lab media tools unavailable: FFmpeg and FFprobe must be executable from bundled paths or PATH.");
+}
 const maxFrames=Number(process.env.FRAME_LAB_MAX_FRAMES||12000);
 const maxPixels=Number(process.env.FRAME_LAB_MAX_PIXELS||2073600);
 const jpegQuality=Number(process.env.FRAME_LAB_WEBP_QUALITY||82);
