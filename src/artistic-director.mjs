@@ -255,9 +255,17 @@ export function buildArtisticDirection(input = {}, basePlan = {}, options = {}) 
     hooks: hooksFor(goal),
     concepts: concepts.map(item => ({
       id: item.id, title: item.title, premise: item.premise, world: item.world,
-      signature: item.signature
+      signature: item.signature,
+      storyline: item.actions.map((action, index) => ({
+        beat: beatNames[index], action, camera: item.camera[index],
+        transitionCause: item.transitions[index]
+      }))
     })),
-    selectedConcept: { ...chosen, visualStyleOverride: styleOverride || null },
+    selectedConcept: {
+      ...chosen,
+      visualStyleOverride: styleOverride || null,
+      selectionStatus: "recommended-not-user-approved"
+    },
     artDirection: {
       world: chosen.world,
       palette: brandColors.length ? { source: "user-supplied brand colors", colors: brandColors } : {
