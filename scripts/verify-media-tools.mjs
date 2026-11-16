@@ -1,9 +1,13 @@
 import ffmpegStatic from "ffmpeg-static";
 import ffprobeStatic from "@derhuerst/ffprobe-static";
-import { chmod, copyFile, mkdir } from "node:fs/promises";
+import { chmod, copyFile, mkdir, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveFrameLabMediaBinaries } from "../frame-lab/media-binaries.mjs";
+
+const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const binDir = join(root, "frame-lab", "bin");
+await rm(binDir, { recursive: true, force: true });
 
 const binaries = resolveFrameLabMediaBinaries({ ffmpegStatic, ffprobeStatic });
 if (!binaries.ffmpegPath || !binaries.ffprobePath) {
@@ -16,9 +20,6 @@ if (!binaries.ffmpegPath || !binaries.ffprobePath) {
   }));
   process.exit(1);
 }
-
-const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const binDir = join(root, "frame-lab", "bin");
 const extension = process.platform === "win32" ? ".exe" : "";
 const ffmpegTarget = join(binDir, "ffmpeg" + extension);
 const ffprobeTarget = join(binDir, "ffprobe" + extension);
