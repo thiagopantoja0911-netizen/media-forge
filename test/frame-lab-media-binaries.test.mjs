@@ -36,8 +36,8 @@ test("Frame Lab honors explicit executable overrides and reports their source", 
   assert.equal(resolved.ffmpegSource, "FRAME_LAB_FFMPEG_PATH");
   assert.equal(resolved.ffprobePath, process.execPath);
   assert.equal(resolved.ffprobeSource, "FRAME_LAB_FFPROBE_PATH");
-  assert.equal(resolved.diagnostics.ffmpeg[0].available, false);
-  assert.equal(resolved.diagnostics.ffprobe[0].available, false);
+  assert.equal(resolved.diagnostics.ffmpeg[0].available, true);
+  assert.equal(resolved.diagnostics.ffprobe[0].available, true);
 });
 
 test("relative executable overrides are normalized before worker cwd changes", () => {
