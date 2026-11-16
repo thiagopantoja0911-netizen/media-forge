@@ -18,6 +18,11 @@ test("artistic direction returns three distinct concepts, hooks and a detailed s
   assert.equal(art.qualityRubric.totalWeight, 100);
   assert.equal(art.qualityRubric.automaticScore, false);
   assert.equal(art.approval, "not_automatically_approved");
+  assert.equal(art.motionPlanDraft.validation.ok, true, JSON.stringify(art.motionPlanDraft.validation.issues));
+  assert.equal(art.motionPlanDraft.plan.profile, "dynamic-motion-v1");
+  assert.equal(art.motionPlanDraft.targetBinding, "not-verified-against-project-html");
+  assert.equal(art.artDirection.presetFamilies.length, 5);
+  assert.equal(art.audioDirection.voiceAnchorPolicy.includes("timestamps reais"), true);
 });
 
 test("caller can choose a concept, style, platform, CTA and brand colors", () => {
@@ -49,4 +54,20 @@ test("invalid concept choices fail and unverified identity stays explicitly unre
   assert.ok(art.blockers.some(item => /identidade|logo/i.test(item)));
   assert.equal(art.readiness.assets, false);
   assert.equal(art.readiness.humanApproval, "pending");
+});
+
+test("structural motion draft meets the dynamic gate at supported durations", () => {
+  for (const duration_seconds of [10, 20, 30, 40]) {
+    const input = {
+      brand: "Marca Exemplo",
+      idea: "Mostrar uma transformação visual de produto",
+      goal: "sales",
+      duration_seconds
+    };
+    const art = buildArtisticDirection(input, planFromShortBrief(input));
+    assert.equal(art.motionPlanDraft.validation.ok, true,
+      duration_seconds + "s: " + JSON.stringify(art.motionPlanDraft.validation.issues));
+    assert.ok(art.motionPlanDraft.plan.events.length >= 10);
+    assert.ok(art.motionPlanDraft.plan.transitions.length >= Math.ceil(2 * duration_seconds / 10));
+  }
 });
