@@ -36,6 +36,8 @@ test("Frame Lab honors explicit executable overrides and reports their source", 
   assert.equal(resolved.ffmpegSource, "FRAME_LAB_FFMPEG_PATH");
   assert.equal(resolved.ffprobePath, process.execPath);
   assert.equal(resolved.ffprobeSource, "FRAME_LAB_FFPROBE_PATH");
+  assert.equal(resolved.diagnostics.ffmpeg[0].available, false);
+  assert.equal(resolved.diagnostics.ffprobe[0].available, false);
 });
 
 test("relative executable overrides are normalized before worker cwd changes", () => {
@@ -74,7 +76,6 @@ test("runtime diagnostics report failure codes without exposing executable paths
     },
     probeArgs: ["-version"]
   });
-  assert.equal(resolved.ffmpegPath === null || typeof resolved.ffmpegPath === "string", true);
   assert.equal(resolved.diagnostics.ffmpeg[0].source, "FRAME_LAB_FFMPEG_PATH");
   assert.equal(resolved.diagnostics.ffmpeg[0].reason, "ENOENT");
   assert.equal(resolved.diagnostics.ffprobe[0].source, "FRAME_LAB_FFPROBE_PATH");
