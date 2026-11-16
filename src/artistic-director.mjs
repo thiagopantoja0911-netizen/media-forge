@@ -1,3 +1,4 @@
+import { validateDynamicMotionPlan } from "./motion/dynamic-motion-gate.mjs";
 // Artistic direction for MediaForge. This creates an authored brief and review contract;
 // it does not generate media, verify a brand, or claim that a rendered film is approved.
 const clean = (value, max = 180) => String(value ?? "").trim()
@@ -79,6 +80,90 @@ function platformFor(input, aspectRatio) {
   return "YouTube / site / apresentação";
 }
 
+function buildMotionPlanDraft(basePlan, chosen) {
+  const duration = basePlan.brief.durationSeconds;
+  const beats = basePlan.storyboard.map((shot, index) => ({
+    id: shot.id,
+    start: shot.start,
+    end: shot.end,
+    action: chosen.actions[index],
+    stateBefore: shot.stateBefore || ["atenção dispersa", "contexto não situado", "mecanismo não demonstrado", "payoff não revelado", "CTA ainda não apresentado"][index],
+    stateAfter: shot.stateAfter || ["foco no elemento principal", "contexto compreendido", "ação visível", "resultado compreendido", "CTA legível"][index]
+  }));
+  const layers = [
+    { id: "background", role: "background", depth: 0, movement: "parallax ambiental discreto, subordinado à ação principal" },
+    { id: "midground", role: "midground", depth: 1, movement: "reflow ou deslocamento ligado ao estado da cena" },
+    { id: "foreground", role: "foreground", depth: 2, movement: "hero object e elementos de interação com continuidade física" }
+  ];
+  const events = [];
+  for (let index = 0; index < beats.length; index++) {
+    const beat = beats[index];
+    const beatLength = beat.end - beat.start;
+    const activeDuration = Math.max(0.5, beatLength - 0.45);
+    events.push({
+      id: "hero-action-" + (index + 1), start: beat.start, duration: activeDuration,
+      scope: "foreground", target: "#hero-object", kind: "hero-object-action"
+    });
+    events.push({
+      id: "state-change-" + (index + 1), start: beat.start + 0.05,
+      duration: Math.max(0.4, activeDuration - 0.05),
+      scope: "midground", target: "#midground", kind: "stateful-scene-change"
+    });
+  }
+  const cameraCount = Math.max(5, Math.ceil(2 * duration / 10));
+  for (let index = 0; index < cameraCount; index++) {
+    const start = duration * (index + 0.15) / cameraCount;
+    events.push({
+      id: "camera-move-" + (index + 1),
+      start: Math.min(duration - 0.25, start),
+      duration: Math.min(1.1, duration / cameraCount * 0.72),
+      scope: "camera", target: "#camera-rig",
+      kind: chosen.camera[index % chosen.camera.length].toLowerCase().replace(/[^a-z0-9]+/g, "-")
+    });
+  }
+  const transitionCount = Math.max(4, Math.ceil(2 * duration / 10));
+  const transitionKinds = chosen.id === "result-first"
+    ? ["match-cut", "object-wipe", "camera-pass", "carry"]
+    : chosen.id === "object-journey"
+      ? ["carry", "camera-pass", "object-wipe", "match-cut"]
+      : ["whip", "match-cut", "morph", "carry"];
+  const transitions = [];
+  for (let index = 0; index < transitionCount; index++) {
+    const at = duration * (index + 1) / (transitionCount + 1) - 0.15;
+    const beatIndex = Math.max(0, beats.findIndex(beat => at >= beat.start && at < beat.end));
+    const beat = beats[beatIndex] || beats[beats.length - 1];
+    transitions.push({
+      id: "causal-transition-" + (index + 1),
+      at: Math.max(0.05, at),
+      duration: 0.3,
+      kind: transitionKinds[index % transitionKinds.length],
+      carrier: "#hero-object",
+      cause: chosen.transitions[beatIndex],
+      fromState: beat.stateBefore,
+      toState: beat.stateAfter
+    });
+  }
+  const plan = {
+    profile: "dynamic-motion-v1",
+    intent: basePlan.brief.goal,
+    durationSeconds: duration,
+    fps: basePlan.brief.fps,
+    layers,
+    beats,
+    events,
+    transitions,
+    holds: [{ start: duration - 1.2, end: duration, reason: "Leitura do CTA final e assinatura" }]
+  };
+  const validation = validateDynamicMotionPlan(plan);
+  return {
+    status: validation.ok ? "structural-contract-passes-targets-unbound" : "structural-contract-needs-fix",
+    plan,
+    validation,
+    targetBinding: "not-verified-against-project-html",
+    note: "A validação cobre apenas o plano declarado; os seletores precisam existir na composição real e o MP4 ainda exige inspeção."
+  };
+}
+
 function hooksFor(goal) {
   const common = [
     { id: "hook-result", angle: "Resultado primeiro", firstFrame: "Close-up de um resultado real já em movimento.", onScreen: "OLHE O QUE MUDA", voice: "Antes de explicar, olha isso.", proof: "O resultado mostrado precisa existir no material-fonte." },
@@ -138,6 +223,7 @@ export function buildArtisticDirection(input = {}, basePlan = {}, options = {}) 
       continuity: index < 4 ? "Preservar direção, escala e elemento-carreador até a próxima cena." : "Não cobrir CTA com câmera, texto ou efeitos."
     };
   });
+  const motionPlanDraft = buildMotionPlanDraft(basePlan, chosen);
   const styleOverride = clean(input.visual_style, 90);
   const restrictions = Array.isArray(input.restrictions)
     ? input.restrictions.map(value => clean(value, 120)).filter(Boolean).slice(0, 10)
@@ -200,6 +286,7 @@ export function buildArtisticDirection(input = {}, basePlan = {}, options = {}) 
       avoid: ["cartões genéricos em sequência", "glow/pulsação como substituto de ação", "transições sem causa", "assets repetidos sem motivo", "texto cobrindo o produto ou CTA"]
     },
     storyboard: shots,
+    motionPlanDraft,
     audioDirection: {
       voiceMode,
       voiceStyle: voiceMode === "off" ? null : "PT-BR natural, articulação clara, pausas humanas e sem locução publicitária gritante",
