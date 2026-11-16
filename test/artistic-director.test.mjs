@@ -20,6 +20,7 @@ test("artistic direction returns three distinct concepts, hooks and a detailed s
   assert.equal(art.approval, "not_automatically_approved");
   assert.equal(art.motionPlanDraft.validation.ok, true, JSON.stringify(art.motionPlanDraft.validation.issues));
   assert.equal(art.motionPlanDraft.plan.profile, "dynamic-motion-v1");
+  assert.equal(art.productionGates.structuralPreflight.ok, true);
   assert.equal(art.motionPlanDraft.targetBinding, "not-verified-against-project-html");
   assert.equal(art.artDirection.presetFamilies.length, 5);
   assert.equal(art.audioDirection.voiceAnchorPolicy.includes("timestamps reais"), true);
