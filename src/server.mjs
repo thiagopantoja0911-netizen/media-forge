@@ -18,12 +18,11 @@ import {handleSignedVideoDownload,signedVideoDownload} from "./video-artifact-de
 
 const configuredHost = process.env.MEDIAFORGE_HOST?.trim();
 const isProduction = process.env.NODE_ENV === "production";
-const configuredHostIsLoopback = ["127.0.0.1", "localhost", "::1"].includes(configuredHost);
-// Hostinger reverse-proxies to the Node process; production must bind to all interfaces.
-// Keep the local .env.example default for developer machines, but never let it
-// accidentally bind a deployed production process to loopback.
-const host = isProduction
-  ? (configuredHost && !configuredHostIsLoopback ? configuredHost : "0.0.0.0")
+// Hostinger injects PORT for its reverse proxy. Bind to all interfaces whenever
+// that platform port exists, even if NODE_ENV is missing or MEDIAFORGE_HOST
+// still contains the local-development loopback default.
+const host = isProduction || process.env.PORT
+  ? "0.0.0.0"
   : (configuredHost || "127.0.0.1");
 const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
 const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
