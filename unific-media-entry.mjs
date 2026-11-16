@@ -25,6 +25,18 @@ const mediaHandler=media.listeners('request')[0];
 if(typeof browserHandler!=='function'||typeof mediaHandler!=='function')throw Error('UNIFIC_HANDLER_MISSING');
 const app=http.createServer((req,res)=>{
  const u=new URL(req.url||'/','http://localhost');
+ // RFC 8414/9728: well-known paths precede the issuer/resource path.
+ // Browser issuer is /browser, while MediaForge remains the root issuer.
+ if(req.method==='GET' && u.pathname==='/.well-known/oauth-authorization-server/browser'){
+  req.url='/.well-known/oauth-authorization-server'+u.search;
+  return browserHandler(req,res);
+ }
+ if(req.method==='GET' && (
+   u.pathname==='/.well-known/oauth-protected-resource/browser/mcp'
+   ||u.pathname==='/.well-known/oauth-protected-resource/browser')){
+  req.url='/.well-known/oauth-protected-resource/mcp'+u.search;
+  return browserHandler(req,res);
+ }
  if(req.method==='GET'&&u.pathname==='/unific-health'){
   res.writeHead(200,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});
   return res.end(JSON.stringify({ok:true,service:'unific-media',routes:{browser:'/browser/health',media:'/health'},version:'0.1.1'}));
