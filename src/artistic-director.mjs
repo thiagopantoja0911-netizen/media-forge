@@ -18,7 +18,8 @@ const concepts = [
     camera: ["macro push-in", "rack focus + reveal", "motivated match cut", "tracking close-up", "controlled dolly-out"],
     actions: ["revelar um detalhe real", "mostrar escala e contexto", "demonstrar uma ação", "mostrar o resultado observável", "resolver em assinatura/CTA"],
     transitions: ["mudança de foco", "objeto cruza a lente", "match cut por forma/posição", "movimento termina no produto", "câmera assenta para leitura"],
-    signature: "Impacto imediato, prova visual e final limpo."
+    signature: "Impacto imediato, prova visual e final limpo.",
+    primitives: ["neon-product", "screen-punch-in", "motif-match-cut", "pill-cta", "brand-end-card"]
   },
   {
     id: "object-journey",
@@ -32,7 +33,8 @@ const concepts = [
     camera: ["low tracking", "orbit follow", "camera pass", "parallax reveal", "hero settle"],
     actions: ["objeto entra no quadro", "câmera acompanha a trajetória", "objeto encobre a lente", "novo ambiente revela o benefício", "objeto termina como assinatura visual"],
     transitions: ["entrada motivada", "tracking contínuo", "object wipe físico", "match cut de movimento", "settle com follow-through"],
-    signature: "Continuidade espacial e surpresa causada por uma ação."
+    signature: "Continuidade espacial e surpresa causada por uma ação.",
+    primitives: ["parallax-collage", "ui-orbit", "motif-match-cut", "beat-cut-sequence"]
   },
   {
     id: "before-after",
@@ -46,7 +48,8 @@ const concepts = [
     camera: ["locked wide", "push-in to interaction", "camera whip on cause", "match cut to result", "quiet dolly-out"],
     actions: ["estabelecer o problema real", "isolar a causa", "mostrar a interação decisiva", "revelar o estado posterior", "fechar com convite legível"],
     transitions: ["corte por gesto", "movimento de aproximação", "whip motivado pela ação", "match cut antes/depois", "dolly-out de resolução"],
-    signature: "Transformação compreensível sem depender apenas da locução."
+    signature: "Transformação compreensível sem depender apenas da locução.",
+    primitives: ["stateful-ui-widget", "voice-anchored-kinetic", "micro-sfx-cue-track", "brand-end-card"]
   }
 ];
 
@@ -147,15 +150,11 @@ export function buildArtisticDirection(input = {}, basePlan = {}, options = {}) 
     awareness: "curiosidade e lembrança de marca"
   }[goal];
   const rubric = [
-    ["narrative", "Narrativa e clareza", 18, "O espectador entende gancho, contexto, ação e payoff sem explicação excessiva."],
-    ["originality", "Originalidade e conceito", 14, "As cenas têm ideia visual própria; não parecem template ou sequência de cartões."],
-    ["composition", "Composição e hierarquia", 14, "Um ponto focal claro, profundidade real e leitura imediata em tela pequena."],
-    ["camera", "Câmera e movimento", 14, "Movimento motivado, easing coerente, continuidade e ausência de deriva decorativa."],
-    ["continuity", "Continuidade e transições", 10, "Ação/objeto conecta planos; direção, escala, luz e eixo não quebram sem intenção."],
-    ["typography", "Tipografia e legibilidade", 10, "Contraste, safe areas, tempo de leitura e CTA sem obstrução."],
-    ["sound", "Locução, música e SFX", 10, "Voz inteligível, mix controlada e efeitos sincronizados a causas visíveis."],
-    ["brand", "Identidade e integridade", 5, "Logo, produto, preço, prova e claims correspondem a fontes reais."],
-    ["platform", "Adequação à plataforma", 5, "Enquadramento, ritmo, safe areas e densidade funcionam no formato escolhido."]
+    ["intent-audience", "Adequação à intenção, proposta e público", 25, "A narrativa corresponde ao objetivo, ao público e à ação final, sem alegar dados de conta não fornecidos."],
+    ["visual-direction", "Direção visual, materiais e transformações tangíveis", 25, "Assets hero, materiais, luz, profundidade e transições demonstram a ideia em vez de descrevê-la."],
+    ["audio-sync", "Sincronismo de áudio, microeventos e música", 20, "Locução definitiva, word anchors medidos, micro-SFX causais e música com resolução deliberada."],
+    ["rhythm-legibility", "Ritmo, gancho, retenção editorial e legibilidade", 20, "Hook no primeiro frame, progressão por beat, safe areas e tempo de leitura adequados."],
+    ["integrity-export", "Integridade e exportação técnica", 10, "Identidade, claims, direitos, codecs, duração, aspecto, FPS e arquivo final verificados."]
   ].map(([id, criterion, weight, evidence]) => ({ id, criterion, weight, evidence, status: "not_assessed" }));
   return {
     version: "mediaforge-art-direction-v1",
@@ -191,6 +190,13 @@ export function buildArtisticDirection(input = {}, basePlan = {}, options = {}) 
       depth: ["background", "midground", "foreground"],
       visualStyleOverride: styleOverride || null,
       references: referenceUrls,
+      presetFamilies: [
+        { id: "editorial-ui", primitives: ["soft-card", "dark-card", "stateful-ui-widget", "ui-orbit", "screen-punch-in", "pill-cta"] },
+        { id: "kinetic-editorial", primitives: ["kinetic-copy", "voice-anchored-kinetic", "parallax-collage", "brand-end-card"] },
+        { id: "neon-product", primitives: ["neon-product", "motif-match-cut", "pill-cta", "brand-end-card"] },
+        { id: "scrap-warp", primitives: ["parallax-collage", "beat-cut-sequence"] },
+        { id: "tutorial-capture", primitives: ["screen-punch-in", "kinetic-copy", "brand-end-card"] }
+      ],
       avoid: ["cartões genéricos em sequência", "glow/pulsação como substituto de ação", "transições sem causa", "assets repetidos sem motivo", "texto cobrindo o produto ou CTA"]
     },
     storyboard: shots,
@@ -204,6 +210,16 @@ export function buildArtisticDirection(input = {}, basePlan = {}, options = {}) 
       },
       musicArc: ["entrada curta no gancho", "base rítmica sob contexto", "crescimento na ação", "resolução no payoff", "redução para leitura do CTA"],
       sfxPolicy: "Somente quando existe uma ação visível correspondente; não adicionar whoosh em todo corte.",
+      voiceSelectionPolicy: "Consultar o catálogo ElevenLabs em tempo de produção por idioma, sotaque, gênero e uso; registrar voice_id e modelo escolhidos no manifesto, nunca inferir um ID.",
+      voiceAnchorPolicy: "Gerar a locução definitiva primeiro; alinhar palavra/ênfase a timestamps reais. Sem ASR ou ledger manual, marcar sincronismo como não verificado.",
+      microInteractionTimingDefaults: {
+        buttonContactSeconds: [0.1, 0.22],
+        cardSettleSeconds: [0.22, 0.55],
+        valueChangeSeconds: [0.5, 1.3],
+        productHeroSeconds: [0.65, 1.3],
+        matchCutSeconds: [0.15, 0.45],
+        ctaHoldSeconds: [1.5, 2.5]
+      },
       mixTargets: { integratedLufs: [-16, -14], truePeakMaxDbtp: -1, wordSyncToleranceMs: 100 },
       localPackagingRequired: true,
       rightsAndProvenanceRequired: true
