@@ -370,4 +370,27 @@ if (process.env.UNIFIC_EMBEDDED!=='1') server.listen(port, host, () => {
   console.log("MediaForge listening on http://" + host + ":" + port);
 });
 
+// In-process bridge for the single Unific Media Browser connector.
+// This function MUST only be called after the Browser relay has validated
+// a browser:control OAuth bearer token. It is never mounted as an HTTP route.
+// The public MediaForge /mcp route keeps its independent OAuth enforcement.
+export async function handleUnifiedMediaMcp({request,response}) {
+  return handleVideosSecretsMcp({
+    request,
+    response,
+    parseBody,
+    createJob,
+    listJobs,
+    getJob: async id => {
+      try { return await loadJob(id); }
+      catch(error) {
+        if(error.code === "ENOENT" || error.code === "INVALID_JOB_ID") return null;
+        throw error;
+      }
+    },
+    rendererStatus,
+    authenticateBearer: async () => ({ scopes: ["videos:read", "videos:write"] })
+  });
+}
+
 export {server};
