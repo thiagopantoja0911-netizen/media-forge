@@ -9,3 +9,4 @@ coverage/
 *.mov
 *.wav
 *.mp3
+frame-lab/bin/
