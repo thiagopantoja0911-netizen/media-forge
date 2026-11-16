@@ -17,7 +17,7 @@
     "reference:analyze": "node scripts/analyze-reference.mjs",
     "frame-lab:test": "node --test frame-lab/tests/curves.test.mjs frame-lab/tests/api.test.mjs frame-lab/tests/synthetic-node.test.mjs frame-lab/tests/artistic-signals.test.mjs frame-lab/tests/bundled-media-binaries.test.mjs",
     "media-tools:install": "npm rebuild ffmpeg-static @derhuerst/ffprobe-static && node scripts/verify-media-tools.mjs",
-    "test:integrated": "node --test --test-concurrency=1 test/*.test.mjs frame-lab/tests/*.test.mjs"
+    "test:integrated": "npm run media-tools:install && node --test --test-concurrency=1 test/*.test.mjs frame-lab/tests/*.test.mjs"
   },
   "dependencies": {
     "three": "0.180.0",
