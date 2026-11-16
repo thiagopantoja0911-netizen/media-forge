@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { isAbsolute, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 function asExecutable(value) {
   if (typeof value === "string") {
@@ -89,15 +90,21 @@ export function resolveFrameLabMediaBinaries({
   env = process.env,
   probeArgs = ["-version"]
 } = {}) {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const extension = process.platform === "win32" ? ".exe" : "";
+  const bundledFfmpeg = join(here, "bin", "ffmpeg" + extension);
+  const bundledFfprobe = join(here, "bin", "ffprobe" + extension);
   const ffmpeg = select([
     [env.FRAME_LAB_FFMPEG_PATH, "FRAME_LAB_FFMPEG_PATH", true],
     [env.FFMPEG_PATH, "FFMPEG_PATH", true],
+    [bundledFfmpeg, "frame-lab/bin", true],
     [ffmpegStatic, "ffmpeg-static", true],
     ["ffmpeg", "PATH", false]
   ], probeArgs);
   const ffprobe = select([
     [env.FRAME_LAB_FFPROBE_PATH, "FRAME_LAB_FFPROBE_PATH", true],
     [env.FFPROBE_PATH, "FFPROBE_PATH", true],
+    [bundledFfprobe, "frame-lab/bin", true],
     [ffprobeStatic, "@derhuerst/ffprobe-static", true],
     ["ffprobe", "PATH", false]
   ], probeArgs);
