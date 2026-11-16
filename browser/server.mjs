@@ -306,7 +306,7 @@ function runTool(owner,action,args,laneId='main'){
 // Support both the current stateless MCP discovery and existing 2025-era clients.
 // The URL, OAuth resource and all browser tools remain unchanged.
 const BROWSER_MODERN_PROTOCOL='2026-07-28';
-const BROWSER_SUPPORTED_PROTOCOLS=[BROWSER_MODERN_PROTOCOL,'2025-11-25','2025-06-18','2025-03-26'];
+const BROWSER_SUPPORTED_PROTOCOLS=[BROWSER_MODERN_PROTOCOL,'2025-03-26'];
 function browserMcpVersion(message,headers={}){
   const declared=message?.params?._meta?.['io.modelcontextprotocol/protocolVersion']
     ||headers['mcp-protocol-version'];
