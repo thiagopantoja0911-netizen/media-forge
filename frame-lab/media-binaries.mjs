@@ -77,7 +77,7 @@ function select(candidates, probeArgs) {
 
 export function resolveExecutable(candidates, probeArgs = ["-version"]) {
   for (const raw of candidates) {
-    const result = probe(raw, "candidate", true, probeArgs);
+    const result = probe(raw, "candidate", false, probeArgs);
     if (result.path) return result.path;
   }
   return null;
