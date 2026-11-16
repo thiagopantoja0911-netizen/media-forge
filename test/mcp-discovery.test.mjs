@@ -122,6 +122,9 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     assert.equal(storyboard.brief.brand,"Empresa Exemplo");
     assert.equal(storyboard.storyboard.length,5);
     assert.equal(storyboard.status,"storyboard-only-not-rendered");
+    assert.equal(storyboard.productionBlueprint.artisticDirection.version,"mediaforge-art-direction-v1");
+    assert.equal(storyboard.productionBlueprint.artisticDirection.qualityRubric.automaticScore,false);
+    assert.equal(storyboard.productionBlueprint.artisticDirection.approval,"not_automatically_approved");
 
     const modernCall = await call("tools/call", MODERN, {
       params: { name: "renderer_status", arguments: {} }
