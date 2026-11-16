@@ -6,6 +6,7 @@ Transformar o planejamento de vídeo em uma direção artística executável e a
 ## Escopo desta entrega
 - Três conceitos visuais distintos e três abordagens de gancho.
 - Conceito escolhido por objetivo, com possibilidade de seleção explícita.
+- Rascunho machine-readable dynamic-motion-v1 com 3 camadas, beats, eventos de câmera, ações, transições e holds; preflight estrutural deve passar entre 10 e 40 segundos, mas os seletores ainda precisam ser vinculados ao HTML real.
 - Storyboard de cinco beats com ação, estado antes/depois, causa da transição, câmera, luz, enquadramento, texto, locução e asset exigido.
 - Direção de arte: mundo visual, paleta, materiais, lente, luz, profundidade, composição, tipografia e regras de continuidade.
 - Direção de áudio: voz, arco musical, efeitos causais e alvos de mixagem; arquivos locais e direitos/proveniência obrigatórios.
