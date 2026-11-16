@@ -366,6 +366,8 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(port, host, () => {
+if (process.env.UNIFIC_EMBEDDED!=='1') server.listen(port, host, () => {
   console.log("MediaForge listening on http://" + host + ":" + port);
 });
+
+export {server};
