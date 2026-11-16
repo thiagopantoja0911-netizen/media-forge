@@ -9,6 +9,8 @@ test("artistic direction returns three distinct concepts, hooks and a detailed s
   const art = buildArtisticDirection(brief, plan, { voiceMode: "pt-BR-female" });
   assert.equal(art.version, "mediaforge-art-direction-v1");
   assert.equal(art.concepts.length, 3);
+  assert.ok(art.concepts.every(concept => concept.storyline.length === 5));
+  assert.equal(art.selectedConcept.selectionStatus, "recommended-not-user-approved");
   assert.equal(art.hooks.length, 3);
   assert.equal(art.selectedConcept.id, "before-after");
   assert.equal(art.storyboard.length, 5);
