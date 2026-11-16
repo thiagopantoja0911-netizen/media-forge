@@ -41,3 +41,11 @@ Transformar o planejamento de vídeo em uma direção artística executável e a
 - Base: feature/frame-lab-chat-mcp-20261113 em be4b719270907a4047691c3c0a122553523941fa.
 - Sem merge e sem deploy. A branch ficará disponível para CI e teste controlado.
 - O bloqueio de FFmpeg/FFprobe em runtime precisa ser diagnosticado com os novos campos de diagnóstico após publicação autorizada; nenhum valor de segredo será exposto.
+
+## Correção preparada para o bloqueio de FFmpeg/FFprobe em runtime
+- O build agora copia os executáveis já verificados para frame-lab/bin, aplica permissão de execução em Linux e testa a resolução a partir desse diretório.
+- O diretório frame-lab/bin é gerado no build e ignorado pelo Git; não adiciona os binários pesados ao repositório.
+- O resolver prioriza os caminhos explícitos, depois frame-lab/bin, pacote estático e PATH.
+- O endpoint de capabilities informa source e códigos de falha sanitizados, sem expor caminhos ou valores de variáveis.
+- O teste bundled-media-binaries exige que ambos os executáveis sejam encontrados no pacote local após media-tools:install.
+- Esta correção ainda não foi aplicada ao Hostinger publicado. Só após deploy autorizado será possível confirmar se engineReady passa para true em runtime.
