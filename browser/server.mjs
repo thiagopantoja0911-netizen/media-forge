@@ -303,7 +303,43 @@ function runTool(owner,action,args,laneId='main'){
       resolve({isError:true,content:[{type:'text',text:'LANE_NOT_READY'}]});
     }
   });}
-async function rpc(req,owner){if(!req||typeof req!=='object'||Array.isArray(req))die(400,'JSON-RPC inválido');if(req.id===undefined)return null;const base={jsonrpc:'2.0',id:req.id};const p=req.params||{};switch(req.method){case 'initialize':return {...base,result:{protocolVersion:'2025-03-26',capabilities:{tools:{listChanged:false}},serverInfo:{name:'browser-mcp-https',version:'0.7.0'}}};case 'ping':return {...base,result:{}};case 'tools/list':return {...base,result:{tools:Object.values(schema)}};case 'tools/call':return {...base,result:await runTool(owner,p.name,validateArgs(p.name,p.arguments||{}))};default:return {...base,error:{code:-32601,message:'Método não encontrado'}};}}
+// Support both the current stateless MCP discovery and existing 2025-era clients.
+// The URL, OAuth resource and all browser tools remain unchanged.
+const BROWSER_MODERN_PROTOCOL='2026-07-28';
+const BROWSER_SUPPORTED_PROTOCOLS=[BROWSER_MODERN_PROTOCOL,'2025-11-25','2025-06-18','2025-03-26'];
+function browserMcpVersion(message,headers={}){
+  const declared=message?.params?._meta?.['io.modelcontextprotocol/protocolVersion']
+    ||headers['mcp-protocol-version'];
+  return declared===BROWSER_MODERN_PROTOCOL||(!declared&&message?.method==='server/discover')
+    ?BROWSER_MODERN_PROTOCOL:'2025-03-26';
+}
+async function rpc(req,owner,protocolVersion='2025-03-26'){
+  if(!req||typeof req!=='object'||Array.isArray(req))die(400,'JSON-RPC inválido');
+  if(req.id===undefined)return null;
+  const base={jsonrpc:'2.0',id:req.id};
+  const p=req.params||{};
+  const modern=protocolVersion===BROWSER_MODERN_PROTOCOL;
+  switch(req.method){
+    case 'server/discover':
+      return {...base,result:{
+        resultType:'complete',supportedVersions:BROWSER_SUPPORTED_PROTOCOLS,
+        capabilities:{tools:{listChanged:false}},ttlMs:0,cacheScope:'private',
+        _meta:{'io.modelcontextprotocol/serverInfo':{name:'browser-mcp-https',version:'0.7.1'}}
+      }};
+    case 'initialize':
+      return {...base,result:{protocolVersion:'2025-03-26',capabilities:{tools:{listChanged:false}},serverInfo:{name:'browser-mcp-https',version:'0.7.1'}}};
+    case 'ping':return {...base,result:modern?{resultType:'complete'}:{}};
+    case 'tools/list':
+      return {...base,result:modern?
+        {resultType:'complete',tools:Object.values(schema),ttlMs:0,cacheScope:'private'}:
+        {tools:Object.values(schema)}};
+    case 'tools/call':{
+      const result=await runTool(owner,p.name,validateArgs(p.name,p.arguments||{}));
+      return {...base,result:modern?{...result,resultType:'complete'}:result};
+    }
+    default:return {...base,error:{code:-32601,message:'Método não encontrado'}};
+  }
+}
 const app=http.createServer(async(req,res)=>{
  const u=new URL(req.url,BASE); const ip=req.socket.remoteAddress||'unknown';const pathname=u.pathname;
   // Never log the authorization header, query parameters, request body, tokens or device IDs.
@@ -506,7 +542,7 @@ const app=http.createServer(async(req,res)=>{
   if(pathname==='/mcp'&&['POST','GET'].includes(req.method)){
     let owner;try{owner=userAuth(req);}catch{res.setHeader('WWW-Authenticate',`Bearer resource_metadata="${BASE}/.well-known/oauth-protected-resource", error="invalid_token", error_description="Conecte sua conta Browser MCP"`);return json(res,401,{error:'Autenticação OAuth obrigatória'});}
     if(req.method==='GET')return json(res,405,{error:'MCP Stateless: use POST'});
-    const data=JSON.parse(await body(req,65536));const reply=await rpc(data,owner);if(!reply){res.writeHead(202,{'cache-control':'no-store'});return res.end();}return json(res,200,reply,{'mcp-session-id':'stateless'});
+    const data=JSON.parse(await body(req,65536));const version=browserMcpVersion(data,req.headers);const reply=await rpc(data,owner,version);if(!reply){res.writeHead(202,{'cache-control':'no-store'});return res.end();}return json(res,200,reply,version===BROWSER_MODERN_PROTOCOL?{'mcp-protocol-version':version}:{'mcp-session-id':'stateless'});
   }
   return json(res,404,{error:'Não encontrado'});
  }catch(e){return json(res,e.status||500,{error:e.message});}
