@@ -32,7 +32,7 @@ async function save(job) {
 }
 
 async function nextQueuedJob() {
-  const names = (await readdir(jobsDir)).filter((name) => name.endsWith(".json")).sort();
+  const names = (await readdir(jobsDir)).filter(name => name.endsWith(".json")).sort();
   const now = Date.now();
   for (const name of names) {
     const job = JSON.parse(await readFile(join(jobsDir, name), "utf8"));
@@ -57,10 +57,28 @@ async function processJob(job) {
       job.metadata?.expectsAudio === true || result.motionReview?.expectsAudio === true);
     if (technicalQA.status === "failed") throw Object.assign(new Error(technicalQA.issues.join("; ")), { code: "VIDEO_TECHNICAL_QA_FAILED", retryable: false });
     const audioQA = job.metadata?.productionMode === "cinematic" ? await inspectRenderedAudio(result.outputPath) : null;
-    if(audioQA && audioQA.status !== "passed") throw Object.assign(
+    if (audioQA && audioQA.status !== "passed") throw Object.assign(
       new Error("Cinematic audio QA failed: " + audioQA.issues.join("; ")),
-      {code:"AUDIO_MIX_QA_FAILED",retryable:false});
-    result.report = { technicalQA, audioQA, motionReview: result.motionReview, artisticQA: "pending-user-review" };
+      { code: "AUDIO_MIX_QA_FAILED", retryable: false }
+    );
+    result.report = {
+      technicalQA,
+      audioQA,
+      motionReview: result.motionReview,
+      artisticQA: "pending-user-review",
+      artisticReview: {
+        status: "pending-frame-analysis-and-human-review",
+        frameEvidence: "not-run",
+        composition: "not-assessed",
+        narrative: "not-assessed",
+        typography: "not-assessed",
+        sound: audioQA?.status === "passed" ? "technical-audio-check-passed-listening-review-pending" : "not-assessed",
+        brandAndClaims: "source-verification-required",
+        humanApproval: "required",
+        automaticApproval: false,
+        nextStep: "Analyze the rendered MP4 in Frame Lab, review the full film and complete the artistic rubric."
+      }
+    };
     job.status = "completed";
     job.progress = 100;
     job.result = result;
@@ -89,7 +107,6 @@ async function processJob(job) {
   };
 
   await writeFile(join(plansDir, job.id + ".json"), JSON.stringify(plan, null, 2) + "\n");
-
   job.status = "completed";
   job.progress = 100;
   job.result = {
@@ -99,7 +116,6 @@ async function processJob(job) {
   };
   delete job.error;
   await save(job);
-  console.log("Prepared job " + job.id);
 }
 
 async function loop() {

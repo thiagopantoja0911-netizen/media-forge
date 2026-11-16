@@ -3,6 +3,7 @@ import { createReadStream } from "node:fs";
 import { mkdir, readdir, readFile, writeFile, rename, rm, stat, open } from "node:fs/promises";
 import { join } from "node:path";
 import { readProjectPackage } from "./project-bundle.mjs";
+import { evaluateArtisticSignals } from "./artistic-signals.mjs";
 import { FRAME_LAB_MCP_NAMES } from "./mcp-schemas.mjs";
 export { FRAME_LAB_MCP_NAMES } from "./mcp-schemas.mjs";
 import { dataRoot, safeDir, readJson, writeJson, fileExists, statusOf, capabilities, startAnalysis } from "./handler.mjs";
@@ -182,7 +183,9 @@ export async function executeFrameLabMcp(name,args={}, {createJob,getJob}={}){
       render:report.render?{width:report.render.width,height:report.render.height,
         fps:report.render.fps,frameCount:report.render.frameCount}:null,
       frame_offset:offset,returned_frames:simplified.length,total_frames:reference.frameCount,
-      frames:simplified,comparison, ...(tracks?{reconstruction:tracks}:{})};
+      frames:simplified,comparison,
+      artisticSignals:evaluateArtisticSignals(report),
+      ...(tracks?{reconstruction:tracks}:{})};
   }
   if(name==="frame_lab_render"){
     if(args.confirm_render!==true)fail("Explicit confirm_render:true is required",428);

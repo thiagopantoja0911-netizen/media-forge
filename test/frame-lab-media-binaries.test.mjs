@@ -36,6 +36,8 @@ test("Frame Lab honors explicit executable overrides and reports their source", 
   assert.equal(resolved.ffmpegSource, "FRAME_LAB_FFMPEG_PATH");
   assert.equal(resolved.ffprobePath, process.execPath);
   assert.equal(resolved.ffprobeSource, "FRAME_LAB_FFPROBE_PATH");
+  assert.equal(resolved.diagnostics.ffmpeg[0].available, true);
+  assert.equal(resolved.diagnostics.ffprobe[0].available, true);
 });
 
 test("relative executable overrides are normalized before worker cwd changes", () => {
@@ -59,4 +61,24 @@ test("relative executable overrides are normalized before worker cwd changes", (
   assert.equal(resolved.ffprobePath, resolve(relativeOverride));
   assert.equal(resolved.ffmpegSource, "FRAME_LAB_FFMPEG_PATH");
   assert.equal(resolved.ffprobeSource, "FRAME_LAB_FFPROBE_PATH");
+});
+
+test("runtime diagnostics report failure codes without exposing executable paths", () => {
+  const privatePath = "/private/runtime/secrets/ffmpeg";
+  const resolved = resolveFrameLabMediaBinaries({
+    ffmpegStatic: null,
+    ffprobeStatic: null,
+    env: {
+      FRAME_LAB_FFMPEG_PATH: privatePath,
+      FFMPEG_PATH: "",
+      FRAME_LAB_FFPROBE_PATH: privatePath,
+      FFPROBE_PATH: ""
+    },
+    probeArgs: ["-version"]
+  });
+  assert.equal(resolved.diagnostics.ffmpeg[0].source, "FRAME_LAB_FFMPEG_PATH");
+  assert.equal(resolved.diagnostics.ffmpeg[0].reason, "ENOENT");
+  assert.equal(resolved.diagnostics.ffprobe[0].source, "FRAME_LAB_FFPROBE_PATH");
+  assert.equal(resolved.diagnostics.ffprobe[0].reason, "ENOENT");
+  assert.equal(JSON.stringify(resolved).includes(privatePath), false);
 });

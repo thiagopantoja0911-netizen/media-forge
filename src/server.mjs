@@ -16,7 +16,14 @@ import { handleStudioApi } from "./studio-api.mjs";
 import { handleRemoteWorker } from "./remote-worker-server.mjs";
 import {handleSignedVideoDownload,signedVideoDownload} from "./video-artifact-delivery.mjs";
 
-const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
+const configuredHost = process.env.MEDIAFORGE_HOST?.trim();
+const isProduction = process.env.NODE_ENV === "production";
+// Hostinger injects PORT for its reverse proxy. Bind to all interfaces whenever
+// that platform port exists, even if NODE_ENV is missing or MEDIAFORGE_HOST
+// still contains the local-development loopback default.
+const host = isProduction || process.env.PORT
+  ? "0.0.0.0"
+  : (configuredHost || "127.0.0.1");
 const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
 const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
 const jobsDir = join(dataDir, "jobs");

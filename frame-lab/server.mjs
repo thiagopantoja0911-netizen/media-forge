@@ -104,6 +104,8 @@ async function capabilities() {
   return {ffmpeg:ffmpegReady,ffprobe:ffprobeReady,opencv:cvPresent,
     engineReady:ffmpegReady&&ffprobeReady&&cvPresent,
     ffmpegSource:mediaBinaries.ffmpegSource,ffprobeSource:mediaBinaries.ffprobeSource,
+    binaryDiagnostics:mediaBinaries.diagnostics,
+    runtime:{nodeMajor:Number(process.versions.node.split(".")[0]),platform:process.platform,arch:process.arch},
     engine:"OpenCV WebAssembly (Node 22)",cvVersion:cvPresent?"5.0.0-WASM":null,
     noTemporalSampling:true,sourceResolution:true,subpixelEstimated:true,
     server:"Frame Lab — isolated from MediaForge production jobs"};
