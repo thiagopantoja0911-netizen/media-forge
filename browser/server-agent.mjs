@@ -2,6 +2,8 @@
 /* MCP adapter: adds browser_run_workflow while preserving the existing OAuth/device relay. */
 import { Readable } from 'node:stream';
 import { app } from './server.mjs';
+import { VIDEOS_SECRETS_TOOLS } from '../src/videos-secrets-mcp.mjs';
+import { handleUnifiedMediaMcp } from '../src/server.mjs';
 
 const coreHandler = app.listeners('request')[0];
 if (typeof coreHandler !== 'function') throw new Error('Relay core request handler not found');
@@ -85,6 +87,30 @@ async function invokeCore(originalReq, payload) {
   await coreHandler(req, res);
   return await done;
 }
+// Dedicated internal forwarder: no public MediaForge bearer is accepted here.
+// Browser OAuth is checked against the original relay before this is called.
+async function invokeMedia(originalReq,payload){
+  const raw=JSON.stringify(payload);
+  const request=Readable.from([Buffer.from(raw)]);
+  request.method='POST';
+  request.url='/mcp';
+  request.headers={...originalReq.headers};
+  request.socket=originalReq.socket;
+  request.connection=originalReq.socket;
+  request.httpVersion='1.1';
+  request.httpVersionMajor=1;
+  request.httpVersionMinor=1;
+  const {res,done}=makeFakeResponse();
+  await handleUnifiedMediaMcp({request,response:res});
+  return await done;
+}
+const MEDIAFORGE_TOOL_NAMES=new Set(VIDEOS_SECRETS_TOOLS.map(tool=>tool.name));
+if(MEDIAFORGE_TOOL_NAMES.size!==VIDEOS_SECRETS_TOOLS.length)throw Error('DUPLICATE_MEDIAFORGE_TOOL_NAME');
+const UNIFIED_MEDIA_TOOLS=VIDEOS_SECRETS_TOOLS.map(tool=>({
+  ...tool,
+  // The installed ChatGPT connector holds only this single Browser OAuth grant.
+  securitySchemes:[{type:'oauth2',scopes:['browser:control']}]
+}));
 function send(res, result) {
   const headers = {...result.headers};
   delete headers['content-length'];
@@ -120,7 +146,11 @@ async function handle(req, res) {
   // Delegate /health to the core relay so extension and ChatGPT origins receive CORS headers.
   if (url.pathname !== '/mcp' || req.method !== 'POST') return coreHandler(req, res);
   try {
-    const raw = await readIncoming(req);
+    // Validate the existing Browser OAuth grant before reading a large
+    // cinematic asset payload. Invalid callers cannot upload any job data.
+    const authProbe=await invokeCore(req,{jsonrpc:'2.0',id:0,method:'ping'});
+    if(authProbe.status!==200)return send(res,authProbe);
+    const raw = await readIncoming(req,32*1024*1024);
     let payload;
     try { payload = JSON.parse(raw); } catch { throw Object.assign(new Error('JSON-RPC inválido'), {status: 400}); }
     if (payload?.method === 'tools/list') {
@@ -128,7 +158,13 @@ async function handle(req, res) {
       if (result.status !== 200) return send(res, result);
       const body = JSON.parse(result.body);
       const tools = body?.result?.tools;
-      if (Array.isArray(tools) && !tools.some(tool => tool.name === WORKFLOW_TOOL.name)) tools.push(WORKFLOW_TOOL);
+      if(Array.isArray(tools)){
+        if(!tools.some(tool=>tool.name===WORKFLOW_TOOL.name))tools.push(WORKFLOW_TOOL);
+        for(const videoTool of UNIFIED_MEDIA_TOOLS){
+          if(tools.some(tool=>tool.name===videoTool.name))throw new Error('UNIFIED_TOOL_NAME_CONFLICT: '+videoTool.name);
+          tools.push(videoTool);
+        }
+      }
       return send(res, response(result.status, result.headers, JSON.stringify(body)));
     }
     if (payload?.method === 'initialize') {
@@ -137,6 +173,11 @@ async function handle(req, res) {
       const body = JSON.parse(result.body);
       if (body?.result?.serverInfo) body.result.serverInfo.version = '0.7.0';
       return send(res, response(result.status, result.headers, JSON.stringify(body)));
+    }
+    if(payload?.method==='tools/call' && MEDIAFORGE_TOOL_NAMES.has(payload?.params?.name)){
+      // Only reachable after the verified browser:control OAuth probe.
+      const result=await invokeMedia(req,payload);
+      return send(res,result);
     }
     if (payload?.method === 'tools/call' && payload?.params?.name === WORKFLOW_TOOL.name) {
       const args = validateWorkflow(payload.params.arguments || {});
@@ -159,4 +200,4 @@ async function handle(req, res) {
 
 app.removeAllListeners('request');
 app.on('request', (req, res) => { handle(req, res).catch(error => { if (!res.writableEnded) send(res, response(500, {'content-type':'application/json; charset=utf-8'}, JSON.stringify({error:String(error?.message || error)}))); }); });
-console.error('Browser MCP Intelligent Agent adapter 0.6.0 ativo');
+console.error('Unific Media Browser MCP adapter 0.8.0 ativo: Chrome + Windows + MediaForge');
