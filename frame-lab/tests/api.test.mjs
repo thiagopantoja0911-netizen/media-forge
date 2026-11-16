@@ -59,6 +59,11 @@ test("isolated API requires authorization; project and ROI are scoped",async()=>
     assert.equal(capabilities.ffprobe,true,"FFprobe must resolve from bundled path or PATH");
     assert.equal(capabilities.opencv,true,"OpenCV package must be present");
     assert.equal(capabilities.engineReady,true,"full-frame analysis engine must be ready");
+    assert.equal(capabilities.ffmpegSource,"frame-lab/bin");
+    assert.equal(capabilities.ffprobeSource,"frame-lab/bin");
+    assert.ok(Array.isArray(capabilities.binaryDiagnostics.ffmpeg));
+    assert.ok(Array.isArray(capabilities.binaryDiagnostics.ffprobe));
+    assert.equal(capabilities.runtime.nodeMajor,22);
     const created=await fetch(url+"/api/projects",{method:"POST",headers});
     assert.equal(created.status,201);
     const obj=await created.json();
