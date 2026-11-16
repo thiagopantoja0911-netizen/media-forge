@@ -318,6 +318,7 @@ export function buildArtisticDirection(input = {}, basePlan = {}, options = {}) 
       maxUnmotivatedIdleSeconds: 0.8,
       maxExplicitHoldFraction: 0.20,
       minimumDepthLayers: 3,
+      structuralPreflight: motionPlanDraft.validation,
       requirements: ["movimento de câmera com alvo", "transições causadas por ação/objeto", "assets locais", "preflight HyperFrames", "QA técnico e sonoro", "Frame Lab após render", "revisão artística humana"]
     },
     assetPlan: shots.map((shot, index) => ({
