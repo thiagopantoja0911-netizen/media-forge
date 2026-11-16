@@ -5,7 +5,7 @@
  */
 import http from 'node:http';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, renameSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, renameSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import {createComputerBridge} from './computer-bridge.mjs';
 import {createParallelExecution} from './parallel-execution.mjs';
@@ -20,6 +20,10 @@ const PORT=Number(process.env.PORT||4872);
 const ROOT=path.resolve(process.env.BROWSER_MCP_BRIDGE_DATA_DIR||path.join(process.cwd(),'.bridge-private'));
 mkdirSync(ROOT,{recursive:true,mode:0o700});
 const FILE=path.join(ROOT,'state.json');
+// Keep OAuth bearer tokens in per-token private files, not only in the
+// in-memory snapshot that each Hostinger Node worker loads on startup.
+const OAUTH_ROOT=path.join(ROOT,'oauth-tokens');
+mkdirSync(OAUTH_ROOT,{recursive:true,mode:0o700});
 const computerBridge=createComputerBridge(ROOT);
 const parallelExecution=createParallelExecution(ROOT);
 const behavioralLibrary=createBehavioralLibrary(ROOT,{onAuthorizedImportPage:(owner)=>{
@@ -34,6 +38,33 @@ let store=existsSync(FILE)?{...empty(),...JSON.parse(readFileSync(FILE,'utf8'))}
 function save(){const tmp=FILE+'.tmp';writeFileSync(tmp,JSON.stringify(store),{mode:0o600});renameSync(tmp,FILE);}
 function token(){return randomBytes(32).toString('base64url');}
 function hash(s){return createHash('sha256').update(s).digest('hex');}
+function oauthTokenFile(kind,hashedToken){
+ if(!['access','refresh'].includes(kind)||!/^[a-f0-9]{64}$/.test(hashedToken))throw Error('INVALID_OAUTH_RECORD');
+ return path.join(OAUTH_ROOT,kind+'-'+hashedToken+'.json');
+}
+function readOAuthRecord(kind,hashedToken){
+ try{
+  const row=JSON.parse(readFileSync(oauthTokenFile(kind,hashedToken),'utf8'));
+  return row&&typeof row==='object'&&!Array.isArray(row)?row:null;
+ }catch{return null;}
+}
+function persistOAuthRecord(kind,rawToken,record){
+ const target=oauthTokenFile(kind,hash(rawToken));
+ const temp=target+'.'+process.pid+'.'+randomBytes(6).toString('hex')+'.tmp';
+ writeFileSync(temp,JSON.stringify(record),{mode:0o600,flag:'wx'});
+ renameSync(temp,target);
+}
+function revokeOAuthRecord(kind,hashedToken){
+ try{unlinkSync(oauthTokenFile(kind,hashedToken));}catch(error){if(error?.code!=='ENOENT')throw error;}
+}
+function readLegacyOAuthRecord(section,hashedToken){
+ const inMemory=store[section]?.[hashedToken];
+ if(inMemory)return inMemory;
+ try{
+  const snapshot=JSON.parse(readFileSync(FILE,'utf8'));
+  return snapshot?.[section]?.[hashedToken]||null;
+ }catch{return null;}
+}
 function eq(a,b){if(typeof a!=='string'||typeof b!=='string')return false;const x=Buffer.from(a),y=Buffer.from(b);return x.length===y.length && timingSafeEqual(x,y);}
 function now(){return Date.now();}
 function die(status,message){const err=new Error(message);err.status=status;throw err;}
@@ -47,7 +78,20 @@ function authHeader(req){return String(req.headers.authorization||'').replace(/^
 async function body(req,max=32768){const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>max)die(413,'Payload grande');chunks.push(chunk);}return Buffer.concat(chunks).toString('utf8');}
 function form(s){return Object.fromEntries(new URLSearchParams(s));}
 function deviceAuth(req){const t=authHeader(req);if(!t)die(401,'Dispositivo não autenticado');const h=hash(t);let d=Object.values(store.devices).find(x=>eq(x.tokenHash,h));if(!d)die(401,'Dispositivo não autenticado');return d;}
-function userAuth(req){const t=authHeader(req);if(!t)die(401,'Autenticação OAuth necessária');const a=store.access[hash(t)];if(!a||a.expires<now()||a.resource!==RESOURCE||!a.scopes.includes('browser:control'))die(401,'Token OAuth inválido');return a.owner;}
+function userAuth(req){
+ const bearer=authHeader(req);
+ if(!bearer){console.error('[browser-oauth] mcp unauthorized: missing_bearer');die(401,'Autenticação OAuth necessária');}
+ if(bearer.length>512){console.error('[browser-oauth] mcp unauthorized: invalid_token_length');die(401,'Token OAuth inválido');}
+ const key=hash(bearer);
+ const access=readOAuthRecord('access',key)||readLegacyOAuthRecord('access',key);
+ if(!access){console.error('[browser-oauth] mcp unauthorized: unknown_bearer');die(401,'Token OAuth inválido');}
+ if(access.expires<now()){console.error('[browser-oauth] mcp unauthorized: expired_bearer');die(401,'Token OAuth expirado');}
+ if(access.resource!==RESOURCE||!Array.isArray(access.scopes)||!access.scopes.includes('browser:control')){
+  console.error('[browser-oauth] mcp unauthorized: resource_or_scope_mismatch');
+  die(401,'Token OAuth inválido');
+ }
+ return access.owner;
+}
 function pin(){const abc='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:10},()=>abc[randomBytes(1)[0]%abc.length]).join('');}
 function newClaim(device){for(const [h,v] of Object.entries(store.claims))if(v.device===device.id)delete store.claims[h];const code=pin();store.claims[hash(code)]={device:device.id,expires:now()+600000};save();return code;}
 function uriAllowed(uri){try{const u=new URL(uri);return !u.username&&!u.password&&!u.hash&&((u.protocol==='https:'&&(u.hostname==='chatgpt.com'||u.hostname.endsWith('.chatgpt.com')||u.hostname==='openai.com'||u.hostname.endsWith('.openai.com')))||(u.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(u.hostname)));}catch{return false;}}
@@ -535,9 +579,20 @@ const app=http.createServer(async(req,res)=>{
   if(pathname==='/token'&&req.method==='POST'){
     const f=form(await body(req));if(!store.clients[f.client_id])die(400,'invalid_client');let owner;
     if(f.grant_type==='authorization_code'){const c=store.codes[hash(f.code||'')];if(!c||c.expires<now()||c.clientId!==f.client_id||c.redirect!==f.redirect_uri||c.resource!==RESOURCE||hash(f.code_verifier||'')===''||createHash('sha256').update(f.code_verifier||'').digest('base64url')!==c.challenge)die(400,'invalid_grant');owner=c.owner;delete store.codes[hash(f.code)];}
-    else if(f.grant_type==='refresh_token'){const r=store.refresh[hash(f.refresh_token||'')];if(!r||r.expires<now()||r.clientId!==f.client_id||r.resource!==RESOURCE)die(400,'invalid_grant');owner=r.owner;delete store.refresh[hash(f.refresh_token)];}
+    else if(f.grant_type==='refresh_token'){
+      const refreshHash=hash(f.refresh_token||'');
+      const r=readOAuthRecord('refresh',refreshHash)||readLegacyOAuthRecord('refresh',refreshHash);
+      if(!r||r.expires<now()||r.clientId!==f.client_id||r.resource!==RESOURCE)die(400,'invalid_grant');
+      owner=r.owner;delete store.refresh[refreshHash];revokeOAuthRecord('refresh',refreshHash);
+    }
     else die(400,'unsupported_grant_type');
-    const access=token(),refresh=token();store.access[hash(access)]={owner,clientId:f.client_id,resource:RESOURCE,scopes:['browser:control'],expires:now()+3600000};store.refresh[hash(refresh)]={owner,clientId:f.client_id,resource:RESOURCE,expires:now()+30*86400000};save();return json(res,200,{access_token:access,token_type:'Bearer',expires_in:3600,refresh_token:refresh,scope:'browser:control'});
+    const access=token(),refresh=token();
+    const accessRecord={owner,clientId:f.client_id,resource:RESOURCE,scopes:['browser:control'],expires:now()+3600000};
+    const refreshRecord={owner,clientId:f.client_id,resource:RESOURCE,expires:now()+30*86400000};
+    persistOAuthRecord('access',access,accessRecord);
+    persistOAuthRecord('refresh',refresh,refreshRecord);
+    save();
+    return json(res,200,{access_token:access,token_type:'Bearer',expires_in:3600,refresh_token:refresh,scope:'browser:control'});
   }
   if(pathname==='/mcp'&&['POST','GET'].includes(req.method)){
     let owner;try{owner=userAuth(req);}catch{res.setHeader('WWW-Authenticate',`Bearer resource_metadata="${BASE}/.well-known/oauth-protected-resource", error="invalid_token", error_description="Conecte sua conta Browser MCP"`);return json(res,401,{error:'Autenticação OAuth obrigatória'});}
