@@ -387,7 +387,7 @@ async function rpc(req,owner,protocolVersion='2025-03-26'){
 const app=http.createServer(async(req,res)=>{
  const u=new URL(req.url,BASE); const ip=req.socket.remoteAddress||'unknown';const pathname=u.pathname;
   // Never log the authorization header, query parameters, request body, tokens or device IDs.
-  if (['/mcp','/authorize','/device/status','/health'].includes(pathname)) {
+  if (['/mcp','/authorize','/register','/token','/device/status','/health','/.well-known/oauth-protected-resource','/.well-known/oauth-authorization-server'].includes(pathname)) {
     const started=Date.now();
     res.once('finish',()=>console.error('[relay-http]',req.method,pathname,res.statusCode,Date.now()-started+'ms'));
   }
