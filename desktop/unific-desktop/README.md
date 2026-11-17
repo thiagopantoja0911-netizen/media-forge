@@ -1,56 +1,48 @@
-# Unific Desktop 0.1.0 — Beta Windows
+# Unific Desktop V1.1 — atualização por cima da V1
 
-Aplicativo Windows com dashboard MediaForge, ícone flutuante, painel pequeno acionado por hover, bandeja do sistema, diagnóstico, reinício consciente do worker e memória local.
+## Objetivo
 
-## Funcionalidades incluídas
+App Windows para usar MediaForge + Browser MCP em segundo plano, sem um ícone flutuante permanente.
 
-- **Ícone flutuante**: posicionado no canto inferior direito, sempre disponível; ao passar o mouse, abre cartão de status. Clique para dashboard.
-- **Bandeja do Windows**: mouse sobre ícone também abre cartão, clique abre dashboard; fechar janela não encerra monitoramento.
-- **Dashboard**: status da API `/health`, heartbeat do HyperFrames, fila, últimos logs locais e estado de pareamento.
-- **Gerenciamento**: reinicia o worker através do script já existente (após confirmação), não interfere nos outros processos.
-- **Instalação automática**: em uma máquina sem worker, a primeira inicialização prepara as dependências via `winget`, `git clone`, `npm install` quando a pasta não existir. Também há botão para tentar novamente. Pasta V2 existente é preservada.
-- **Memória local**: anotações armazenadas em `app.getPath('userData')/assistant-memory.json`, sem nuvem.
-- **Assistente beta**: responde offline a perguntas sobre status, erros e anotações. Não há LLM integrado nesta versão.
-- **Inicializar com Windows**: habilitado e ajustável no painel.
+- O mouse no topo da **área de trabalho do Windows** abre um painel **horizontal e fixo**, com abas Visão geral, MediaForge, Browser MCP, Diagnóstico, Assistente e Configurações.
+- O painel **não se abre automaticamente sobre outras janelas**. O detector oculto do Windows usa apenas o identificador da janela em primeiro plano (sem ler conteúdos). Se a detecção não estiver disponível, o painel não se abre automaticamente.
+- O painel completo é fixo, sem ser arrastável, e pode ser aberto pelo menu da bandeja ou pelo atalho `Ctrl+Alt+U`.
+- A rede de conhecimento aparece como **background de nós e conexões**, também com visualização ampliada e controles em **Configurações**. Os registros persistem no perfil do Windows, e a V1 é migrada sem excluir o original.
+- O assistente beta responde sobre diagnósticos e temas de memória. **Não é um modelo de IA generativa**: seus vínculos são classificados por regras locais, explicitamente; a integração com um LLM será posterior.
+- Entradas com aparência de senhas, tokens e chaves são rejeitadas no armazenamento da rede de memória. Não coleta automaticamente outras janelas ou dados do navegador.
 
-## Testar a interface em modo desenvolvimento
+## Atualização Windows no mesmo lugar
 
-Requer Node.js 22+ e Windows:
+A versão é `0.1.1` e mantém **exatamente** o `appId=site.salevo.unificdesktop`, o `productName=Unific Desktop`, a arquitetura x64 e o alvo **NSIS per-user** da V1. O GUID gerado pelo electron-builder permanece o mesmo. O instalador NSIS `Unific-Desktop-Setup-0.1.1.exe` procura a instalação existente para atualizar; **não é preciso desinstalar a V1**. O instalador tem fluxo one-click, preserva userData, preferências, credenciais e a pasta MediaForge-Staging-V2. O aplicativo pode pedir para fechar a versão anterior durante a atualização.
+
+## Correção de tarefa agendada protegida
+
+Na V1, `bootstrap-worker.ps1` chamava `start-worker-background.ps1`, que tentava `Unregister-ScheduledTask` e falhava com `0x80070005` quando não tinha autorização. A V1.1 muda o comportamento:
+
+- **Preparar dependências** nunca altera, remove ou reinicia tarefas existentes.
+- **Reiniciar worker** usa um script específico: se a tarefa já existe, tenta `Stop-ScheduledTask`/`Start-ScheduledTask`, sem desregistrar nem recriar. Se o Windows negar acesso, mostra erro orientativo e não altera nada.
+- Se não existe tarefa e as credenciais estão configuradas, inicia o worker em segundo plano, sem criar tarefa adicional.
+- Não elimina o bloqueio HTTP 403 identificado na Hostinger: isso exige correção da proteção/rota no servidor.
+
+## Desenvolvimento
 
 ```powershell
 cd desktop/unific-desktop
 npm install
 npm test
-npm start
+npm run dist
 ```
 
-## Gerar o instalador `.exe`
+O GitHub Actions compila em `windows-latest`, executa os testes e gera o instalador assinado **não** (beta sem assinatura digital) como artefato temporário. No Windows, o instalador pode disparar o alerta SmartScreen; é importante confirmar a origem e não desabilitar as proteções do sistema.
 
-A workflow `.github/workflows/unific-desktop-windows.yml` compila em `windows-latest` e anexa `Unific-Desktop-Setup-0.1.0.exe` ao run como artefato. Também é possível executar `npm run dist` em Windows.
+## Primeiro teste
 
-A assinatura de código não está configurada na versão beta. O Windows pode mostrar SmartScreen ao executar um instalador de teste não assinado; não desative a proteção global. Verifique o publisher e a origem.
+1. Com a V1 instalada, execute o arquivo `Unific-Desktop-Setup-0.1.1.exe`; não desinstale nada.
+2. O app continua iniciado na bandeja do Windows. Clique na área de trabalho, mova o mouse até o topo; a barra horizontal deve abrir sem bolha fixa no canto.
+3. Com outra janela ativa, passar o mouse no topo não deve abrir o painel.
+4. Clique em **Assistente** para enviar uma pergunta e em **Configurações** para verificar os nós da memória e o aprendizado automático.
+5. Verifique que os logs e a instalação antiga são detectados. **Não reinicie worker durante renderização real**.
 
-## Testar com segurança
+## Estado de testes
 
-1. Instale o Unific Desktop e abra o dashboard.
-2. Confira que o worker já existente é detectado antes de clicar em qualquer ação de manutenção.
-3. Mova o mouse sobre o ícone flutuante: a aba compacta deve aparecer.
-4. Clique no ícone: dashboard completo.
-5. Salve uma nota em **Memória**, feche e reabra o aplicativo: a nota deve persistir.
-6. Consulte o estado do worker. **Não reinicie durante uma renderização real.**
-7. Para reiniciar o worker, o aplicativo pede confirmação explícita.
-
-## Limitações / próximos marcos
-
-- **A API remota pode continuar enviando HTTP 403** em POST de worker. O aplicativo não corrige bloqueios WAF/proxy; será necessário solucionar no servidor.
-- O primeiro instalador **não emite nem cria credenciais**. Para um worker novo, deve ser configurado um token real com autenticação segura. Instalações existentes reaproveitam a credencial DPAPI no Windows.
-- A função de instalação do worker depende de rede, winget, Git e versão Node compatível, e pode exigir aprovação do Windows. A aplicação inicia sem essas dependências para diagnóstico.
-- O assistente tem memória local e respostas guiadas, não conversação generativa. IA e memória estruturada serão passos futuros.
-- Sem testes físicos no Windows até que o build do GitHub Actions seja confirmado e executado em um computador Windows.
-- Sem exclusão de instalações antigas nesta versão beta.
-
-## Arquitetura
-
-Electron main process → API remota MediaForge (somente GET `/health`), leitura segura de logs locais → UI dashboard + bubble/window hover → PowerShell incluído no repositório (`start-worker-background.ps1`) apenas após confirmação.
-
-Todos os renderers têm `contextIsolation`, `sandbox`, `nodeIntegration: false` e CSP local. Credenciais nunca são exibidas no dashboard.
+Os testes automáticos cobrem os componentes de memória e migração, preservação das tarefas existentes e identidade de instalação. O comportamento de hover, da tarefa agendada protegida e da atualização real **precisa ser validado em um Windows com V1 instalada**. Um build de GitHub Actions bem-sucedido não substitui esses testes físicos.

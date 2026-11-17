@@ -49,10 +49,9 @@ if (Test-Path (Join-Path $folder 'desktop\run-worker.ps1')) {
 }
 $dpapi = Join-Path $folder '.mediaforge\worker-token.dpapi'
 $envFile = Join-Path $folder '.env.local'
-if ((Test-Path $dpapi) -or ((Test-Path $envFile) -and (Select-String -Path $envFile -Pattern '^MEDIAFORGE_WORKER_TOKEN=' -Quiet))) {
-  & (Join-Path $folder 'desktop\start-worker-background.ps1') -InstallDir $folder
-  if ($LASTEXITCODE -ne 0) { throw 'Falha ao iniciar a tarefa do worker.' }
-  Write-Output 'Worker iniciado como tarefa em segundo plano.'
+if ((Test-Path -LiteralPath $dpapi) -or ((Test-Path -LiteralPath $envFile) -and (Select-String -Path $envFile -Pattern '^MEDIAFORGE_WORKER_TOKEN=' -Quiet))) {
+  Write-Output 'Credencial existente detectada. A tarefa Windows foi PRESERVADA, sem reiniciar ou remover.'
+  Write-Output 'Para iniciar ou reiniciar, use o botão dedicado com confirmação no painel.'
 } else {
-  Write-Output 'Instalação preparada. Falta configurar o token Worker autorizado; nenhuma credencial foi inventada.'
+  Write-Output 'Preparação concluída. Falta um token Worker autorizado; nenhum token foi inventado.'
 }
