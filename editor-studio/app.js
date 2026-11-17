@@ -276,7 +276,8 @@ async function render(selectedOnly){
  if(!state.project)return toast("Abra um projeto antes de renderizar.");
  await saveProject(false);
  const desc=selectedOnly?"somente a cena "+(state.selected+1):"o vídeo inteiro";
- if(!window.confirm("Enviar "+desc+" ao HyperFrames? O MP4 será renderizado no Worker Windows."))return;
+ // The clearly labelled render button is the explicit user action. Avoid blocking native dialogs in background tabs.
+ toast("Enviando "+desc+" ao HyperFrames…");
  try{
   const payload={confirm:true};
   if(selectedOnly)payload.sceneIndex=state.selected;
