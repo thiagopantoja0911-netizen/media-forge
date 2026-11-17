@@ -34,9 +34,23 @@
     <section class="screen" data-screen="settings"><div class="screen-intro"><span class="micro-label">UNIFIC · SYSTEM CONFIGURATION</span><h1>Configurações<span class="accent">.</span></h1><p>Controles de execução e da rede de conhecimento do assistente. A memória é visualizada como conexões, não uma lista isolada.</p></div>
     <div class="settings-grid"><article class="surface setting-surface"><div class="surface-title"><h3>Comportamento</h3><span class="live-pill">DESKTOP ONLY</span></div><label class="switch-row"><span><b>Iniciar com Windows</b><small>Continua em segundo plano depois de fechar o painel</small></span><input type="checkbox" id="login-toggle"></label><div class="detail-row"><span>Ativação do painel</span><b>Mouse no topo da área de trabalho</b></div><div class="detail-row"><span>Atalho manual</span><b>Ctrl + Alt + U</b></div><label class="switch-row"><span><b>Aprendizado automático</b><small>Registra preferências ditas ao assistente, sem coletar conteúdo de outras janelas</small></span><input type="checkbox" id="learn-toggle"></label></article>
     <article class="surface setting-surface"><div class="surface-title"><h3>Rede de conhecimento</h3><span class="live-pill"><span id="knowledge-count">0</span> MEMÓRIAS</span></div><div class="knowledge-preview"><svg id="knowledge-canvas" viewBox="0 0 480 220" preserveAspectRatio="xMidYMid meet"></svg><div class="graph-label">NÚCLEOS DE CONHECIMENTO INTERLIGADOS</div></div><form id="remember-form" class="remember-form"><label for="remember-text">Ensinar algo ao assistente</label><div class="input-group"><input id="remember-text" maxlength="1200" autocomplete="off" placeholder="Ex.: Nas abordagens, prefiro contato profissional por WhatsApp."><button class="primary" type="submit">Aprender</button></div></form><div class="memory-controls"><button class="soft small" id="memory-export">Exportar</button><button class="soft small danger" id="memory-clear">Limpar memórias</button></div></article></div>
+    <article class="surface setting-surface pairing-card">
+      <div class="surface-title"><h3>Conectar MediaForge</h3><span class="live-pill">WORKER · HTTPS</span></div>
+      <p>O Worker está recebendo erro 401? Faça o pareamento com o <strong>token Worker</strong> do painel administrativo, diferente do código de configuração e do token MCP.</p>
+      <div class="detail-row"><span>Servidor</span><b>https://unificmedia.salevo.site</b></div>
+      <button class="soft small" id="open-mediaforge-panel" type="button">Abrir painel MediaForge ↗</button>
+      <form id="pair-worker-form" class="remember-form" autocomplete="off">
+        <label for="pair-worker-token">Token Worker (não será exibido nem salvo nas memórias)</label>
+        <div class="input-group">
+          <input id="pair-worker-token" type="password" minlength="32" maxlength="256" required autocomplete="off" spellcheck="false" placeholder="Cole o token Worker aqui">
+          <button class="primary" id="pair-worker-submit" type="submit">Validar e conectar</button>
+        </div>
+      </form>
+      <p id="pair-worker-result" class="subnote" role="status" aria-live="polite">A credencial anterior permanece intacta se a validação falhar. O reinício é feito separadamente na aba MediaForge.</p>
+    </article>
     <article class="surface memories-surface"><div class="surface-title"><h3>Aprendizados recentes</h3><small>Os registros da V1 são migrados sem excluir o arquivo anterior.</small></div><div id="memories-list" class="memories-list"><span class="muted">Aguardando...</span></div></article></section>
   </main>
-  <footer class="app-footer"><span><i id="footer-led"></i><span id="footer-label">Sincronizando serviços...</span></span><button data-jump="settings">Configurações <span>↗</span></button><small>UNIFIC DESKTOP · BETA 1.1</small></footer>
+  <footer class="app-footer"><span><i id="footer-led"></i><span id="footer-label">Sincronizando serviços...</span></span><button data-jump="settings">Configurações <span>↗</span></button><small>UNIFIC DESKTOP · BETA 1.2</small></footer>
 </div>
 <div id="toast" class="toast" aria-live="polite" role="status"></div><script src="./app.js"></script>
 </body></html>

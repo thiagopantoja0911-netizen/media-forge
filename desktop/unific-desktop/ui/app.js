@@ -28,7 +28,7 @@ function setHealth(s){
   txt('engine-status',up?'HyperFrames operacional':'HyperFrames desconectado');
   txt('last-heartbeat',formatTime(s.lastSeen));txt('engine-queued',String(s.queued||0));txt('engine-processing',String(s.processing||0));
   txt('install-state',s.installed?'Worker detectado':'Worker não instalado');txt('install-folder',s.folder||'—');
-  txt('token-state',s.paired?'Presente (valor oculto)':'Não configurada');txt('version','v'+s.version);
+  txt('token-state',s.paired?'Salva (validar conexão)':'Não configurada');txt('version','v'+s.version);
   if($('login-toggle'))$('login-toggle').checked=!!s.startAtLogin;
   if($('learn-toggle'))$('learn-toggle').checked=!!s.memoryAutoLearn;
   txt('diag-api',reachable?'Online':s.error||'Indisponível');
@@ -119,6 +119,24 @@ if(page==='dashboard'){
   all('[data-view]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.view)));
   all('[data-jump]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.jump)));
   bindButton('dismiss',()=>api.dismiss());
+  bindButton('open-mediaforge-panel',async()=>{
+    try{await api.openMediaForgePanel();}catch(err){toast('Não foi possível abrir o painel: '+err.message);}
+  });
+  $('pair-worker-form')?.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const input=$('pair-worker-token'),submit=$('pair-worker-submit'),status=$('pair-worker-result');
+    const token=input.value;
+    input.value='';
+    submit.disabled=true;
+    status.textContent='Validando o token com a API MediaForge...';
+    try {
+      const result=await api.connectMediaForge(token);
+      status.textContent=result.ok?result.message:(result.error||'A conexão não foi concluída.');
+      if(result.ok){toast('Credencial protegida salva. Reinicie o worker pela aba MediaForge.');await refresh();}
+    } catch(error) {
+      status.textContent='A conexão não foi concluída: '+error.message;
+    } finally {submit.disabled=false;}
+  });
   bindButton('quick-restart',()=>workerAction('restart'));bindButton('engine-restart',()=>workerAction('restart'));
   bindButton('engine-install',()=>workerAction('install'));
   bindButton('quick-folder',async()=>{const res=await api.openWorkerFolder();if(res)toast(res);});

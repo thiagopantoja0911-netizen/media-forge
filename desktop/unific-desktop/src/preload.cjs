@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('unific',Object.freeze({
   exportMemory:()=>invoke('memory-export'),
   ask:value=>invoke('ask',value),
   restartWorker:()=>invoke('restart-worker'),
+  connectMediaForge:token=>invoke('connect-mediaforge',token),
+  openMediaForgePanel:()=>invoke('open-mediaforge-panel'),
   installWorker:()=>invoke('install-worker'),
   openWorkerFolder:()=>invoke('open-worker-folder'),
   openDashboard:view=>invoke('open-dashboard',view),

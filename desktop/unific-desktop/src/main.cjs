@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { API_BASE, workerPath, fetchHealth, tailLog, MemoryStore, assistantReply } = require('./core.cjs');
+const { verifyWorkerToken } = require('./worker-pairing.cjs');
 
 const APP_ID = 'site.salevo.unificdesktop'; // SAME as V1: keeps the existing NSIS installation and userData.
 const HOVER_HEIGHT = 330;
@@ -37,6 +38,29 @@ function runPowerShell(file,params=[],timeout=120000) {
       if(error) reject(new Error(String(err||out||error.message).slice(-1800)));
       else resolve(String(out).slice(-1800));
     });
+  });
+}
+function storeVerifiedWorkerToken(file, installDir, token) {
+  return new Promise((resolve,reject)=>{
+    if(!isWindows)return reject(new Error('A configuração de token exige Windows.'));
+    const child=spawn('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
+      '-File',file,'-InstallDir',installDir],{windowsHide:true,stdio:['pipe','pipe','pipe']});
+    let output='', errorOutput='', finished=false;
+    const timeout=setTimeout(()=>{child.kill();},45000);
+    const finish=(err)=>{
+      if(finished)return;
+      finished=true;clearTimeout(timeout);
+      if(err)reject(new Error(String(err).slice(0,550)));else resolve(output.trim());
+    };
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data',buf=>{output=(output+buf).slice(-1500);});
+    child.stderr.on('data',buf=>{errorOutput=(errorOutput+buf).slice(-1000);});
+    child.on('error',err=>finish('Falha ao iniciar a proteção Windows: '+err.message));
+    child.on('close',code=>code===0 && output.includes('CREDENTIAL_STORED')
+      ? finish(null) : finish('Não foi possível salvar a credencial protegida. '+errorOutput.slice(-350)));
+    child.stdin.on('error',()=>{});
+    child.stdin.end(token,'utf8');
   });
 }
 function createWindow(page,options) {
@@ -186,6 +210,23 @@ function registerIPC(){
     settings.startAtLogin=enabled;savePrefs();
     if(isWindows)app.setLoginItemSettings({openAtLogin:enabled,openAsHidden:true,args:['--hidden']});
     return settings.startAtLogin;
+  });
+  ipcMain.handle('unific:open-mediaforge-panel',()=>shell.openExternal(API_BASE+'/dashboard'));
+  ipcMain.handle('unific:connect-mediaforge',async(event,token)=>{
+    if(busy)return {ok:false,error:'Outra operação está em andamento.'};
+    busy=true;
+    try {
+      if(!isWindows)return {ok:false,error:'Esta conexão exige Windows.'};
+      const install=workerPath();
+      if(!fs.existsSync(path.join(install,'desktop','run-worker.ps1')))
+        return {ok:false,error:'Worker não instalado. Abra a aba MediaForge e prepare as dependências.'};
+      const check=await verifyWorkerToken(token);
+      if(!check.ok)return check;
+      await storeVerifiedWorkerToken(scriptPath('pair-worker-secure.ps1'),install,token);
+      return {ok:true,message:'Token validado e salvo de forma protegida. Agora reinicie o Worker pela aba MediaForge.'};
+    } catch(error) {
+      return {ok:false,error:'Não foi possível concluir a conexão. '+String(error.message||'Erro do Windows').slice(0,400)};
+    } finally {busy=false;}
   });
   ipcMain.handle('unific:restart-worker',lockOperation(async()=>{
     const install=workerPath();

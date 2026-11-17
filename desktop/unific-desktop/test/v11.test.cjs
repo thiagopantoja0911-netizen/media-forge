@@ -8,8 +8,8 @@ const {MemoryStore,classifyTopics,emptyBrain,sanitizeNote,normalizeText}=require
 const root=path.resolve(__dirname,'..');
 const current=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
 
-test('V1.1 upgrades the same app identity; does not require manual uninstall',()=>{
- assert.equal(current.version,'0.1.1');assert.equal(current.productName,'Unific Desktop');
+test('updates retain the same app identity; no manual uninstall is needed',()=>{
+ assert.match(current.version,/^0\.1\.[1-9]\d*$/);assert.equal(current.productName,'Unific Desktop');
  assert.equal(current.build.appId,'site.salevo.unificdesktop');
  assert.equal(current.build.nsis.perMachine,false);assert.equal(current.build.nsis.oneClick,true);
  assert.equal(current.build.nsis.deleteAppDataOnUninstall,false);
