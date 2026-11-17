@@ -98,7 +98,7 @@ async function call(path,{method="GET",body,auth=true,createJob}={}){
   request,response,url:new URL(path,"https://studio.example"),
   parseBody:async()=>body,
   isAdminSession:async()=>auth,
-  createJob:createJob||async()=>({id:"a".repeat(32),status:"queued"}),
+  createJob:createJob||(async()=>({id:"a".repeat(32),status:"queued"})),
   getJob:async()=>null
  });
  return {handled:result,status:response.status,body:response.body,headers:response.headers};
