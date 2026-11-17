@@ -5,6 +5,7 @@ import { buildMotionComposition } from "./motion/composer.mjs";
 import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./premium-motion-baseline.mjs";
 import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
 import { planFromShortBrief } from "./creative-director.mjs";
+import { listEditingStyles } from "./editing-style-presets.mjs";
 import { buildOnePromptBlueprint } from "./one-prompt-production.mjs";
 import {signedVideoDownload} from "./video-artifact-delivery.mjs";
 
@@ -16,6 +17,11 @@ const NO_CACHE = { ttlMs: 0, cacheScope: "private" };
 
 export const VIDEOS_SECRETS_TOOLS = [
   {
+    name:"list_editing_styles",
+    description:"Lista os estilos de edição reutilizáveis gravados no MediaForge, incluindo identificadores para plan_video_from_brief. Não inicia renderização.",
+    inputSchema:{type:"object",additionalProperties:false}
+  },
+  {
     name:"plan_video_from_brief",
     description:"Direção completa via chat: diga apenas empresa e ideia. Entrega estratégia de compra/curtidas/compartilhamento, cinco cenas, roteiro, mapa de assets e sons, câmera, transições e critérios de QA. Planejamento não cria MP4 nem inventa marca, produtos ou métricas.",
     inputSchema:{
@@ -24,6 +30,7 @@ export const VIDEOS_SECRETS_TOOLS = [
         brand:{type:"string",minLength:2,maxLength:90},
         idea:{type:"string",minLength:8,maxLength:400},
         goal:{type:"string",enum:["sales","likes","shares","awareness"]},
+        editing_style:{type:"string",enum:["minimal-outline-explainer-v1"],description:"Preset reutilizável de direção de arte e animação: Motion Minimalista P&B, inspirado na referência enviada em 17/11/2026."},
         voice_mode:{type:"string",enum:["auto","off","pt-BR-female","pt-BR-male"]},
         audience:{type:"string",maxLength:140},
         brand_url:{type:"string",maxLength:350},
@@ -316,6 +323,11 @@ export async function handleVideosSecretsMcp({
       const { executeFrameLabMcp } = await import("../frame-lab/mcp-actions.mjs");
       const result = await executeFrameLabMcp(name, args, { createJob, getJob });
       return writeResult(response, id, textResult(result, false, version), version);
+    }
+
+    if (name === "list_editing_styles") {
+      if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
+      return writeResult(response, id, textResult({ styles:listEditingStyles() }, false, version), version);
     }
 
     if (name === "plan_video_from_brief") {
