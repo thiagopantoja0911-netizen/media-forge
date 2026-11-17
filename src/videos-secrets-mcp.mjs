@@ -6,6 +6,7 @@ import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./prem
 import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
 import { planFromShortBrief } from "./creative-director.mjs";
 import { listEditingStyles } from "./editing-style-presets.mjs";
+import { editMotionPlan } from "./motion/editor.mjs";
 import { buildOnePromptBlueprint } from "./one-prompt-production.mjs";
 import {signedVideoDownload} from "./video-artifact-delivery.mjs";
 
@@ -20,6 +21,32 @@ export const VIDEOS_SECRETS_TOOLS = [
     name:"list_editing_styles",
     description:"Lista os estilos de edição reutilizáveis gravados no MediaForge, incluindo identificadores para plan_video_from_brief. Não inicia renderização.",
     inputSchema:{type:"object",additionalProperties:false}
+  },
+  {
+    name:"edit_motion_plan",
+    description:"Editor intermediário não destrutivo de timeline MediaForge. Ajuste textos, duração de cenas, câmera, transições, posições de eventos, volume de áudio, alinhamento de efeitos e cores, sem alterar ou reiniciar trabalhos existentes. Retorna uma nova revisão do motion_plan validada; só gera MP4 quando enviada depois ao create_motion_video.",
+    inputSchema:{
+      type:"object",additionalProperties:false,
+      properties:{
+        motion_plan:{type:"object",description:"Plano mediaforge-motion-v1 original ou última revisão editada"},
+        expected_revision:{type:"integer",minimum:0,description:"Controle otimista: evita sobrescrever revisão mais nova"},
+        edits:{type:"array",minItems:1,maxItems:16,items:{
+          type:"object",additionalProperties:false,
+          properties:{
+            action:{type:"string",enum:["set_text","set_camera","set_transition","set_scene_duration","set_audio_volume","align_sfx","set_event_timing","set_palette_color"]},
+            scene_id:{type:"string"},cue_id:{type:"string"},event_id:{type:"string"},
+            field:{type:"string",enum:["headline","eyebrow","detail","metricLabel","controlLabel"]},
+            text:{type:"string"},camera:{type:"string"},transition:{type:"string"},frames:{type:"integer",minimum:1},
+            volume:{type:"number",minimum:0,maximum:1},
+            color_key:{type:"string",enum:["ground","ink","accent","paper"]},
+            color:{type:"string",pattern:"^#[a-fA-F0-9]{6}$"},
+            timing:{type:"object",additionalProperties:false,properties:{
+              startFrame:{type:"integer",minimum:0},peakFrame:{type:"integer",minimum:1},endFrame:{type:"integer",minimum:1}
+            },required:["startFrame","peakFrame","endFrame"]}
+          },required:["action"]
+        }}
+      },required:["motion_plan","edits"]
+    }
   },
   {
     name:"plan_video_from_brief",
@@ -328,6 +355,13 @@ export async function handleVideosSecretsMcp({
     if (name === "list_editing_styles") {
       if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
       return writeResult(response, id, textResult({ styles:listEditingStyles() }, false, version), version);
+    }
+
+    if (name === "edit_motion_plan") {
+      if (!auth.scopes.includes("videos:write"))
+        return writeError(response, id, -32003, "Insufficient scope", 403, version);
+      const edited=editMotionPlan(args);
+      return writeResult(response,id,textResult(edited,false,version),version);
     }
 
     if (name === "plan_video_from_brief") {

@@ -1,0 +1,14 @@
+name: MediaForge mid-flow editing MVP tests
+on:
+  push:
+    branches: [feat/mediaforge-editor-midflow-v1-20261117]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+      - run: node --test test/editor-midflow.test.mjs test/motion.test.mjs test/creative-director.test.mjs
