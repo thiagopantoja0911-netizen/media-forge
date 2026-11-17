@@ -1,7 +1,7 @@
 param(
   [string]$InstallDir = "$env:LOCALAPPDATA\MediaForge-Staging",
   [string]$RepoUrl = "https://github.com/thiagopantoja0911-netizen/media-forge.git",
-  [string]$Branch = "feature/frame-lab-chat-mcp-20261113",
+  [string]$Branch = "feature/unific-media-20261116",
   [ValidateSet("dry-run","hyperframes")]
   [string]$Renderer = "hyperframes"
 )
