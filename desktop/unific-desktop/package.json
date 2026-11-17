@@ -1,0 +1,41 @@
+{
+  "name": "unific-desktop",
+  "productName": "Unific Desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Centro local do MediaForge e Browser MCP com assistente flutuante",
+  "main": "src/main.cjs",
+  "author": "Unific Media",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "site.salevo.unificdesktop",
+    "productName": "Unific Desktop",
+    "asar": true,
+    "directories": { "output": "dist" },
+    "files": ["src/**/*", "ui/**/*", "assets/**/*", "package.json"],
+    "extraResources": [{ "from": "scripts", "to": "scripts", "filter": ["**/*"] }],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico",
+      "artifactName": "Unific-Desktop-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true
+    },
+    "publish": null
+  }
+}
