@@ -1,0 +1,20 @@
+name: Export male commercial narration for Marketing PB
+on:
+  push:
+    branches: [feat/marketing-pb-voice-import-20261117]
+jobs:
+  voiceover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download generated voiceover
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --retry 3 --max-time 120 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/d1f4774d-1640-410e-9e42-6cbf8b633e12.mp3' -o marketing_voiceover.mp3
+          file marketing_voiceover.mp3
+          test "$(stat -c%s marketing_voiceover.mp3)" -gt 5000
+      - uses: actions/upload-artifact@v4
+        with:
+          name: marketing-male-narration-mp3
+          path: marketing_voiceover.mp3
+          retention-days: 2
