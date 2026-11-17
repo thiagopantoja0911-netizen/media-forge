@@ -141,6 +141,27 @@ if(page==='dashboard'){
   bindButton('engine-install',()=>workerAction('install'));
   bindButton('quick-folder',async()=>{const res=await api.openWorkerFolder();if(res)toast(res);});
   bindButton('diag-refresh',refresh);
+  bindButton('diag-inspect',async()=>{
+    const output=$('inspect-details');
+    output.textContent='Verificando tarefa e processo...';
+    try{
+      const result=await api.inspectWorker();
+      if(!result.ok){output.textContent=result.error||'Verificação indisponível';return;}
+      const r=result.report;
+      output.textContent=[
+        'Tarefa: '+r.TaskState,
+        'Último resultado: '+String(r.LastTaskResult??'—'),
+        'Última execução: '+(r.LastRunTime||'—'),
+        'Processos V2: '+r.WorkerCount,
+        'PIDs V2: '+(r.WorkerPids?.join(', ')||'nenhum'),
+        'Outros workers (preservados): '+r.OtherWorkerCount,
+        'Token DPAPI presente: '+(r.CredentialPresent?'sim':'não'),
+        'Última atualização do log: '+(r.LogModifiedAt||'nunca'),
+        '',
+        ...(r.LogTail||[])
+      ].join('\n');
+    }catch(err){output.textContent='Falha ao diagnosticar: '+err.message;}
+  });
   $('login-toggle')?.addEventListener('change',async e=>{try{e.target.checked=await api.loginSettings(e.target.checked);}catch(err){toast(err.message);}});
   $('learn-toggle')?.addEventListener('change',async e=>{
     try{const res=await api.memorySettings({autoLearn:e.target.checked});e.target.checked=res.autoLearn;toast(res.autoLearn?'Aprendizado automático ativado.':'Aprendizado automático desativado.');}
