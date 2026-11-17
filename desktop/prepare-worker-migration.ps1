@@ -4,7 +4,7 @@
 param(
   [string]$CurrentDir = "$env:LOCALAPPDATA\MediaForge-Staging",
   [string]$StagingDir = "$env:LOCALAPPDATA\MediaForge-Staging-V2",
-  [string]$Branch = "feature/frame-lab-chat-mcp-20261113",
+  [string]$Branch = "feature/unific-media-20261116",
   [Parameter(Mandatory=$true)][string]$ExpectedCommit,
   [switch]$VerifyAuthentication
 )
@@ -91,7 +91,7 @@ if ($VerifyAuthentication) {
     if (-not $token -or $token.Length -lt 32) {
       throw "Não há token reutilizável; configuração requer procedimento autorizado."
     }
-    $r = Invoke-RestMethod -Method Post -Uri "https://mediaforge.salevo.site/v1/worker/auth-check" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body "{}" -TimeoutSec 15
+    $r = Invoke-RestMethod -Method Post -Uri "https://unificmedia.salevo.site/v1/worker/auth-check" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body "{}" -TimeoutSec 15
     if ($r.ok -ne $true -or $r.authenticated -ne $true) { throw "O servidor recusou autenticação." }
     Write-Output "Pré-validação de autenticação HTTPS: aprovada."
   } finally {
