@@ -27,7 +27,7 @@
   <div id="audioList" class="audio-list"><span class="muted">Nenhum áudio anexado.</span></div>
  </aside>
  <section class="mainpanel">
-  <div class="preview-head"><div><h1>Prévia de cena</h1><p id="sceneDescription">Abra uma ideia para começar.</p></div><div class="preview-tags"><span class="pill">WEBGL AO VIVO</span><span class="pill"><i class="tiny-dot"></i><span id="previewState">Aguardando</span></span></div></div>
+  <div class="preview-head"><div><h1>Prévia de cena</h1><p id="sceneDescription">Abra uma ideia para começar.</p></div><div class="preview-tags"><span class="pill">WEBGL AO VIVO</span><span class="pill"><i class="tiny-dot"></i><span id="previewState">Aguardando</span></span><span class="pill" id="qaStatus">PRÉVIA: PENDENTE</span></div></div>
   <div class="player-shell">
    <div class="player-backdrop"><i class="halo h1"></i><i class="halo h2"></i></div>
    <div id="playerViewport" class="player-viewport vertical"><iframe id="scenePreview" title="Prévia 3D do MediaForge" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe></div>
@@ -66,7 +66,7 @@
    <label class="range-label">Energia do movimento <output id="energyNumber">72%</output><input id="editEnergy" type="range" min="0" max="100"></label>
    <label class="range-label">Profundidade 3D <output id="depthNumber">85%</output><input id="editDepth" type="range" min="0" max="100"></label>
    <label class="range-label">Escala da tipografia <output id="textScaleNumber">100%</output><input id="editTextScale" type="range" min="50" max="150"></label>
-   <p class="property-tip">Todos os parâmetros afetam a prévia WebGL e o projeto enviado ao HyperFrames. O render completo só começa após confirmação.</p>
+   <p class="property-tip">Todos os parâmetros afetam a prévia WebGL e o projeto enviado ao HyperFrames. O fluxo temporário exige que o GPT verifique e aprove as prévias de todas as cenas antes da renderização. Toda edição invalida a aprovação anterior.</p>
   </div>
   <div class="inspect-footer"><span class="statusdot"></span><span id="workerState">Verificando renderizador…</span></div>
  </aside>
