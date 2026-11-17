@@ -520,7 +520,7 @@ export async function handleVideosSecretsMcp({
       return writeResult(response,id,textResult({ok:true,revision:project.revision,project,
         previewReview:await readEditorPreviewReview(project),
         editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
-        nextStep:"Verificar prévia de todas as cenas antes de renderizar."},false,version);
+        nextStep:"Verificar prévia de todas as cenas antes de renderizar."},false,version),version);
     }
     if (name === "list_editing_styles") {
       if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
