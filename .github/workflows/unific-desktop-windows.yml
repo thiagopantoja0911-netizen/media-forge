@@ -1,0 +1,41 @@
+name: Unific Desktop - Windows installer
+on:
+  pull_request:
+    paths:
+      - 'desktop/unific-desktop/**'
+      - '.github/workflows/unific-desktop-windows.yml'
+  push:
+    branches:
+      - 'feat/unific-desktop-v1'
+    paths:
+      - 'desktop/unific-desktop/**'
+      - '.github/workflows/unific-desktop-windows.yml'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: desktop/unific-desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+      - name: Build Windows installer
+        run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Publish test installer as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Unific-Desktop-Windows-x64
+          path: desktop/unific-desktop/dist/Unific-Desktop-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
