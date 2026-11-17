@@ -1,43 +1,51 @@
 param([Parameter(Mandatory=$true)][string]$InstallDir)
-$ErrorActionPreference = 'Stop'
-$InstallDir = [IO.Path]::GetFullPath($InstallDir)
-$runner = Join-Path $InstallDir 'desktop\run-worker.ps1'
-if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
-  throw 'Worker não instalado. Execute Preparar dependências antes.'
+$ErrorActionPreference='Stop'
+$InstallDir=[IO.Path]::GetFullPath($InstallDir)
+$runner=Join-Path $InstallDir 'desktop\run-worker.ps1'
+if(-not(Test-Path -LiteralPath $runner -PathType Leaf)){throw 'Worker não instalado.'}
+$taskName='MediaForge Worker - Staging'
+$task=Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+$processes=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+$parents=@($processes | Where-Object {
+  $_.Name -match '^(powershell|pwsh)\.exe$' -and $_.CommandLine -and
+  $_.CommandLine.IndexOf($runner,[StringComparison]::OrdinalIgnoreCase) -ge 0
+})
+$parentIds=@($parents | ForEach-Object {[int]$_.ProcessId})
+$children=@($processes | Where-Object {
+  $_.Name -eq 'node.exe' -and $_.CommandLine -match 'remote-worker-client\.mjs' -and
+  $parentIds -contains [int]$_.ParentProcessId
+})
+# Only stop the worker belonging to the exact V2 run-worker.ps1 process tree.
+# Never stop all node.exe instances: the computer may host unrelated services.
+if($task -and $task.State -eq 'Running'){
+  try{Stop-ScheduledTask -TaskName $taskName -ErrorAction Stop}
+  catch{throw 'O Windows bloqueou a interrupção da tarefa existente. Nenhum processo foi finalizado.'}
 }
-$taskName = 'MediaForge Worker - Staging'
-$task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-if ($task) {
-  try {
-    if ($task.State -eq 'Running') {
-      Stop-ScheduledTask -TaskName $taskName -ErrorAction Stop
-      Start-Sleep -Seconds 1
-    }
-    Start-ScheduledTask -TaskName $taskName -ErrorAction Stop
-  } catch [System.UnauthorizedAccessException] {
-    throw 'A tarefa já existe, mas está protegida pelo Windows. Abra o Unific Desktop como administrador para reiniciar. Não removi a tarefa.'
-  } catch {
-    if ($_.Exception.Message -match 'acesso negado|access is denied|0x80070005') {
-      throw 'Acesso negado à tarefa existente. Nenhuma tarefa foi desregistrada. Peça autorização de administrador.'
-    }
-    throw
-  }
-  Start-Sleep -Seconds 2
-  $result = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
-  if ($result.State -notin @('Running','Queued')) {
-    throw ('A tarefa foi acionada mas não permaneceu em execução (estado: '+$result.State+'). Verifique o diagnóstico.')
-  }
-  Write-Output ('Tarefa existente reiniciada sem recriação. Estado: '+$result.State)
-} else {
-  $envFile = Join-Path $InstallDir '.env.local'
-  $dpapi = Join-Path $InstallDir '.mediaforge\worker-token.dpapi'
-  if (-not (Test-Path -LiteralPath $envFile)) { throw 'Arquivo de conexão do worker ausente. Configure a conexão antes de iniciar.' }
-  if (-not (Test-Path -LiteralPath $dpapi) -and -not (Select-String -LiteralPath $envFile -Pattern '^MEDIAFORGE_WORKER_TOKEN=' -Quiet)) {
-    throw 'Credencial do worker ausente. Não foi criado token fictício.'
-  }
-  # No task exists, so run the existing supervisor hidden. Never register or replace tasks.
-  $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-  $arguments = '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "'+$runner+'" -InstallDir "'+$InstallDir+'"'
-  Start-Process -FilePath $powershell -ArgumentList $arguments -WindowStyle Hidden -WorkingDirectory $InstallDir -ErrorAction Stop | Out-Null
-  Write-Output 'Worker iniciado em segundo plano. Nenhuma tarefa agendada foi criada ou alterada.'
+foreach($child in $children){Stop-Process -Id ([int]$child.ProcessId) -ErrorAction Stop}
+foreach($parent in $parents){
+  $still=Get-Process -Id ([int]$parent.ProcessId) -ErrorAction SilentlyContinue
+  if($still){Stop-Process -Id ([int]$parent.ProcessId) -ErrorAction Stop}
 }
+Start-Sleep -Seconds 2
+if($task){
+  try{Start-ScheduledTask -TaskName $taskName -ErrorAction Stop}
+  catch{throw 'Não foi possível iniciar a tarefa existente. Verifique as permissões do Windows.'}
+}else{
+  $envFile=Join-Path $InstallDir '.env.local'
+  $dpapi=Join-Path $InstallDir '.mediaforge\worker-token.dpapi'
+  if(-not(Test-Path -LiteralPath $envFile)){throw 'Arquivo de configuração ausente.'}
+  if(-not(Test-Path -LiteralPath $dpapi)){throw 'Token protegido ausente. Conecte o MediaForge nas Configurações.'}
+  $cmd=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+  $arguments='-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "'+$runner+'" -InstallDir "'+$InstallDir+'"'
+  Start-Process -FilePath $cmd -ArgumentList $arguments -WindowStyle Hidden -WorkingDirectory $InstallDir -ErrorAction Stop | Out-Null
+}
+Start-Sleep -Seconds 5
+$diagnostic=& (Join-Path $PSScriptRoot 'inspect-worker.ps1') -InstallDir $InstallDir | ConvertFrom-Json
+if($diagnostic.WorkerCount -gt 0){
+  Write-Output ('WORKER_STARTED PID=' + (($diagnostic.WorkerPids -join ',')) + '. Verifique o heartbeat no dashboard.')
+  exit 0
+}
+if($diagnostic.OtherWorkerCount -gt 0){
+  throw ('O reinício acionou a tarefa, mas não detectei novo processo da instalação V2. Há ' + $diagnostic.OtherWorkerCount + ' processo(s) de worker fora da árvore V2, que foram preservados. Último resultado da tarefa: ' + $diagnostic.LastTaskResult + '.')
+}
+throw ('O worker não permaneceu em execução. Estado da tarefa: ' + $diagnostic.TaskState + '. Último resultado: ' + $diagnostic.LastTaskResult + '. Verifique Diagnóstico avançado.')

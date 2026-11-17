@@ -57,3 +57,12 @@ Os testes automáticos cobrem os componentes de memória e migração, preserva�
 - O usuário confirma separadamente o reinício na aba MediaForge, após a credencial ser salva.
 - Atualização sobre V1.1 sem desinstalar, appId e dados preservados.
 - Sem token cadastrado por este chat e sem alteração do servidor Hostinger.
+
+
+## V1.3 — recuperação segura do worker
+
+- Botão Diagnóstico avançado mostra estado/último resultado da tarefa agendada, PIDs do worker V2, presença de credencial DPAPI, horário de modificação do log e últimas linhas; não mostra tokens.
+- Reinício busca somente processos filhos de um supervisor PowerShell cujo comando inclui o caminho absoluto de `MediaForge-Staging-V2\\desktop\\run-worker.ps1`; não encerra processos Node.js genéricos.
+- Reinício não remove nem recria tarefas agendadas e não confunde automaticamente o estado Ready com falha: verifica o processo real.
+- Requer confirmação do usuário no painel antes de reiniciar. Primeiro diagnóstico avançado é somente leitura.
+- Estado online só é confirmado depois de heartbeat no MediaForge.

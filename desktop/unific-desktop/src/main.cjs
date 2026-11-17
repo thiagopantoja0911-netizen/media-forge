@@ -228,6 +228,16 @@ function registerIPC(){
       return {ok:false,error:'Não foi possível concluir a conexão. '+String(error.message||'Erro do Windows').slice(0,400)};
     } finally {busy=false;}
   });
+  ipcMain.handle('unific:inspect-worker',async()=>{
+    const install=workerPath();
+    if(!fs.existsSync(path.join(install,'desktop','run-worker.ps1')))
+      return {ok:false,error:'Instalação MediaForge não encontrada.'};
+    try{
+      const output=await runPowerShell(scriptPath('inspect-worker.ps1'),['-InstallDir',install],20000);
+      const report=JSON.parse(output.trim());
+      return {ok:true,report};
+    }catch(err){return {ok:false,error:String(err.message||'Falha no diagnóstico').slice(0,350)};}
+  });
   ipcMain.handle('unific:restart-worker',lockOperation(async()=>{
     const install=workerPath();
     if(!fs.existsSync(path.join(install,'desktop','run-worker.ps1')))throw new Error('Worker não instalado. Prepare dependências antes.');

@@ -59,6 +59,8 @@ test('worker setup and restart preserve existing scheduled task',()=>{
  assert.doesNotMatch(b,/Unregister-ScheduledTask|Register-ScheduledTask|Stop-ScheduledTask/);
  assert.doesNotMatch(r,/Unregister-ScheduledTask|Register-ScheduledTask/);
  assert.match(r,/Start-ScheduledTask/);
+ assert.match(r,/remote-worker-client/);
+ assert.match(r,/inspect-worker\.ps1/);
 });
 test('overlay is desktop-only and fixed; no permanent corner bubble',()=>{
  const main=fs.readFileSync(path.join(root,'src','main.cjs'),'utf8');
