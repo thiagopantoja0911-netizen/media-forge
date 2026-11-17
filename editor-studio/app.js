@@ -31,7 +31,7 @@ async function refreshReviewStatus(){
  if(!state.project)return showReviewStatus("not-reviewed");
  const id=state.project.id,revision=state.project.revision;
  const result=await request(src("review"));
- if(state.project?.id===id&&state.project.revision===revision)showReviewStatus(result.status);
+ if(state.project?.id===id&&state.project.revision===revision&&!state.dirty)showReviewStatus(result.status);
 }
 function configureViewport(){
   const view=$("playerViewport"),iframe=$("scenePreview");
@@ -363,6 +363,8 @@ $("audioUpload").addEventListener("change",async event=>{
 });
 connectProperties();
 workerHealth();setInterval(workerHealth,12000);
+// Keep the editor in sync when GPT approves/rejects the visual preview through MCP.
+setInterval(()=>{if(state.project&&!state.dirty)refreshReviewStatus().catch(()=>{});},6000);
 const param=new URLSearchParams(location.search).get("project");
 loadProject(/^[a-f0-9]{32}$/.test(param||"")?param:null).catch(e=>toast("Falha ao abrir: "+e.message));
 })();
