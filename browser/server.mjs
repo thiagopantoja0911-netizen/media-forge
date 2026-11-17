@@ -94,7 +94,16 @@ function userAuth(req){
 }
 function pin(){const abc='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:10},()=>abc[randomBytes(1)[0]%abc.length]).join('');}
 function newClaim(device){for(const [h,v] of Object.entries(store.claims))if(v.device===device.id)delete store.claims[h];const code=pin();store.claims[hash(code)]={device:device.id,expires:now()+600000};save();return code;}
-function uriAllowed(uri){try{const u=new URL(uri);return !u.username&&!u.password&&!u.hash&&((u.protocol==='https:'&&(u.hostname==='chatgpt.com'||u.hostname.endsWith('.chatgpt.com')||u.hostname==='openai.com'||u.hostname.endsWith('.openai.com')))||(u.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(u.hostname)));}catch{return false;}}
+function uriAllowed(uri){
+ try{
+  const u=new URL(uri);
+  if(u.username||u.password||u.hash)return false;
+  // Allow Claude's exact OAuth callback, not arbitrary URLs on claude.ai.
+  if(u.origin==='https://claude.ai'&&u.pathname==='/api/mcp/auth_callback'&&!u.search)return true;
+  return (u.protocol==='https:'&&(u.hostname==='chatgpt.com'||u.hostname.endsWith('.chatgpt.com')||u.hostname==='openai.com'||u.hostname.endsWith('.openai.com')))
+   ||(u.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(u.hostname));
+ }catch{return false;}
+}
 const ALLOWED_ACTIONS = new Set([
   'tab_list','tab_open','navigate','reload','read_page','read_page_structure',
   'find_elements','wait_for','click','type_text','select_option','scroll',
