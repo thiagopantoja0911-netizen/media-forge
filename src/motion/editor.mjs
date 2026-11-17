@@ -46,6 +46,8 @@ function applyOne(plan,edit) {
   if(action==="set_camera"){
     const scene=findScene(plan,edit.scene_id);
     if(!cameras.has(edit.camera))fail("EDITOR_CAMERA_INVALID","Movimento de câmera não suportado.");
+    if(!["footage","photo","product","collage"].includes(scene.type))
+      fail("EDITOR_CAMERA_UNSUPPORTED","Esta cena não tem rig de câmera; para kinetic/widget edite a animação, não a câmera.");
     const before=scene.camera??null;
     scene.camera=edit.camera;
     return {action,scene_id:scene.id,before,after:scene.camera};
@@ -117,7 +119,13 @@ function applyOne(plan,edit) {
       !["startFrame","peakFrame","endFrame"].every(k=>Number.isInteger(timing[k])))
       fail("EDITOR_TIMING_INVALID","Informe início, pico e fim em quadros inteiros.");
     const before={startFrame:event.startFrame,peakFrame:event.peakFrame,endFrame:event.endFrame};
+    const shift=timing.peakFrame-event.peakFrame;
     Object.assign(event,timing);
+    // Keep linked audio synchronized when the visual event peak moves.
+    for(const cue of plan.audioCues||[])if(cue.role==="sfx"&&cue.eventId===event.id){
+      cue.startFrame+=shift;
+      cue.endFrame+=shift;
+    }
     return {action,scene_id:scene.id,event_id:event.id,before,after:{
       startFrame:event.startFrame,peakFrame:event.peakFrame,endFrame:event.endFrame
     }};

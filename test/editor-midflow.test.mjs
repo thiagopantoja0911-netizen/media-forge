@@ -17,7 +17,10 @@ const withAudio=()=>{
   return plan;
 };
 test("updates text, palette, camera and transition without mutating original",()=>{
-  const source=makePlan(),old=JSON.stringify(source);
+  const source=makePlan();
+  source.scenes[0].type="product";
+  source.scenes[0].media="assets/product.png";
+  const old=JSON.stringify(source);
   const edited=editMotionPlan({motion_plan:source,expected_revision:0,edits:[
     {action:"set_text",scene_id:"opening",field:"headline",text:"Mais alcance, mais estratégia."},
     {action:"set_camera",scene_id:"opening",camera:"dolly-in"},
@@ -55,7 +58,7 @@ test("shrink rejects orphaned events and audio starts, preserving input",()=>{
   const source=withAudio(),old=JSON.stringify(source);
   assert.throws(()=>editMotionPlan({motion_plan:source,edits:[
     {action:"set_scene_duration",scene_id:"dashboard",frames:120}
-  ]}),/EDITOR_EVENT_TRIM_CONFLICT|EDITOR_AUDIO_TRIM_CONFLICT/);
+  ]}),error=>["EDITOR_EVENT_TRIM_CONFLICT","EDITOR_AUDIO_TRIM_CONFLICT"].includes(error.code));
   assert.equal(JSON.stringify(source),old);
 });
 test("event timing validates order, then sfx follows visible event peak",()=>{
@@ -71,23 +74,23 @@ test("invalid edit batch is atomic and revision conflicts are rejected",()=>{
   const original=makePlan(),snapshot=JSON.stringify(original);
   assert.throws(()=>editMotionPlan({motion_plan:original,expected_revision:1,edits:[
     {action:"set_text",scene_id:"opening",field:"headline",text:"Novo"}
-  ]}),/EDITOR_REVISION_CONFLICT/);
+  ]}),error=>error.code==="EDITOR_REVISION_CONFLICT");
   assert.throws(()=>editMotionPlan({motion_plan:original,edits:[
     {action:"set_text",scene_id:"opening",field:"headline",text:"Novo"},
     {action:"set_camera",scene_id:"opening",camera:"hyperspace"}
-  ]}),/EDITOR_CAMERA_INVALID/);
+  ]}),error=>error.code==="EDITOR_CAMERA_INVALID");
   assert.equal(JSON.stringify(original),snapshot);
 });
 test("rejects unsafe or impossible edits and does not allow raw code execution",()=>{
   const plan=makePlan();
   assert.throws(()=>editMotionPlan({motion_plan:plan,edits:[
     {action:"set_text",scene_id:"opening",field:"headline",text:""}
-  ]}),/EDITOR_TEXT_INVALID/);
+  ]}),error=>error.code==="EDITOR_TEXT_INVALID");
   assert.throws(()=>editMotionPlan({motion_plan:plan,edits:[
     {action:"set_event_timing",scene_id:"opening",event_id:"opening-arrive",timing:{startFrame:100,peakFrame:140,endFrame:145}}
-  ]}),/EDITOR_RESULT_INVALID/);
-  assert.throws(()=>editMotionPlan({motion_plan:plan,edits:[{action:"remove_file",path:"../../secret"}]}),/EDITOR_OPERATION_INVALID/);
-  assert.throws(()=>editMotionPlan({motion_plan:plan,edits:[{action:"set_palette_color",color_key:"ground",color:"red"}]}),/EDITOR_COLOR_INVALID/);
+  ]}),error=>error.code==="EDITOR_RESULT_INVALID");
+  assert.throws(()=>editMotionPlan({motion_plan:plan,edits:[{action:"remove_file",path:"../../secret"}]}),error=>error.code==="EDITOR_OPERATION_INVALID");
+  assert.throws(()=>editMotionPlan({motion_plan:plan,edits:[{action:"set_palette_color",color_key:"ground",color:"red"}]}),error=>error.code==="EDITOR_COLOR_INVALID");
 });
 test("MCP adds new editor tool; original render tools are untouched",()=>{
   const names=VIDEOS_SECRETS_TOOLS.map(x=>x.name);
