@@ -1,6 +1,6 @@
 (()=>{"use strict";
 const $=id=>document.getElementById(id);
-const state={project:null,selected:0,ready:false,playing:false,dragFrom:null,saveTimer:null,saveQueue:Promise.resolve(),lastPreviewUrl:"",frame:0};
+const state={project:null,selected:0,ready:false,playing:false,dragFrom:null,saveTimer:null,saveQueue:Promise.resolve(),lastPreviewUrl:"",frame:0,previewApproved:false,dirty:false};
 const pad=n=>String(n).padStart(2,"0");
 const fmt=t=>pad(Math.floor(t/60))+":"+pad(Math.floor(t%60));
 const longFmt=t=>fmt(t)+"."+(Math.floor(t*10)%10);
@@ -21,6 +21,18 @@ const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const clone=x=>JSON.parse(JSON.stringify(x));
 const src=(id)=>"/api/editor/projects/"+state.project.id+"/"+id;
 const sceneLength=i=>sec(state.project.scenes[i].endFrame-state.project.scenes[i].startFrame);
+function showReviewStatus(status){
+ state.previewApproved=status==="approved";
+ out("qaStatus",status==="approved"?"PRÉVIA: APROVADA":status==="rejected"?"PRÉVIA: REPROVADA":status==="stale"?"PRÉVIA: REVISAR ALTERAÇÕES":"PRÉVIA: PENDENTE");
+ $("renderButton").disabled=!state.previewApproved;
+ $("renderSceneButton").disabled=!state.previewApproved;
+}
+async function refreshReviewStatus(){
+ if(!state.project)return showReviewStatus("not-reviewed");
+ const id=state.project.id,revision=state.project.revision;
+ const result=await request(src("review"));
+ if(state.project?.id===id&&state.project.revision===revision&&!state.dirty)showReviewStatus(result.status);
+}
 function configureViewport(){
   const view=$("playerViewport"),iframe=$("scenePreview");
   if(!state.project)return;
@@ -199,6 +211,8 @@ function renderAudioList(){
 }
 function afterChange(reselect=false){
  if(!state.project)return;
+ state.dirty=true;
+ showReviewStatus("stale");
  updateMetadata();buildTracks();if(reselect)fillInspector();
  clearTimeout(state.saveTimer);
  out("saveStatus","Alterações pendentes");
@@ -207,6 +221,8 @@ function afterChange(reselect=false){
 function saveProject(refreshPreview=false){
  if(!state.project)return Promise.resolve();
  clearTimeout(state.saveTimer);
+ if(!state.dirty)return state.saveQueue;
+ state.dirty=false;
  state.saveQueue=state.saveQueue.then(async()=>{
    const snapshot=clone(state.project);
    out("saveStatus","Salvando…");
@@ -214,17 +230,19 @@ function saveProject(refreshPreview=false){
    if(state.project?.id!==snapshot.id)return;
    state.project.revision=result.project.revision;
    out("saveStatus","Salvo");refreshAudioPlayers();
+   await refreshReviewStatus();
    if(refreshPreview)openScene(state.selected);
- }).catch(error=>{out("saveStatus","Erro ao salvar");toast("Erro: "+error.message);});
+ }).catch(error=>{state.dirty=true;out("saveStatus","Erro ao salvar");toast("Erro: "+error.message);});
  return state.saveQueue;
 }
 async function loadProject(id){
  const r=await request(id?"/api/editor/projects/"+id:"/api/editor/latest");
  if(!r.project){$("newModal").hidden=false;return;}
- state.project=r.project;state.selected=0;
+ state.project=r.project;state.selected=0;state.dirty=false;
  history.replaceState(null,"","/editor?project="+r.project.id);
  $("previewNotice").hidden=false;
  updateMetadata();renderAudioList();refreshAudioPlayers();openScene(0);
+ await refreshReviewStatus();
 }
 function presentModal(){pauseScene();$("newModal").hidden=false;$("newIdea").focus();}
 function closeModal(){if(state.project)$("newModal").hidden=true;}
@@ -275,6 +293,8 @@ function awaitStatus(jobId){
 async function render(selectedOnly){
  if(!state.project)return toast("Abra um projeto antes de renderizar.");
  await saveProject(false);
+ await refreshReviewStatus();
+ if(!state.previewApproved)return toast("A prévia ainda não foi aprovada pelo GPT. Revise as cenas antes de renderizar.");
  const desc=selectedOnly?"somente a cena "+(state.selected+1):"o vídeo inteiro";
  // The clearly labelled render button is the explicit user action. Avoid blocking native dialogs in background tabs.
  toast("Enviando "+desc+" ao HyperFrames…");
@@ -305,7 +325,7 @@ async function uploadAudio(file){
  }finally{URL.revokeObjectURL(url);}
  try{
   const r=await post(src("audio"),{filename:file.name,base64,role:$("audioRole").value,duration_seconds:duration,volume:$("audioRole").value==="music"?.24:1});
-  state.project=r.project;renderAudioList();buildTracks();refreshAudioPlayers();
+  state.project=r.project;renderAudioList();buildTracks();refreshAudioPlayers();await refreshReviewStatus();
   out("saveStatus","Salvo");toast("Faixa de áudio adicionada à timeline.");
  }catch(e){out("saveStatus","Erro no áudio");toast(e.message);}
 }
@@ -343,6 +363,8 @@ $("audioUpload").addEventListener("change",async event=>{
 });
 connectProperties();
 workerHealth();setInterval(workerHealth,12000);
+// Keep the editor in sync when GPT approves/rejects the visual preview through MCP.
+setInterval(()=>{if(state.project&&!state.dirty)refreshReviewStatus().catch(()=>{});},6000);
 const param=new URLSearchParams(location.search).get("project");
 loadProject(/^[a-f0-9]{32}$/.test(param||"")?param:null).catch(e=>toast("Falha ao abrir: "+e.message));
 })();

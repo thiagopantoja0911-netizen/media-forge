@@ -17,4 +17,4 @@ jobs:
       - name: Validate browser client JavaScript
         run: node --check editor-studio/app.js
       - name: Validate editor server and Three.js packages
-        run: node --test test/editor-studio.test.mjs test/editor-midflow.test.mjs test/cinematic-3d.test.mjs test/studio-api.test.mjs
+        run: node --test test/editor-review-gate.test.mjs test/editor-studio.test.mjs test/editor-midflow.test.mjs test/cinematic-3d.test.mjs test/studio-api.test.mjs

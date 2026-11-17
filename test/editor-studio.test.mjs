@@ -126,6 +126,17 @@ test("full and single-scene render require explicit confirmation; no queue on mi
  const denied=await call("/api/editor/projects/"+p.id+"/render",{method:"POST",body:{},createJob});
  assert.equal(denied.status,428);
  assert.equal(count,0);
+ const unreviewed=await call("/api/editor/projects/"+p.id+"/render",{method:"POST",body:{confirm:true,sceneIndex:1},createJob});
+ assert.equal(unreviewed.status,428);
+ assert.equal(count,0);
+ const before=await call("/api/editor/projects/"+p.id+"/review");
+ assert.equal(JSON.parse(before.body).status,"not-reviewed");
+ const checks=p.scenes.map(s=>({scene_id:s.id,samples_seconds:[.1,Math.min(1.1,(s.endFrame-s.startFrame)/p.fps-.1)],
+    preview_ready:true,text_legible:true,motion_ok:true,visual_ok:true,
+    notes:"Amostras verificadas visualmente no player deste projeto."}));
+ const reviewed=await call("/api/editor/projects/"+p.id+"/review",{method:"POST",body:{expected_revision:p.revision,decision:"pass",checks}});
+ assert.equal(reviewed.status,200,reviewed.body);
+ assert.equal(JSON.parse(reviewed.body).approved,true);
  const scene=await call("/api/editor/projects/"+p.id+"/render",{method:"POST",body:{confirm:true,sceneIndex:1},createJob});
  assert.equal(scene.status,202,scene.body);
  assert.equal(count,1);
@@ -135,5 +146,6 @@ test("connector exposes create and edit tools for placing ideas directly in time
  assert.ok(names.includes("create_editor_project"));
  assert.ok(names.includes("get_editor_project"));
  assert.ok(names.includes("edit_editor_project"));
+ assert.ok(names.includes("review_editor_preview"));
  assert.ok(names.includes("create_video"));
 });
