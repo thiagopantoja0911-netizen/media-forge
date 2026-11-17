@@ -2,6 +2,7 @@
  * Short-brief creative direction, with transparent limits and evidence.
  * Generates a reproducible storyboard, NOT media bytes or measured conversions.
  */
+import { getEditingStylePreset, applyEditingStyleToStoryboard } from "./editing-style-presets.mjs";
 const goals=new Set(["sales","likes","shares","awareness"]);
 const cleaned=(v,n)=>String(v??"").trim().replace(/[\u0000-\u001f]/g," ").slice(0,n);
 const messages={
@@ -42,6 +43,7 @@ export function planFromShortBrief(input={}){
  const fps=[24,25,30,50,60].includes(input.fps)?input.fps:60;
  const aspect=["9:16","16:9","1:1"].includes(input.aspect_ratio)?input.aspect_ratio:"9:16";
  const claimList=safeClaims(input.claims);
+ const editingStyle=getEditingStylePreset(input.editing_style);
  const concepts=forms.map(form=>({
   id:form.id,title:form.title,device:form.device,
   shots:form.movement.map((movement,i)=>{
@@ -66,11 +68,14 @@ export function planFromShortBrief(input={}){
     durationSeconds:duration,aspectRatio:aspect,fps,brandUrl,logo},
   decision:{chosen:chosen.id,reason:goal==="sales"?"problema observável → ação → solução verificável":goal==="shares"?"objeto memorável e valor social":"transformação mostrada no primeiro segundo"},
   alternatives:concepts.map(v=>({id:v.id,title:v.title,device:v.device})),
-  storyboard:chosen.shots,
+  storyboard:applyEditingStyleToStoryboard(chosen.shots,editingStyle),
+  ...(editingStyle?{editingStyle:{id:editingStyle.id,name:editingStyle.name,version:editingStyle.version,identity:editingStyle.identity,editorial:editingStyle.editorial,audio:editingStyle.audio,qualityChecklist:editingStyle.qualityChecklist}}:{}),
   claims:claimList,
   persuasion:{goal,desireOrProblem:idea,motivation:goal==="sales"?"clareza de benefício, confiança e redução de risco":goal==="shares"?"valor social, surpresa e utilidade":goal==="likes"?"identificação e recompensa visual":"curiosidade relevante e lembrança de marca",
    integrity:["não inventar prova social","não usar métricas não verificadas","não criar urgência/escassez falsas","não imitar logo como se fosse verdadeiro"]},
   production:{threeSecondPrototype:true,motionProfile:"dynamic-motion-v1",
+   ...(editingStyle?{editingStylePreset:editingStyle.id,editableGraphics:true,animationEngine:editingStyle.production.animationEngine,
+     referenceReusePolicy:editingStyle.production.reusePolicy}:{}),
    depthLayers:["background","midground","foreground"],noStaticCardSequence:true,
    voice:"gerar somente quando requisitado ou necessário à clareza",
    music:"usar arquivo licenciado/original, não gerar tom sintético como trilha",
