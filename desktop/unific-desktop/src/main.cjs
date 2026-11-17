@@ -1,174 +1,230 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, shell } = require('electron');
-const { execFile } = require('node:child_process');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, shell, dialog, globalShortcut } = require('electron');
+const { execFile, spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
-const {
-  API_BASE, TASK_NAME, workerPath, fetchHealth, tailLog, MemoryStore, assistantReply
-} = require('./core.cjs');
+const os = require('node:os');
+const { API_BASE, workerPath, fetchHealth, tailLog, MemoryStore, assistantReply } = require('./core.cjs');
 
-const APP_ID = 'site.salevo.unificdesktop';
-const DASH_SIZE = { width: 1160, height: 790 };
-const MINI_SIZE = { width: 378, height: 390 };
-const DOCK_SIZE = { width: 68, height: 68 };
-let dashboard, mini, dock, tray, memory, busy = false, hideTimer = null;
-let lastHealth = { api: false, worker: false, queued: 0, processing: 0 };
-let lastHealthTime = 0;
+const APP_ID = 'site.salevo.unificdesktop'; // SAME as V1: keeps the existing NSIS installation and userData.
+const HOVER_HEIGHT = 330;
+const HOVER_WIDTH = 960;
+const DESKTOP_HOTZONE = 15;
 const isWindows = process.platform === 'win32';
+let dashboard = null, hoverPanel = null, tray = null, memory = null;
+let busy = false, lastHealth = {api:false,worker:false,queued:0,processing:0}, lastHealthTime = 0;
+let detector = null, desktopActive = false, hoverOpenedOnDesktop = false, hoverCloseTimer = null;
+let hoverInterval = null, settings = { startAtLogin:true };
 
-function iconPath() { return path.join(__dirname, '..', 'assets', 'icon.png'); }
-function scriptPath() { return app.isPackaged
-  ? path.join(process.resourcesPath, 'scripts', 'bootstrap-worker.ps1')
-  : path.join(__dirname, '..', 'scripts', 'bootstrap-worker.ps1'); }
-function launchDir() { return workerPath(); }
-function runPowershell(file, args = [], timeout = 180000) {
-  return new Promise((resolve, reject) => {
-    if (!isWindows) return reject(new Error('A instalação e reinício do worker exigem Windows.'));
-    const params = ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', file, ...args];
-    execFile('powershell.exe', params, { windowsHide: true, timeout, maxBuffer: 128 * 1024, encoding: 'utf8' }, (error, stdout, stderr) => {
-      if (error) reject(new Error(String(stderr || stdout || error.message).slice(-1600)));
-      else resolve(String(stdout).slice(-1600));
+const asset = file => path.join(__dirname,'..','assets',file);
+const scriptPath = filename => app.isPackaged
+  ? path.join(process.resourcesPath,'scripts',filename)
+  : path.join(__dirname,'..','scripts',filename);
+const userPrefFile = () => path.join(app.getPath('userData'),'desktop-prefs.json');
+function loadPrefs() {
+  try { const p=JSON.parse(fs.readFileSync(userPrefFile(),'utf8'));settings={startAtLogin:p.startAtLogin!==false}; }
+  catch { settings={startAtLogin:true}; }
+}
+function savePrefs() {
+  fs.mkdirSync(app.getPath('userData'),{recursive:true});
+  fs.writeFileSync(userPrefFile(),JSON.stringify(settings,null,2),{encoding:'utf8',mode:0o600});
+}
+function runPowerShell(file,params=[],timeout=120000) {
+  return new Promise((resolve,reject)=>{
+    if(!isWindows)return reject(new Error('Esta operação exige Windows.'));
+    const args=['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',file,...params];
+    execFile('powershell.exe',args,{windowsHide:true,timeout,maxBuffer:128*1024,encoding:'utf8'},(error,out,err)=>{
+      if(error) reject(new Error(String(err||out||error.message).slice(-1800)));
+      else resolve(String(out).slice(-1800));
     });
   });
 }
-function workArea() { return screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea; }
-function dockBounds() {
-  const rect = workArea();
-  return { x: rect.x + rect.width - DOCK_SIZE.width - 16, y: rect.y + rect.height - DOCK_SIZE.height - 22, ...DOCK_SIZE };
-}
-function miniBounds() {
-  const d = dock.getBounds();
-  const display = screen.getDisplayMatching(d).workArea;
-  return { x: Math.max(display.x + 10, d.x - MINI_SIZE.width - 12), y: Math.max(display.y + 10, Math.min(d.y + d.height - MINI_SIZE.height, display.y + display.height - MINI_SIZE.height - 10)), ...MINI_SIZE };
-}
-function createWin(page, settings) {
-  const w = new BrowserWindow({
-    ...settings, icon: iconPath(), backgroundColor: '#0a111c', autoHideMenuBar: true,
-    webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false,
-      sandbox: true, webSecurity: true, devTools: !app.isPackaged }
+function createWindow(page,options) {
+  const w=new BrowserWindow({
+    ...options,icon:asset('icon.png'),backgroundColor:'#090f1c',autoHideMenuBar:true,
+    webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true,devTools:!app.isPackaged}
   });
-  w.loadFile(path.join(__dirname, '..', 'ui', page));
-  w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  w.webContents.on('will-navigate', (event) => event.preventDefault());
+  w.loadFile(path.join(__dirname,'..','ui',page));
+  w.webContents.setWindowOpenHandler(()=>({action:'deny'}));
+  w.webContents.on('will-navigate',event=>event.preventDefault());
   return w;
 }
-function openDashboard() {
-  if (!dashboard || dashboard.isDestroyed()) {
-    dashboard = createWin('dashboard.html', { ...DASH_SIZE, minWidth: 890, minHeight: 650, show: false, title: 'Unific Desktop', frame: true });
-    dashboard.on('close', event => {
-      if (!app.isQuitting) { event.preventDefault(); dashboard.hide(); }
+function targetArea(point=screen.getCursorScreenPoint()) { return screen.getDisplayNearestPoint(point).workArea; }
+function hoverBounds(area=targetArea()) {
+  const width=Math.min(HOVER_WIDTH,area.width-28),height=Math.min(HOVER_HEIGHT,area.height-26);
+  return {x:Math.round(area.x+(area.width-width)/2),y:area.y+12,width,height};
+}
+function dashboardBounds(area=screen.getPrimaryDisplay().workArea) {
+  const width=Math.min(1130,area.width-36),height=Math.min(765,area.height-38);
+  return {x:Math.round(area.x+(area.width-width)/2),y:area.y+18,width,height};
+}
+function pointIn(point,bounds,padding=0) {return point.x>=bounds.x-padding && point.x<=bounds.x+bounds.width+padding && point.y>=bounds.y-padding && point.y<=bounds.y+bounds.height+padding;}
+function openDashboard(view) {
+  hideHover(true);
+  if(!dashboard || dashboard.isDestroyed()){
+    dashboard=createWindow('dashboard.html',{
+      ...dashboardBounds(),show:false,frame:false,movable:false,resizable:false,minimizable:true,maximizable:false,
+      skipTaskbar:false,title:'Unific Desktop'
     });
+    dashboard.on('close',e=>{if(!app.isQuitting){e.preventDefault();dashboard.hide();}});
   }
-  dashboard.show(); dashboard.focus(); hideMini();
+  dashboard.setBounds(dashboardBounds());dashboard.show();dashboard.focus();
+  if(typeof view==='string' && /^[a-z]+$/.test(view)) dashboard.webContents.send('unific:navigate',view);
 }
-function showMini() {
-  if (!mini || mini.isDestroyed() || !dock || dock.isDestroyed()) return;
-  if (hideTimer) clearTimeout(hideTimer);
-  mini.setBounds(miniBounds()); mini.showInactive();
+function showHover() {
+  if(!hoverPanel || hoverPanel.isDestroyed() || dashboard?.isVisible())return;
+  if(hoverCloseTimer)clearTimeout(hoverCloseTimer);
+  hoverPanel.setBounds(hoverBounds());
+  if(!hoverPanel.isVisible())hoverPanel.showInactive();
+  hoverOpenedOnDesktop=true;
 }
-function hideMini(force = false) {
-  if (hideTimer) clearTimeout(hideTimer);
-  if (force) { if (mini && !mini.isDestroyed()) mini.hide(); return; }
-  hideTimer = setTimeout(() => {
-    if (!mini || mini.isDestroyed() || !mini.isVisible()) return;
-    const point = screen.getCursorScreenPoint();
-    const inside = r => point.x >= r.x && point.x < r.x + r.width && point.y >= r.y && point.y < r.y + r.height;
-    if (!inside(mini.getBounds()) && (!dock || !inside(dock.getBounds()))) mini.hide();
-  }, 430);
+function hideHover(force=false) {
+  if(hoverCloseTimer)clearTimeout(hoverCloseTimer);
+  if(force) {hoverPanel?.hide();hoverOpenedOnDesktop=false;return;}
+  hoverCloseTimer=setTimeout(()=>{
+    if(!hoverPanel?.isVisible())return;
+    const cursor=screen.getCursorScreenPoint();
+    if(!pointIn(cursor,hoverPanel.getBounds(),8))hideHover(true);
+  },280);
 }
-function createTrayAndDock() {
-  tray = new Tray(nativeImage.createFromPath(iconPath()).resize({ width: 18, height: 18 }));
-  tray.setToolTip('Unific Desktop — MediaForge');
+function pollHover() {
+  if(!hoverPanel || hoverPanel.isDestroyed() || dashboard?.isVisible())return;
+  const point=screen.getCursorScreenPoint(),area=targetArea(point);
+  const inZone=point.y>=area.y && point.y<=area.y+DESKTOP_HOTZONE && point.x>=area.x+70 && point.x<=area.x+area.width-70;
+  if(desktopActive && inZone){showHover();return;}
+  if(hoverPanel.isVisible()){
+    const inside=pointIn(point,hoverPanel.getBounds(),8);
+    if(!inside)hideHover();
+    else if(!desktopActive && !hoverPanel.isFocused())hideHover(true);
+  }
+}
+function startDesktopDetector() {
+  if(!isWindows){desktopActive=false;return;}
+  detector=spawn('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',scriptPath('desktop-foreground.ps1')],
+    {windowsHide:true,stdio:['ignore','pipe','ignore']});
+  let buffer='';
+  detector.stdout.setEncoding('utf8');
+  detector.stdout.on('data',chunk=>{
+    buffer+=chunk;
+    let index;
+    while((index=buffer.indexOf('\n'))!==-1){
+      const line=buffer.slice(0,index).trim();buffer=buffer.slice(index+1);
+      if(line==='1'||line==='0')desktopActive=line==='1';
+    }
+    if(buffer.length>100)buffer='';
+  });
+  detector.on('error',()=>{desktopActive=false;});
+  detector.on('exit',()=>{desktopActive=false;detector=null;hideHover(true);});
+}
+function createTrayAndHover() {
+  tray=new Tray(nativeImage.createFromPath(asset('icon.png')).resize({width:18,height:18}));
+  tray.setToolTip('Unific Desktop — trabalhando em segundo plano');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Abrir Dashboard', click: openDashboard },
-    { label: 'Mostrar assistente', click: showMini },
-    { type: 'separator' },
-    { label: 'Sair do Unific Desktop', click: () => { app.isQuitting = true; app.quit(); } }
+    {label:'Abrir Unific Desktop',click:()=>openDashboard('overview')},
+    {label:'Diagnóstico',click:()=>openDashboard('diagnostics')},
+    {label:'Configurações e memória',click:()=>openDashboard('settings')},
+    {type:'separator'},
+    {label:'Sair',click:()=>{app.isQuitting=true;app.quit();}}
   ]));
-  tray.on('mouse-enter', showMini);
-  tray.on('mouse-move', showMini);
-  tray.on('click', openDashboard);
-  dock = createWin('dock.html', { ...dockBounds(), transparent: true, backgroundColor: '#00000000', frame: false,
-    alwaysOnTop: true, skipTaskbar: true, hasShadow: false, resizable: false, maximizable: false,
-    show: false, focusable: false });
-  dock.setAlwaysOnTop(true, 'floating');
-  dock.once('ready-to-show', () => dock.showInactive());
-  mini = createWin('mini.html', { ...MINI_SIZE, frame: false, alwaysOnTop: true, skipTaskbar: true,
-    show: false, resizable: false, maximizable: false, hasShadow: true, focusable: true });
-  mini.on('blur', () => hideMini());
-  screen.on('display-metrics-changed', () => { dock?.setBounds(dockBounds()); if (mini?.isVisible()) mini.setBounds(miniBounds()); });
-}
-async function snapshot(fresh = false) {
-  if (fresh || Date.now() - lastHealthTime > 6000) {
-    lastHealth = await fetchHealth(); lastHealthTime = Date.now();
-  }
-  const folder = launchDir();
-  const installed = fs.existsSync(path.join(folder, 'desktop', 'run-worker.ps1'));
-  const paired = installed && (fs.existsSync(path.join(folder, '.mediaforge', 'worker-token.dpapi')) ||
-    (() => { try { return /^MEDIAFORGE_WORKER_TOKEN=/m.test(fs.readFileSync(path.join(folder, '.env.local'),'utf8')); } catch { return false; } })());
-  return { ...lastHealth, folder, installed, paired, logs: installed ? tailLog(folder) : [],
-    hostname: require('node:os').hostname(), platform: process.platform,
-    startAtLogin: app.getLoginItemSettings().openAtLogin, version: app.getVersion(), busy };
-}
-function lockOperation(fn) { return async () => {
-  if (busy) return { ok: false, error: 'Há outra operação de manutenção em andamento.' };
-  busy = true;
-  try { return { ok: true, output: await fn() }; }
-  catch (e) { return { ok: false, error: String(e.message).slice(0, 1200) }; }
-  finally { busy = false; }
-}; }
-function registerIPC() {
-  ipcMain.handle('unific:snapshot', () => snapshot(true));
-  ipcMain.handle('unific:notes', () => memory.read());
-  ipcMain.handle('unific:save-note', (e, text) => memory.save(text));
-  ipcMain.handle('unific:ask', async (e, q) => assistantReply(q, await snapshot(), memory.read()));
-  ipcMain.handle('unific:open-dashboard', openDashboard);
-  ipcMain.handle('unific:show-mini', showMini);
-  ipcMain.handle('unific:hide-mini', () => hideMini());
-  ipcMain.handle('unific:dismiss', () => { dashboard?.hide(); hideMini(true); });
-  ipcMain.handle('unific:open-worker-folder', async () => {
-    const dir = launchDir(); return fs.existsSync(dir) ? shell.openPath(dir) : 'Diretório ainda não existe.';
+  tray.on('click',()=>openDashboard('overview'));
+  hoverPanel=createWindow('hover.html',{
+    ...hoverBounds(),transparent:true,backgroundColor:'#00000000',frame:false,show:false,
+    resizable:false,movable:false,maximizable:false,alwaysOnTop:true,skipTaskbar:true,hasShadow:false,focusable:true
   });
-  ipcMain.handle('unific:login-settings', (e, enabled) => {
-    app.setLoginItemSettings({ openAtLogin: Boolean(enabled), openAsHidden: true });
-    return app.getLoginItemSettings().openAtLogin;
+  hoverPanel.setAlwaysOnTop(true,'floating');
+  hoverPanel.on('blur',()=>hideHover());
+  screen.on('display-metrics-changed',()=>{
+    if(hoverPanel?.isVisible())hoverPanel.setBounds(hoverBounds());
+    if(dashboard?.isVisible())dashboard.setBounds(dashboardBounds());
   });
-  ipcMain.handle('unific:restart-worker', lockOperation(async () => {
-    const install = launchDir();
-    if (!fs.existsSync(path.join(install, 'desktop', 'start-worker-background.ps1')))
-      throw new Error('Worker não instalado. Use Instalar primeiro.');
-    return runPowershell(path.join(install, 'desktop', 'start-worker-background.ps1'), ['-InstallDir', install], 90_000);
+  startDesktopDetector();hoverInterval=setInterval(pollHover,160);
+}
+async function snapshot(fresh=false) {
+  if(fresh||Date.now()-lastHealthTime>6500){lastHealth=await fetchHealth();lastHealthTime=Date.now();}
+  const folder=workerPath(),installed=fs.existsSync(path.join(folder,'desktop','run-worker.ps1'));
+  let paired=installed&&fs.existsSync(path.join(folder,'.mediaforge','worker-token.dpapi'));
+  if(installed&&!paired){try{paired=/^MEDIAFORGE_WORKER_TOKEN=/m.test(fs.readFileSync(path.join(folder,'.env.local'),'utf8'));}catch{}}
+  const graph=memory.graph();
+  return {...lastHealth,folder,installed,paired,logs:installed?tailLog(folder):[],
+    hostname:os.hostname(),platform:process.platform,startAtLogin:settings.startAtLogin,
+    desktopOnly:true,memoryCount:graph.total,memoryTopics:graph.nodes.filter(x=>x.count>0).length,
+    memoryAutoLearn:graph.settings.autoLearn,version:app.getVersion(),busy};
+}
+function lockOperation(fn){return async()=>{
+  if(busy)return{ok:false,error:'Há outra operação em andamento.'};
+  busy=true;
+  try{return{ok:true,output:await fn()};}
+  catch(err){return{ok:false,error:String(err.message||err).slice(0,1800)};}
+  finally{busy=false;}
+};}
+function registerIPC(){
+  ipcMain.handle('unific:snapshot',()=>snapshot(true));
+  ipcMain.handle('unific:graph',()=>memory.graph());
+  ipcMain.handle('unific:notes',()=>memory.read());
+  ipcMain.handle('unific:save-note',(event,value)=>memory.save(value));
+  ipcMain.handle('unific:memory-settings',(event,options)=>memory.configure(options));
+  ipcMain.handle('unific:memory-remove',(event,id)=>memory.remove(String(id)));
+  ipcMain.handle('unific:memory-clear',()=>memory.clear());
+  ipcMain.handle('unific:memory-export',async()=>{
+    const {canceled,filePath}=await dialog.showSaveDialog(dashboard||undefined,{title:'Exportar rede de conhecimento',defaultPath:'unific-brain-export.json',filters:[{name:'JSON',extensions:['json']}]});
+    if(canceled||!filePath)return{ok:false,canceled:true};
+    fs.writeFileSync(filePath,memory.export(),{encoding:'utf8',mode:0o600});return{ok:true,filePath};
+  });
+  ipcMain.handle('unific:ask',async(e,prompt)=>{
+    if(typeof prompt!=='string'||prompt.length>500)throw new Error('Pergunta inválida.');
+    memory.autoLearn(prompt);
+    return assistantReply(prompt,await snapshot(),memory.read());
+  });
+  ipcMain.handle('unific:open-dashboard',(event,view)=>openDashboard(view));
+  ipcMain.handle('unific:hide-hover',()=>hideHover());
+  ipcMain.handle('unific:dismiss',()=>{dashboard?.hide();hideHover(true);});
+  ipcMain.handle('unific:open-worker-folder',()=>{
+    const dir=workerPath();return fs.existsSync(dir)?shell.openPath(dir):'Pasta do worker não encontrada.';
+  });
+  ipcMain.handle('unific:login-settings',(event,enabled)=>{
+    if(typeof enabled!=='boolean')throw new Error('Configuração inválida.');
+    settings.startAtLogin=enabled;savePrefs();
+    if(isWindows)app.setLoginItemSettings({openAtLogin:enabled,openAsHidden:true,args:['--hidden']});
+    return settings.startAtLogin;
+  });
+  ipcMain.handle('unific:restart-worker',lockOperation(async()=>{
+    const install=workerPath();
+    if(!fs.existsSync(path.join(install,'desktop','run-worker.ps1')))throw new Error('Worker não instalado. Prepare dependências antes.');
+    return runPowerShell(scriptPath('restart-worker-safe.ps1'),['-InstallDir',install],90000);
   }));
-  ipcMain.handle('unific:install-worker', lockOperation(async () => runPowershell(scriptPath(), [], 15 * 60_000)));
+  ipcMain.handle('unific:install-worker',lockOperation(async()=>runPowerShell(scriptPath('bootstrap-worker.ps1'),[],15*60000)));
 }
-async function bootstrapOnFirstLaunch() {
-  // Fresh installs provision dependencies automatically. Never change or overwrite
-  // a populated legacy V2 directory, and never invent a worker credential.
-  const folder = launchDir();
-  if (fs.existsSync(path.join(folder, 'desktop', 'run-worker.ps1')) || fs.existsSync(folder)) return;
-  const stamp = path.join(app.getPath('userData'), 'auto-install-attempt.json');
-  if (fs.existsSync(stamp)) return; // Retry manually through the dashboard.
-  fs.writeFileSync(stamp, JSON.stringify({ at: new Date().toISOString(), state: 'started' }));
-  busy = true;
-  try {
-    const output = await runPowershell(scriptPath(), [], 15 * 60_000);
-    fs.writeFileSync(stamp, JSON.stringify({ at: new Date().toISOString(), state: 'finished', info: output.slice(-700) }));
-  } catch (error) {
-    fs.writeFileSync(stamp, JSON.stringify({ at: new Date().toISOString(), state: 'failed', error: String(error.message).slice(0, 700) }));
-  } finally { busy = false; }
+async function bootstrapOnFirstLaunch(){
+  const folder=workerPath();
+  if(fs.existsSync(folder))return; // Never touch an existing V1/V2 folder automatically.
+  const stamp=path.join(app.getPath('userData'),'auto-install-attempt.json');
+  if(fs.existsSync(stamp))return;
+  fs.writeFileSync(stamp,JSON.stringify({at:new Date().toISOString(),state:'started'}));
+  busy=true;
+  try{const output=await runPowerShell(scriptPath('bootstrap-worker.ps1'),[],15*60000);
+    fs.writeFileSync(stamp,JSON.stringify({at:new Date().toISOString(),state:'finished',info:output.slice(-700)}));}
+  catch(error){fs.writeFileSync(stamp,JSON.stringify({at:new Date().toISOString(),state:'failed',error:String(error.message).slice(0,700)}));}
+  finally{busy=false;}
 }
-const alreadyRunning = !app.requestSingleInstanceLock();
-if (alreadyRunning) app.quit();
+const alreadyRunning=!app.requestSingleInstanceLock();
+if(alreadyRunning)app.quit();
 else {
-  app.on('second-instance', openDashboard);
-  app.whenReady().then(() => {
-    if (isWindows) app.setAppUserModelId(APP_ID);
-    memory = new MemoryStore(path.join(app.getPath('userData'), 'assistant-memory.json'));
-    app.setLoginItemSettings({ openAtLogin: true, openAsHidden: true });
-    registerIPC(); createTrayAndDock();
-    if (!process.argv.includes('--hidden')) openDashboard();
-    if (isWindows) setTimeout(() => bootstrapOnFirstLaunch(), 3000);
+  app.on('second-instance',()=>openDashboard('overview'));
+  app.whenReady().then(()=>{
+    if(isWindows)app.setAppUserModelId(APP_ID);
+    loadPrefs();
+    if(isWindows)app.setLoginItemSettings({openAtLogin:settings.startAtLogin,openAsHidden:true,args:['--hidden']});
+    memory=new MemoryStore(path.join(app.getPath('userData'),'neural-memory.json'),path.join(app.getPath('userData'),'assistant-memory.json'));
+    registerIPC();createTrayAndHover();
+    globalShortcut.register('CommandOrControl+Alt+U',()=>openDashboard('overview'));
+    if(!process.argv.includes('--hidden'))openDashboard('overview');
+    if(isWindows)setTimeout(bootstrapOnFirstLaunch,3500);
   });
-  app.on('window-all-closed', () => {}); // Tray and dock remain alive.
-  app.on('before-quit', () => { app.isQuitting = true; });
+  app.on('window-all-closed',()=>{});
+  app.on('before-quit',()=>{
+    app.isQuitting=true;
+    if(hoverInterval)clearInterval(hoverInterval);
+    if(detector){detector.kill();detector=null;}
+    globalShortcut.unregisterAll();
+  });
 }

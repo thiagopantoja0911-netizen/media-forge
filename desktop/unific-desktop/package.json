@@ -1,9 +1,9 @@
 {
   "name": "unific-desktop",
   "productName": "Unific Desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
-  "description": "Centro local do MediaForge e Browser MCP com assistente flutuante",
+  "description": "Unific Desktop: overlay horizontal no desktop, grafo de conhecimento e operação segura do MediaForge",
   "main": "src/main.cjs",
   "author": "Unific Media",
   "license": "UNLICENSED",
@@ -20,20 +20,42 @@
     "appId": "site.salevo.unificdesktop",
     "productName": "Unific Desktop",
     "asar": true,
-    "directories": { "output": "dist" },
-    "files": ["src/**/*", "ui/**/*", "assets/**/*", "package.json"],
-    "extraResources": [{ "from": "scripts", "to": "scripts", "filter": ["**/*"] }],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "ui/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "scripts",
+        "to": "scripts",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "assets/icon.ico",
       "artifactName": "Unific-Desktop-Setup-${version}.${ext}"
     },
     "nsis": {
-      "oneClick": false,
+      "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": false,
       "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false,
       "runAfterFinish": true
     },
     "publish": null
