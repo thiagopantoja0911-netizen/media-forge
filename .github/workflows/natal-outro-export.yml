@@ -1,0 +1,22 @@
+name: Exportar encerramento Natal MediaForge
+on:
+  push:
+    branches: [feat/natal-ad-outro-export-20261117]
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download signed MediaForge rendered end card
+        env:
+          VIDEO_URL: 'https://unificmedia.salevo.site/v1/video-download/5b3dd951a9694989ab962e24ee9476d3?expires=1794941722354&signature=d6019cb69e2b8a8f4846948f7ce96cf57332ad94473e5028b343f4b60dfdddd0'
+        run: |
+          set -euo pipefail
+          curl -fLSs --retry 3 --max-time 120 "$VIDEO_URL" -o natal_mediaforge_outro.mp4
+          file natal_mediaforge_outro.mp4
+          test $(stat -c%s natal_mediaforge_outro.mp4) -gt 100000
+      - name: Publish MediaForge MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: natal-mediaforge-outro
+          path: natal_mediaforge_outro.mp4
+          retention-days: 2
