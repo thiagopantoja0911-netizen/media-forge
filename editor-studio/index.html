@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MediaForge · Editor 3D</title><link rel="stylesheet" href="/editor/style.css"></head>
+<body>
+<div class="app">
+<header class="topbar">
+ <div class="brand"><span class="brandmark"><i></i><i></i><i></i></span><div><b>MEDIAFORGE</b><small>VISUAL EDITOR <span class="version">3D / BETA</span></small></div></div>
+ <div class="project-title"><span class="statusdot"></span><span id="projectName">Nenhum projeto aberto</span><span id="saveStatus" class="saved">—</span></div>
+ <div class="top-actions"><a href="/dashboard" class="quiet-link">Painel</a><button id="newProject" class="ghost">+ Nova ideia</button><button id="saveButton" class="ghost">Salvar</button><button id="renderButton" class="primary">Renderizar MP4</button></div>
+</header>
+<main class="workspace">
+ <aside class="leftpanel">
+  <div class="panel-heading"><span>BIBLIOTECA CRIATIVA</span><small>01 / MOTION</small></div>
+  <button class="preset-card chosen" id="preset3d"><div class="preset-visual"><span class="orbit-icon">◇</span><span class="orbit-ring"></span></div><div><b>Cinematic 3D</b><small>Three.js · luz · câmera · profundidade</small></div><span class="selected-flag">ATIVO</span></button>
+  <div class="thin-divider"></div>
+  <div class="panel-heading"><span>PROJETO</span><small>AUTORIA</small></div>
+  <div class="meta-line"><span>Motor</span><b>Three.js + HyperFrames</b></div>
+  <div class="meta-line"><span>Formato</span><b id="infoRatio">9:16 · Reels</b></div>
+  <div class="meta-line"><span>Quadros</span><b id="infoFps">30 FPS</b></div>
+  <div class="meta-line"><span>Duração</span><b id="infoDuration">00:30</b></div>
+  <div class="meta-line"><span>Cenas</span><b id="infoScenes">—</b></div>
+  <div class="thin-divider"></div>
+  <div class="panel-heading"><span>TRILHAS SONORAS</span></div>
+  <p class="aside-help">Adicione voz, música e efeitos. Todos entram na timeline e seguem junto ao projeto renderizado.</p>
+  <select id="audioRole"><option value="voice">Locução</option><option value="music">Música</option><option value="sfx">Efeito sonoro</option></select>
+  <label class="upload-action">+ Adicionar áudio<input id="audioUpload" type="file" accept=".mp3,.m4a,.wav,.ogg,audio/*" hidden></label>
+  <div id="audioList" class="audio-list"><span class="muted">Nenhum áudio anexado.</span></div>
+ </aside>
+ <section class="mainpanel">
+  <div class="preview-head"><div><h1>Prévia de cena</h1><p id="sceneDescription">Abra uma ideia para começar.</p></div><div class="preview-tags"><span class="pill">WEBGL AO VIVO</span><span class="pill"><i class="tiny-dot"></i><span id="previewState">Aguardando</span></span></div></div>
+  <div class="player-shell">
+   <div class="player-backdrop"><i class="halo h1"></i><i class="halo h2"></i></div>
+   <div id="playerViewport" class="player-viewport vertical"><iframe id="scenePreview" title="Prévia 3D do MediaForge" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe></div>
+   <div id="previewNotice" class="preview-notice">Crie ou abra um projeto para ver a prévia 3D.</div>
+  </div>
+  <div class="transport">
+   <button id="playButton" aria-label="Reproduzir cena" class="round-play">▶</button>
+   <button id="stopButton" aria-label="Voltar ao início da cena" class="subtle">↶</button>
+   <div class="seek"><input id="sceneSeek" type="range" min="0" max="1000" value="0"><div class="times"><span id="timeCurrent">00:00.0</span><span id="timeTotal">00:00.0</span></div></div>
+   <button id="renderSceneButton" class="outline-action">Renderizar só esta cena</button>
+  </div>
+  <section class="timeline-panel">
+   <div class="timeline-header"><div><b>TIMELINE</b><span id="timelineMeta">Selecione uma cena para editar</span></div><div class="timeline-tools"><span>ARRASTE PARA REORDENAR</span><span>PUXE A BORDA PARA AJUSTAR</span></div></div>
+   <div class="ruler"><span>00:00</span><div id="rulerTicks" class="ruler-ticks"></div><span id="lastRuler">00:30</span></div>
+   <div class="tracks"><div class="track-name">◩ CENAS</div><div id="sceneTrack" class="track-content scene-track"></div>
+    <div class="track-name">T TEXTOS</div><div id="textTrack" class="track-content text-track"></div>
+    <div class="track-name">◇ MOVIMENTO</div><div id="motionTrack" class="track-content motion-track"></div>
+    <div class="track-name">♫ ÁUDIO</div><div id="audioTrack" class="track-content audio-track"></div>
+   </div>
+  </section>
+ </section>
+ <aside class="inspector">
+  <div class="inspector-heading"><span>PROPRIEDADES DA CENA</span><span class="inspector-index" id="inspectorIndex">—</span></div>
+  <div id="inspectorEmpty" class="empty-inspector">Selecione um bloco na timeline para editar título, composição, câmera e movimento.</div>
+  <div id="inspectorFields" hidden>
+   <label>Rótulo<input id="editKicker" maxlength="45"></label>
+   <label>Título principal<textarea id="editHeadline" rows="3" maxlength="96"></textarea></label>
+   <label>Texto de apoio<textarea id="editDetail" rows="3" maxlength="150"></textarea></label>
+   <div class="fieldrow"><label>Duração (s)<input id="editDuration" type="number" step="0.1" min="1" max="60"></label><label>Cor da luz<input id="editAccent" type="color"></label></div>
+   <div class="fieldrow"><label>Objeto 3D<select id="editShape">
+    <option value="torus-knot">Nó toroidal</option><option value="icosahedron">Icosaedro</option><option value="sphere">Esfera</option><option value="torus">Anel 3D</option><option value="cube">Cubo</option><option value="cone">Pirâmide</option><option value="rings">Anéis orgânicos</option>
+   </select></label><label>Câmera<select id="editCamera">
+    <option value="orbit">Órbita</option><option value="dolly">Dolly</option><option value="reveal">Revelação</option><option value="truck-left">Traveling esquerda</option><option value="truck-right">Traveling direita</option><option value="arc">Arco amplo</option>
+   </select></label></div>
+   <label>Transição<select id="editTransition"><option value="cut">Corte</option><option value="match-cut">Match cut</option><option value="push">Push</option><option value="iris">Iris</option><option value="whip">Whip</option><option value="dip">Dip</option></select></label>
+   <label class="range-label">Energia do movimento <output id="energyNumber">72%</output><input id="editEnergy" type="range" min="0" max="100"></label>
+   <label class="range-label">Profundidade 3D <output id="depthNumber">85%</output><input id="editDepth" type="range" min="0" max="100"></label>
+   <label class="range-label">Escala da tipografia <output id="textScaleNumber">100%</output><input id="editTextScale" type="range" min="50" max="150"></label>
+   <p class="property-tip">Todos os parâmetros afetam a prévia WebGL e o projeto enviado ao HyperFrames. O render completo só começa após confirmação.</p>
+  </div>
+  <div class="inspect-footer"><span class="statusdot"></span><span id="workerState">Verificando renderizador…</span></div>
+ </aside>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal-backdrop" id="newModal" hidden><form id="ideaForm" class="modal">
+ <div class="modal-top"><span>01 / NOVA PRODUÇÃO</span><button type="button" id="cancelModal" aria-label="Fechar">×</button></div>
+ <h2>Transforme sua ideia em <em>motion 3D.</em></h2>
+ <p>O MediaForge criará o storyboard e abrirá cada cena na timeline para você editar.</p>
+ <label>Ideia do vídeo<textarea id="newIdea" required minlength="8" maxlength="400" rows="4" placeholder="Ex.: Explique como o marketing digital transforma a atenção de um cliente em uma venda."></textarea></label>
+ <div class="fieldrow"><label>Marca / projeto<input id="newBrand" maxlength="80" value="MediaForge"></label><label>Duração<select id="newDuration"><option value="15">15 segundos</option><option value="20">20 segundos</option><option value="30" selected>30 segundos</option><option value="40">40 segundos</option><option value="60">60 segundos</option></select></label></div>
+ <div class="fieldrow"><label>Formato<select id="newRatio"><option value="9:16">9:16 — Reels</option><option value="16:9">16:9 — Horizontal</option><option value="1:1">1:1 — Quadrado</option></select></label><label>FPS<select id="newFps"><option value="30">30 FPS</option><option value="60">60 FPS</option></select></label></div>
+ <div class="modal-actions"><button type="button" class="ghost" id="cancelModal2">Cancelar</button><button type="submit" class="primary" id="submitIdea">Criar storyboard 3D</button></div>
+</form></div>
+</div>
+<script src="/editor/app.js" defer></script></body></html>
