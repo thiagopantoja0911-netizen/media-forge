@@ -1,4 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { FRAME_LAB_MCP_TOOLS, FRAME_LAB_MCP_NAMES, FRAME_LAB_MCP_READ_TOOLS } from "../frame-lab/mcp-schemas.mjs";
 import { buildCinematic3dProject } from "./cinematic-3d.mjs";
 import { buildMotionComposition } from "./motion/composer.mjs";
@@ -6,7 +8,8 @@ import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./prem
 import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
 import { planFromShortBrief } from "./creative-director.mjs";
 import { listEditingStyles } from "./editing-style-presets.mjs";
-import { makeEditorProject, saveEditorProject, loadEditorProject, validateEditorProject } from "./editor-studio-core.mjs";
+import { makeEditorProject, saveEditorProject, loadEditorProject, validateEditorProject, editorStoreDir } from "./editor-studio-core.mjs";
+import { buildEditorRenderFiles } from "./editor-studio-engine.mjs";
 import { editMotionPlan } from "./motion/editor.mjs";
 import { buildOnePromptBlueprint } from "./one-prompt-production.mjs";
 import {signedVideoDownload} from "./video-artifact-delivery.mjs";
@@ -37,6 +40,15 @@ export const VIDEOS_SECRETS_TOOLS = [
         duration_seconds:{type:"number",minimum:1,maximum:30}
       }}}
     },required:["idea"]}
+  },
+  {
+    name:"render_editor_project",
+    description:"Envia o projeto atual da timeline 3D ao Worker HyperFrames, com composição Three.js e faixas de áudio. Pode renderizar apenas uma cena (prévia MP4). Requer confirmação explícita, não altera o projeto.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
+      scene_index:{type:"integer",minimum:0,maximum:11},
+      confirm_render:{type:"boolean",const:true}
+    },required:["project_id","confirm_render"]}
   },
   {
     name:"get_editor_project",
@@ -408,6 +420,34 @@ export async function handleVideosSecretsMcp({
           shape:s.shape,camera:s.camera})),
         message:"Projeto editável criado; prévia de cada cena e timeline visual prontas para revisão antes do render."
       },false,version),version);
+    }
+    if(name==="render_editor_project"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      if(args.confirm_render!==true)return writeError(response,id,-32602,"RENDER_CONFIRMATION_REQUIRED",428,version);
+      const project=await loadEditorProject(args.project_id);
+      const sceneIndex=args.scene_index===undefined?undefined:Number(args.scene_index);
+      if(sceneIndex!==undefined&&(!Number.isInteger(sceneIndex)||sceneIndex<0||sceneIndex>=project.scenes.length))
+        return writeError(response,id,-32602,"SCENE_NOT_FOUND",422,version);
+      const files=await buildEditorRenderFiles(project,{sceneIndex});
+      if(sceneIndex===undefined)for(const track of project.audio){
+        const data=await readFile(join(editorStoreDir(),project.id+"-audio-"+track.assetId+"."+track.extension));
+        files.push({path:"assets/audio/"+track.assetId+"."+track.extension,contentBase64:data.toString("base64")});
+      }
+      const duration=sceneIndex===undefined?project.totalFrames/project.fps:
+        (project.scenes[sceneIndex].endFrame-project.scenes[sceneIndex].startFrame)/project.fps;
+      const job=await createJob({prompt:project.idea,
+        project:{title:project.title+(sceneIndex===undefined?"":" / Cena "+(sceneIndex+1)),
+          durationSeconds:duration,aspectRatio:project.aspectRatio,outputs:["video"],renderer:"hyperframes",
+          fps:project.fps,preflight:true,quality:sceneIndex===undefined?"high":"draft",
+          resolution:project.aspectRatio==="9:16"?"portrait":project.aspectRatio==="16:9"?"landscape":"square"},
+        projectFiles:files,
+        metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",editorProjectId:project.id,
+          editorSceneIndex:sceneIndex??null,productionMode:"cinematic-3d",
+          expectsAudio:sceneIndex===undefined&&project.audio.length>0,artisticQA:"pending-user-review"}
+      });
+      return writeResult(response,id,textResult({ok:true,jobId:job.id,status:job.status,
+        editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
+        message:"Render HyperFrames iniciado a partir do projeto editável; o projeto original foi preservado."},false,version),version);
     }
     if(name==="get_editor_project"){
       if(!auth.scopes.includes("videos:read"))return writeError(response,id,-32003,"Insufficient scope",403,version);
