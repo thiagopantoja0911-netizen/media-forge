@@ -1,0 +1,20 @@
+name: Export 30s marketing PB editable composition
+on:
+  push:
+    branches: [feat/marketing-pb-video-source-20261117]
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p /tmp/marketing-project/assets
+          cp examples/marketing-pb/index.html /tmp/marketing-project/index.html
+          mkdir -p /tmp/marketing-project/compositions
+          cp examples/marketing-pb/compositions/marketing.html /tmp/marketing-project/compositions/marketing.html
+          cp assets/gsap.min.js /tmp/marketing-project/assets/gsap.min.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: marketing-pb-editable-composition
+          path: /tmp/marketing-project/
+          retention-days: 2
