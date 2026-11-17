@@ -1,7 +1,7 @@
 {
   "name": "unific-desktop",
   "productName": "Unific Desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Unific Desktop: overlay horizontal no desktop, grafo de conhecimento e operação segura do MediaForge",
   "main": "src/main.cjs",

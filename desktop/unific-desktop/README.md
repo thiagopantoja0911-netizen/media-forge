@@ -1,4 +1,4 @@
-# Unific Desktop V1.1 — atualização por cima da V1
+# Unific Desktop V1.2 — conexão segura com o Worker
 
 ## Objetivo
 
@@ -46,3 +46,14 @@ O GitHub Actions compila em `windows-latest`, executa os testes e gera o instala
 ## Estado de testes
 
 Os testes automáticos cobrem os componentes de memória e migração, preservação das tarefas existentes e identidade de instalação. O comportamento de hover, da tarefa agendada protegida e da atualização real **precisa ser validado em um Windows com V1 instalada**. Um build de GitHub Actions bem-sucedido não substitui esses testes físicos.
+
+
+## V1.2 — Conectar MediaForge sem PowerShell manual
+
+- Configurações → Conectar MediaForge → abrir painel e colar token Worker.
+- Validação prévia de HTTPS em POST /v1/worker/auth-check: falhas HTTP 401 e 403 não modificam a credencial Windows.
+- Token transferido para um processo PowerShell protegido **pela entrada padrão**, nunca como parâmetro de execução ou log; gravado em .mediaforge/worker-token.dpapi com DPAPI do usuário Windows.
+- .env.local conserva outras configurações e remove tokens em texto puro; URL correta do servidor.
+- O usuário confirma separadamente o reinício na aba MediaForge, após a credencial ser salva.
+- Atualização sobre V1.1 sem desinstalar, appId e dados preservados.
+- Sem token cadastrado por este chat e sem alteração do servidor Hostinger.
