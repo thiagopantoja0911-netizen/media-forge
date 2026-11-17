@@ -58,7 +58,7 @@ test("HTML preview contains only the selected scene and uses same 3D renderer as
  assert.match(script,/window\.__timelines\.main/);
  assert.match(script,/MeshPhysicalMaterial/);
  assert.match(script,/Camera|camera/);
- assert.ok(script.includes("D="+((p.scenes[2].endFrame-p.scenes[2].startFrame)/p.fps)+";"));
+ assert.ok(script.includes("D="+((p.scenes[2].endFrame-p.scenes[2].startFrame)/p.fps)+",preview="));
  const tmpFile=join(temp,"scene.mjs");
  await import("node:fs/promises").then(fs=>fs.writeFile(tmpFile,script));
  const parsed=spawnSync(process.execPath,["--check",tmpFile],{encoding:"utf8"});
