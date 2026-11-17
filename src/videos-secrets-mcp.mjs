@@ -13,6 +13,7 @@ import { buildEditorRenderFiles } from "./editor-studio-engine.mjs";
 import { editMotionPlan } from "./motion/editor.mjs";
 import { buildOnePromptBlueprint } from "./one-prompt-production.mjs";
 import {signedVideoDownload} from "./video-artifact-delivery.mjs";
+import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
@@ -43,7 +44,7 @@ export const VIDEOS_SECRETS_TOOLS = [
   },
   {
     name:"render_editor_project",
-    description:"Envia o projeto atual da timeline 3D ao Worker HyperFrames, com composição Three.js e faixas de áudio. Pode renderizar apenas uma cena (prévia MP4). Requer confirmação explícita, não altera o projeto.",
+    description:"Envia o projeto editável ao HyperFrames somente após revisão visual APROVADA de todas as prévias na revisão atual (review_editor_preview) e confirmação explícita. Se a revisão for reprovada, edite e revise novamente. Pode renderizar uma cena ou o filme inteiro.",
     inputSchema:{type:"object",additionalProperties:false,properties:{
       project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
       scene_index:{type:"integer",minimum:0,maximum:11},
@@ -56,6 +57,24 @@ export const VIDEOS_SECRETS_TOOLS = [
     inputSchema:{type:"object",additionalProperties:false,properties:{
       project_id:{type:"string",pattern:"^[a-f0-9]{32}$"}
     },required:["project_id"]}
+  },
+
+  {
+    name:"review_editor_preview",
+    description:"Registra a decisão do GPT após VER visualmente no editor as prévias reais de cada cena, em pelo menos dois instantes distintos. Se aprovada, libera a renderização da revisão atual. Se reprovada, volte ao editor, corrija e revise novamente. Esta ferramenta não captura nem inventa imagens; inspecione as prévias antes de declarar aprovação.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
+      expected_revision:{type:"integer",minimum:0},
+      decision:{type:"string",enum:["pass","fail"]},
+      summary:{type:"string",maxLength:700},
+      checks:{type:"array",minItems:1,maxItems:12,items:{type:"object",additionalProperties:false,properties:{
+        scene_id:{type:"string"},
+        samples_seconds:{type:"array",minItems:2,maxItems:5,items:{type:"number",minimum:0}},
+        preview_ready:{type:"boolean"},text_legible:{type:"boolean"},
+        motion_ok:{type:"boolean"},visual_ok:{type:"boolean"},
+        notes:{type:"string",minLength:12,maxLength:600}
+      },required:["scene_id","samples_seconds","preview_ready","text_legible","motion_ok","visual_ok","notes"]}}
+    },required:["project_id","expected_revision","decision","checks"]}
   },
   {
     name:"edit_editor_project",
@@ -428,6 +447,7 @@ export async function handleVideosSecretsMcp({
       const sceneIndex=args.scene_index===undefined?undefined:Number(args.scene_index);
       if(sceneIndex!==undefined&&(!Number.isInteger(sceneIndex)||sceneIndex<0||sceneIndex>=project.scenes.length))
         return writeError(response,id,-32602,"SCENE_NOT_FOUND",422,version);
+      const previewReview=await requireApprovedEditorPreview(project);
       const files=await buildEditorRenderFiles(project,{sceneIndex});
       if(sceneIndex===undefined)for(const track of project.audio){
         const data=await readFile(join(editorStoreDir(),project.id+"-audio-"+track.assetId+"."+track.extension));
@@ -443,7 +463,8 @@ export async function handleVideosSecretsMcp({
         projectFiles:files,
         metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",editorProjectId:project.id,
           editorSceneIndex:sceneIndex??null,productionMode:"cinematic-3d",
-          expectsAudio:sceneIndex===undefined&&project.audio.length>0,artisticQA:"pending-user-review"}
+          expectsAudio:sceneIndex===undefined&&project.audio.length>0,artisticQA:"pending-user-review",
+          previewReviewRevision:previewReview.revision,previewReviewStatus:previewReview.status}
       });
       return writeResult(response,id,textResult({ok:true,jobId:job.id,status:job.status,
         editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
@@ -452,7 +473,21 @@ export async function handleVideosSecretsMcp({
     if(name==="get_editor_project"){
       if(!auth.scopes.includes("videos:read"))return writeError(response,id,-32003,"Insufficient scope",403,version);
       const project=await loadEditorProject(args.project_id);
-      return writeResult(response,id,textResult({ok:true,project,editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id},false,version),version);
+      return writeResult(response,id,textResult({ok:true,project,previewReview:await readEditorPreviewReview(project),
+        editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id},false,version),version);
+    }
+
+    if(name==="review_editor_preview"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const project=await loadEditorProject(args.project_id);
+      const review=await saveEditorPreviewReview(project,args);
+      return writeResult(response,id,textResult({ok:true,...review,
+        editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
+        nextStep:review.approved?"render_editor_project":"edit_editor_project",
+        message:review.approved
+          ?"Prévia verificada e aprovada. Renderização da revisão atual liberada."
+          :"Prévia reprovada. Volte ao editor, corrija e verifique novamente."
+      },false,version),version);
     }
     if(name==="edit_editor_project"){
       if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
@@ -483,7 +518,9 @@ export async function handleVideosSecretsMcp({
       validateEditorProject(copy);
       const project=await saveEditorProject(copy,{expectedRevision:old.revision});
       return writeResult(response,id,textResult({ok:true,revision:project.revision,project,
-        editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id},false,version),version);
+        previewReview:await readEditorPreviewReview(project),
+        editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
+        nextStep:"Verificar prévia de todas as cenas antes de renderizar."},false,version);
     }
     if (name === "list_editing_styles") {
       if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
