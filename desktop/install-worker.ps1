@@ -23,17 +23,21 @@ if (-not (Test-Path (Join-Path $InstallDir ".git"))) {
   if (@(Get-ChildItem -LiteralPath $InstallDir -Force -ErrorAction Stop).Count -gt 0) {
     throw "Diretório existente sem Git; não sobrescrever código ou configurações locais. Escolha uma pasta vazia de nova instalação."
   }
-  & git clone --branch $Branch $RepoUrl $InstallDir
+  & git clone --single-branch --branch $Branch $RepoUrl $InstallDir
   if ($LASTEXITCODE -ne 0) { throw "Git clone falhou; nenhuma configuração existente foi sobrescrita." }
 } else {
   & git -C $InstallDir fetch origin $Branch
+  if ($LASTEXITCODE -ne 0) { throw "Git fetch falhou; nenhum arquivo sera atualizado." }
   & git -C $InstallDir checkout $Branch
+  if ($LASTEXITCODE -ne 0) { throw "Git checkout falhou; verifique a branch local e preserve as alteracoes existentes." }
   & git -C $InstallDir pull --ff-only origin $Branch
+  if ($LASTEXITCODE -ne 0) { throw "Git pull falhou; alteracoes locais preservadas. Instalacao interrompida antes do npm." }
 }
 
 Push-Location $InstallDir
 try {
   & npm install
+  if ($LASTEXITCODE -ne 0) { throw "npm install falhou; a configuracao nao sera anunciada como concluida." }
   @(
     "MEDIAFORGE_HOST=127.0.0.1",
     "MEDIAFORGE_PORT=8787",
