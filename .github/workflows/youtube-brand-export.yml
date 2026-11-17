@@ -1,0 +1,24 @@
+name: YouTube brand film export (temporary)
+on:
+  push:
+    branches: [feat/youtube-brand-export-20261117]
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Download completed MediaForge render
+        shell: bash
+        env:
+          VIDEO_URL: 'https://unificmedia.salevo.site/v1/video-download/8419ad355507440aba32a03e0e4de40a?expires=1794940301676&signature=dfbf1e61b3edda79215469ae97c08a02e4a6b2c943fdb54a59839fd4acca829f'
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 3 --max-time 120 "$VIDEO_URL" -o YouTube_Brand_MediaForge_Silent.mp4
+          test "$(wc -c < YouTube_Brand_MediaForge_Silent.mp4)" -gt 100000
+          file YouTube_Brand_MediaForge_Silent.mp4
+      - name: Export rendered MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-brand-mediaforge-render
+          path: YouTube_Brand_MediaForge_Silent.mp4
+          retention-days: 2
