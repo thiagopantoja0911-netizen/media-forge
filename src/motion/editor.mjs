@@ -36,6 +36,8 @@ function applyOne(plan,edit) {
   if(action==="set_text"){
     const scene=findScene(plan,edit.scene_id),field=edit.field;
     if(!textFields.has(field))fail("EDITOR_FIELD_INVALID","Campo de texto inválido.");
+    if(["metricLabel","controlLabel"].includes(field)&&scene.type!=="widget")
+      fail("EDITOR_FIELD_UNSUPPORTED","Apenas cenas widget possuem esse controle textual.");
     const limit=field==="headline"?72:100;
     if(!safeText(edit.text)||edit.text.length>limit||(field==="headline"&&!edit.text.trim()))
       fail("EDITOR_TEXT_INVALID","Texto inválido ou ultrapassou o limite de "+limit+" caracteres.");
@@ -46,8 +48,9 @@ function applyOne(plan,edit) {
   if(action==="set_camera"){
     const scene=findScene(plan,edit.scene_id);
     if(!cameras.has(edit.camera))fail("EDITOR_CAMERA_INVALID","Movimento de câmera não suportado.");
-    if(!["footage","photo","product","collage"].includes(scene.type))
-      fail("EDITOR_CAMERA_UNSUPPORTED","Esta cena não tem rig de câmera; para kinetic/widget edite a animação, não a câmera.");
+    if(!["footage","photo","product","collage"].includes(scene.type)||
+      !scene.events.some(event=>event.action==="camera"))
+      fail("EDITOR_CAMERA_UNSUPPORTED","Esta cena não tem animação de câmera. Adicione um evento de câmera à composição antes de ajustar seu movimento.");
     const before=scene.camera??null;
     scene.camera=edit.camera;
     return {action,scene_id:scene.id,before,after:scene.camera};

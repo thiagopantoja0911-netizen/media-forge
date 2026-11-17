@@ -20,6 +20,7 @@ test("updates text, palette, camera and transition without mutating original",()
   const source=makePlan();
   source.scenes[0].type="product";
   source.scenes[0].media="assets/product.png";
+  source.scenes[0].events[1].action="camera";
   const old=JSON.stringify(source);
   const edited=editMotionPlan({motion_plan:source,expected_revision:0,edits:[
     {action:"set_text",scene_id:"opening",field:"headline",text:"Mais alcance, mais estratégia."},
