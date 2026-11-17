@@ -1,6 +1,6 @@
 (()=>{"use strict";
 const $=id=>document.getElementById(id);
-const state={project:null,selected:0,ready:false,playing:false,dragFrom:null,saveTimer:null,saveQueue:Promise.resolve(),lastPreviewUrl:"",frame:0,previewApproved:false};
+const state={project:null,selected:0,ready:false,playing:false,dragFrom:null,saveTimer:null,saveQueue:Promise.resolve(),lastPreviewUrl:"",frame:0,previewApproved:false,dirty:false};
 const pad=n=>String(n).padStart(2,"0");
 const fmt=t=>pad(Math.floor(t/60))+":"+pad(Math.floor(t%60));
 const longFmt=t=>fmt(t)+"."+(Math.floor(t*10)%10);
@@ -211,6 +211,7 @@ function renderAudioList(){
 }
 function afterChange(reselect=false){
  if(!state.project)return;
+ state.dirty=true;
  showReviewStatus("stale");
  updateMetadata();buildTracks();if(reselect)fillInspector();
  clearTimeout(state.saveTimer);
@@ -220,6 +221,8 @@ function afterChange(reselect=false){
 function saveProject(refreshPreview=false){
  if(!state.project)return Promise.resolve();
  clearTimeout(state.saveTimer);
+ if(!state.dirty)return state.saveQueue;
+ state.dirty=false;
  state.saveQueue=state.saveQueue.then(async()=>{
    const snapshot=clone(state.project);
    out("saveStatus","Salvando…");
@@ -229,13 +232,13 @@ function saveProject(refreshPreview=false){
    out("saveStatus","Salvo");refreshAudioPlayers();
    await refreshReviewStatus();
    if(refreshPreview)openScene(state.selected);
- }).catch(error=>{out("saveStatus","Erro ao salvar");toast("Erro: "+error.message);});
+ }).catch(error=>{state.dirty=true;out("saveStatus","Erro ao salvar");toast("Erro: "+error.message);});
  return state.saveQueue;
 }
 async function loadProject(id){
  const r=await request(id?"/api/editor/projects/"+id:"/api/editor/latest");
  if(!r.project){$("newModal").hidden=false;return;}
- state.project=r.project;state.selected=0;
+ state.project=r.project;state.selected=0;state.dirty=false;
  history.replaceState(null,"","/editor?project="+r.project.id);
  $("previewNotice").hidden=false;
  updateMetadata();renderAudioList();refreshAudioPlayers();openScene(0);
