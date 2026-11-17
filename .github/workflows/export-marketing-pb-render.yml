@@ -1,0 +1,22 @@
+name: Export completed Marketing PB HyperFrames MP4
+on:
+  push:
+    branches: [feat/marketing-pb-video-source-20261117]
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Download signed MediaForge MP4
+        env:
+          VIDEO_URL: 'https://unificmedia.salevo.site/v1/video-download/ffa778a9cc3145b5b7129d5156040f5d?expires=1794952488549&signature=4f83e89836f5e97f90966c10eb88858fe046b617a4681eb0cc15ca35ef5513da'
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 4 --max-time 160 "$VIDEO_URL" -o Marketing_PB_MediaForge_Silent.mp4
+          file Marketing_PB_MediaForge_Silent.mp4
+          test "$(wc -c < Marketing_PB_MediaForge_Silent.mp4)" -gt 200000
+      - uses: actions/upload-artifact@v4
+        with:
+          name: marketing-pb-mediaforge-render-30s
+          path: Marketing_PB_MediaForge_Silent.mp4
+          retention-days: 3
