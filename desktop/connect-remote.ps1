@@ -1,11 +1,12 @@
 param(
   [string]$InstallDir = "$env:LOCALAPPDATA\MediaForge-Staging",
-  [string]$ServerUrl = "https://mediaforge.salevo.site"
+  [string]$ServerUrl = "https://unificmedia.salevo.site"
 )
 $ErrorActionPreference="Stop"
 $InstallDir=[IO.Path]::GetFullPath($InstallDir)
 if(-not(Test-Path -LiteralPath $InstallDir -PathType Container)){throw "MediaForge não instalado no diretório escolhido."}
-if($ServerUrl -notmatch '^https://mediaforge\.salevo\.site$'){throw "A URL do servidor deve ser o MediaForge oficial HTTPS."}
+$ServerUrl = $ServerUrl.TrimEnd("/")
+if($ServerUrl -cne "https://unificmedia.salevo.site"){throw "A URL do servidor deve ser o Unific Media oficial HTTPS."}
 $secure=Read-Host "Cole o NOVO token Worker MediaForge (entrada oculta, nunca envie no chat)" -AsSecureString
 $ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try{$token=[Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)}
