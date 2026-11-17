@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { makeEditorProject, loadEditorProject, saveEditorProject, latestEditorProject, updateEditorProject, editorStoreDir, validateEditorProject } from "./editor-studio-core.mjs";
 import { buildEditorIndex, buildEditorSceneModule, buildEditorRenderFiles } from "./editor-studio-engine.mjs";
 import { signedVideoDownload } from "./video-artifact-delivery.mjs";
+import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
 
 const idReg=/^[a-f0-9]{32}$/;
 const contentTypes={mp3:"audio/mpeg",m4a:"audio/mp4",wav:"audio/wav",ogg:"audio/ogg"};
@@ -130,11 +131,23 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       const updated=await receiveAudio(p,await parseBody(request));
       json(response,201,{ok:true,project:updated});return true;
     }
+
+    if(pieces.length===5&&pieces[4]==="review"&&request.method==="GET"){
+      json(response,200,{ok:true,...await readEditorPreviewReview(p)});return true;
+    }
+    if(pieces.length===5&&pieces[4]==="review"&&request.method==="POST"){
+      assertSameOrigin(request);
+      const review=await saveEditorPreviewReview(p,await parseBody(request));
+      json(response,200,{ok:true,...review,message:review.approved
+        ?"Prévia aprovada na revisão atual. Renderização liberada."
+        :"Prévia reprovada. Corrija a timeline e verifique novamente."});return true;
+    }
     if(pieces.length===5&&pieces[4]==="render"&&request.method==="POST"){
       assertSameOrigin(request);
       const raw=await parseBody(request);
       if(raw.confirm!==true){json(response,428,{ok:false,error:"RENDER_CONFIRMATION_REQUIRED"});return true;}
       const sceneIndex=raw.sceneIndex===undefined?undefined:validIndex(raw.sceneIndex,p);
+      const previewReview=await requireApprovedEditorPreview(p);
       const files=await buildEditorRenderFiles(p,{sceneIndex});
       if(sceneIndex===undefined)for(const a of p.audio){
         const bytes=await readFile(audioPath(p.id,a.assetId,a.extension));
@@ -151,7 +164,8 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
         projectFiles:files,
         metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",
           editorProjectId:p.id,editorSceneIndex:sceneIndex??null,expectsAudio:sceneIndex===undefined&&p.audio.length>0,
-          productionMode:"cinematic-3d",artisticQA:"pending-user-review"}
+          productionMode:"cinematic-3d",artisticQA:"pending-user-review",
+          previewReviewRevision:previewReview.revision,previewReviewStatus:previewReview.status}
       });
       json(response,202,{ok:true,jobId:job.id,status:job.status,message:"Render enviado ao HyperFrames; o projeto editável foi preservado."});
       return true;
