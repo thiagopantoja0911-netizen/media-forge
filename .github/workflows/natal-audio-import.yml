@@ -1,0 +1,20 @@
+name: Importar locucao Natal para video MediaForge
+on:
+  push:
+    branches: [feat/natal-audio-import-20261117]
+jobs:
+  voiceover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download audio generated for user's Christmas tree ad
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --max-time 120 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/e6e4ec94-8c22-4cec-95dd-c53dadcc2bbc.mp3' -o natal_voiceover.mp3
+          ffprobe -v error -show_entries format=duration,size -of default=nw=1 natal_voiceover.mp3
+          test $(stat -c%s natal_voiceover.mp3) -gt 10000
+      - name: Publish audio
+        uses: actions/upload-artifact@v4
+        with:
+          name: natal-voiceover-mp3
+          path: natal_voiceover.mp3
+          retention-days: 2
