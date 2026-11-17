@@ -13,6 +13,7 @@ import { authenticateBearer, handleOAuth } from "./oauth.mjs";
 import { handlePanel, isAdminSession } from "./panel.mjs";
 import { handleStudio } from "./studio.mjs";
 import { handleStudioApi } from "./studio-api.mjs";
+import { handleEditorStudioHttp, handleEditorJobStatus } from "./editor-studio-http.mjs";
 import { handleRemoteWorker } from "./remote-worker-server.mjs";
 import {handleSignedVideoDownload,signedVideoDownload} from "./video-artifact-delivery.mjs";
 
@@ -248,6 +249,10 @@ const server = createServer(async (request, response) => {
     const parts = url.pathname.split("/").filter(Boolean);
     if(await handleRemoteWorker({request,response,url,jobsDir,projectsRoot,workerStatusFile})) return;
     if(await handleSignedVideoDownload({request,response,url,getJob:async id=>{try{return await loadJob(id)}catch(e){if(e.code==="ENOENT"||e.code==="INVALID_JOB_ID")return null;throw e;}}}))return;
+
+    const editorLookup=async id=>{try{return await loadJob(id)}catch(e){if(e.code==="ENOENT"||e.code==="INVALID_JOB_ID")return null;throw e;}};
+    if(await handleEditorJobStatus({request,response,url,isAdminSession,getJob:editorLookup}))return;
+    if(await handleEditorStudioHttp({request,response,url,isAdminSession,parseBody,createJob,getJob:editorLookup}))return;
 
     if (url.pathname === "/frame-lab" || url.pathname.startsWith("/frame-lab/")) {
       try {

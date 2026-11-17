@@ -1,4 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { FRAME_LAB_MCP_TOOLS, FRAME_LAB_MCP_NAMES, FRAME_LAB_MCP_READ_TOOLS } from "../frame-lab/mcp-schemas.mjs";
 import { buildCinematic3dProject } from "./cinematic-3d.mjs";
 import { buildMotionComposition } from "./motion/composer.mjs";
@@ -6,6 +8,8 @@ import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./prem
 import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
 import { planFromShortBrief } from "./creative-director.mjs";
 import { listEditingStyles } from "./editing-style-presets.mjs";
+import { makeEditorProject, saveEditorProject, loadEditorProject, validateEditorProject, editorStoreDir } from "./editor-studio-core.mjs";
+import { buildEditorRenderFiles } from "./editor-studio-engine.mjs";
 import { editMotionPlan } from "./motion/editor.mjs";
 import { buildOnePromptBlueprint } from "./one-prompt-production.mjs";
 import {signedVideoDownload} from "./video-artifact-delivery.mjs";
@@ -17,6 +21,60 @@ const DEFAULT_PROTOCOL = "2025-06-18";
 const NO_CACHE = { ttlMs: 0, cacheScope: "private" };
 
 export const VIDEOS_SECRETS_TOOLS = [
+  {
+    name:"create_editor_project",
+    description:"Transforma uma ideia em um storyboard cinematográfico 3D realmente editável e abre a timeline visual no MediaForge. Padrão: Three.js real, câmera, luz e objetos 3D, não slides. Opcionalmente envie cenas autoradas especificamente para a ideia. Não dispara renderização.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      idea:{type:"string",minLength:8,maxLength:400},
+      brand:{type:"string",maxLength:80},title:{type:"string",maxLength:100},
+      duration_seconds:{type:"integer",minimum:10,maximum:60},fps:{type:"integer",enum:[30,60]},
+      aspect_ratio:{type:"string",enum:["9:16","16:9","1:1"]},
+      scenes:{type:"array",minItems:3,maxItems:12,items:{type:"object",additionalProperties:false,properties:{
+        headline:{type:"string",maxLength:96},kicker:{type:"string",maxLength:45},
+        detail:{type:"string",maxLength:150},shape:{type:"string",enum:["torus-knot","icosahedron","sphere","torus","cube","cone","rings"]},
+        camera:{type:"string",enum:["orbit","dolly","reveal","truck-left","truck-right","arc"]},
+        transition:{type:"string",enum:["cut","match-cut","push","iris","whip","dip"]},
+        accent:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},
+        energy:{type:"number",minimum:0,maximum:1},
+        depth:{type:"number",minimum:0,maximum:1},
+        duration_seconds:{type:"number",minimum:1,maximum:30}
+      }}}
+    },required:["idea"]}
+  },
+  {
+    name:"render_editor_project",
+    description:"Envia o projeto atual da timeline 3D ao Worker HyperFrames, com composição Three.js e faixas de áudio. Pode renderizar apenas uma cena (prévia MP4). Requer confirmação explícita, não altera o projeto.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
+      scene_index:{type:"integer",minimum:0,maximum:11},
+      confirm_render:{type:"boolean",const:true}
+    },required:["project_id","confirm_render"]}
+  },
+  {
+    name:"get_editor_project",
+    description:"Consulta o projeto atualmente editável e suas cenas no Editor Visual MediaForge (somente leitura).",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"}
+    },required:["project_id"]}
+  },
+  {
+    name:"edit_editor_project",
+    description:"Edita cenas de um projeto ativo no editor visual com validação não destrutiva. Não cria histórico e não reinicia renderizações.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
+      expected_revision:{type:"integer",minimum:0},
+      edits:{type:"array",minItems:1,maxItems:12,items:{type:"object",additionalProperties:false,properties:{
+        scene_id:{type:"string"},
+        changes:{type:"object",additionalProperties:false,properties:{
+          headline:{type:"string",maxLength:96},kicker:{type:"string",maxLength:45},
+          detail:{type:"string",maxLength:150},shape:{type:"string"},camera:{type:"string"},
+          transition:{type:"string"},accent:{type:"string"},energy:{type:"number"},depth:{type:"number"},
+          textScale:{type:"number",minimum:0.5,maximum:1.5},
+          duration_seconds:{type:"number",minimum:1,maximum:60}
+        }}
+      },required:["scene_id","changes"]}}
+    },required:["project_id","edits"]}
+  },
   {
     name:"list_editing_styles",
     description:"Lista os estilos de edição reutilizáveis gravados no MediaForge, incluindo identificadores para plan_video_from_brief. Não inicia renderização.",
@@ -352,6 +410,81 @@ export async function handleVideosSecretsMcp({
       return writeResult(response, id, textResult(result, false, version), version);
     }
 
+    if(name==="create_editor_project"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const project=await saveEditorProject(makeEditorProject(args));
+      return writeResult(response,id,textResult({
+        ok:true,projectId:project.id,revision:project.revision,
+        editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
+        scenes:project.scenes.map(s=>({id:s.id,headline:s.headline,durationSeconds:(s.endFrame-s.startFrame)/project.fps,
+          shape:s.shape,camera:s.camera})),
+        message:"Projeto editável criado; prévia de cada cena e timeline visual prontas para revisão antes do render."
+      },false,version),version);
+    }
+    if(name==="render_editor_project"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      if(args.confirm_render!==true)return writeError(response,id,-32602,"RENDER_CONFIRMATION_REQUIRED",428,version);
+      const project=await loadEditorProject(args.project_id);
+      const sceneIndex=args.scene_index===undefined?undefined:Number(args.scene_index);
+      if(sceneIndex!==undefined&&(!Number.isInteger(sceneIndex)||sceneIndex<0||sceneIndex>=project.scenes.length))
+        return writeError(response,id,-32602,"SCENE_NOT_FOUND",422,version);
+      const files=await buildEditorRenderFiles(project,{sceneIndex});
+      if(sceneIndex===undefined)for(const track of project.audio){
+        const data=await readFile(join(editorStoreDir(),project.id+"-audio-"+track.assetId+"."+track.extension));
+        files.push({path:"assets/audio/"+track.assetId+"."+track.extension,contentBase64:data.toString("base64")});
+      }
+      const duration=sceneIndex===undefined?project.totalFrames/project.fps:
+        (project.scenes[sceneIndex].endFrame-project.scenes[sceneIndex].startFrame)/project.fps;
+      const job=await createJob({prompt:project.idea,
+        project:{title:project.title+(sceneIndex===undefined?"":" / Cena "+(sceneIndex+1)),
+          durationSeconds:duration,aspectRatio:project.aspectRatio,outputs:["video"],renderer:"hyperframes",
+          fps:project.fps,preflight:true,quality:sceneIndex===undefined?"high":"draft",
+          resolution:project.aspectRatio==="9:16"?"portrait":project.aspectRatio==="16:9"?"landscape":"square"},
+        projectFiles:files,
+        metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",editorProjectId:project.id,
+          editorSceneIndex:sceneIndex??null,productionMode:"cinematic-3d",
+          expectsAudio:sceneIndex===undefined&&project.audio.length>0,artisticQA:"pending-user-review"}
+      });
+      return writeResult(response,id,textResult({ok:true,jobId:job.id,status:job.status,
+        editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
+        message:"Render HyperFrames iniciado a partir do projeto editável; o projeto original foi preservado."},false,version),version);
+    }
+    if(name==="get_editor_project"){
+      if(!auth.scopes.includes("videos:read"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const project=await loadEditorProject(args.project_id);
+      return writeResult(response,id,textResult({ok:true,project,editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id},false,version),version);
+    }
+    if(name==="edit_editor_project"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const old=await loadEditorProject(args.project_id);
+      if(args.expected_revision!==undefined&&args.expected_revision!==old.revision)
+        return writeError(response,id,-32602,"EDITOR_REVISION_CONFLICT",409,version);
+      if(!Array.isArray(args.edits)||!args.edits.length||args.edits.length>12)
+        return writeError(response,id,-32602,"Invalid edits",422,version);
+      const copy=JSON.parse(JSON.stringify(old));
+      for(const edit of args.edits){
+        const index=copy.scenes.findIndex(s=>s.id===edit.scene_id);
+        if(index<0)return writeError(response,id,-32602,"Scene not found",422,version);
+        const patch=edit.changes||{},scene=copy.scenes[index];
+        const allowed=["headline","kicker","detail","shape","camera","transition","accent","energy","depth","textScale"];
+        if(Object.keys(patch).some(k=>![...allowed,"duration_seconds"].includes(k)))
+          return writeError(response,id,-32602,"Unsupported property",422,version);
+        if(patch.duration_seconds!==undefined){
+          const next=copy.scenes[index+1];
+          if(!next)return writeError(response,id,-32602,"Last scene duration fixed by total timeline",422,version);
+          const frames=Math.round(Number(patch.duration_seconds)*copy.fps);
+          const available=next.endFrame-scene.startFrame;
+          if(!Number.isInteger(frames)||frames<copy.fps||frames>available-copy.fps)
+            return writeError(response,id,-32602,"Duration would overlap neighboring scene",422,version);
+          scene.endFrame=scene.startFrame+frames;next.startFrame=scene.endFrame;
+        }
+        for(const k of allowed)if(Object.hasOwn(patch,k))scene[k]=patch[k];
+      }
+      validateEditorProject(copy);
+      const project=await saveEditorProject(copy,{expectedRevision:old.revision});
+      return writeResult(response,id,textResult({ok:true,revision:project.revision,project,
+        editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id},false,version),version);
+    }
     if (name === "list_editing_styles") {
       if (!auth.scopes.includes("videos:read")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
       return writeResult(response, id, textResult({ styles:listEditingStyles() }, false, version), version);

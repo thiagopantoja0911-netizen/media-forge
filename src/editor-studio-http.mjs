@@ -1,0 +1,179 @@
+import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { join } from "node:path";
+import { makeEditorProject, loadEditorProject, saveEditorProject, latestEditorProject, updateEditorProject, editorStoreDir, validateEditorProject } from "./editor-studio-core.mjs";
+import { buildEditorIndex, buildEditorSceneModule, buildEditorRenderFiles } from "./editor-studio-engine.mjs";
+import { signedVideoDownload } from "./video-artifact-delivery.mjs";
+
+const idReg=/^[a-f0-9]{32}$/;
+const contentTypes={mp3:"audio/mpeg",m4a:"audio/mp4",wav:"audio/wav",ogg:"audio/ogg"};
+const staticFiles=new Map([
+  ["/editor","../editor-studio/index.html"],
+  ["/editor/","../editor-studio/index.html"],
+  ["/editor/app.js","../editor-studio/app.js"],
+  ["/editor/style.css","../editor-studio/style.css"],
+  ["/editor/vendor/three.module.js","../node_modules/three/build/three.module.js"],
+  ["/editor/vendor/three.core.js","../node_modules/three/build/three.core.js"],
+  ["/editor/vendor/gsap.min.js","../assets/gsap.min.js"]
+]);
+const textType=path=>path.endsWith(".css")?"text/css; charset=utf-8":path.endsWith(".js")||path.endsWith(".mjs")?"text/javascript; charset=utf-8":"text/html; charset=utf-8";
+const headers={"cache-control":"no-store","x-content-type-options":"nosniff","referrer-policy":"no-referrer"};
+function json(res,status,data){res.writeHead(status,{"content-type":"application/json; charset=utf-8",...headers});res.end(JSON.stringify(data));}
+function replyText(res,status,type,body,extra={}){
+  res.writeHead(status,{"content-type":type,...headers,...extra});
+  res.end(body);
+}
+function assertSameOrigin(request){
+  const site=String(request.headers?.["sec-fetch-site"]||"").toLowerCase();
+  if(site&&!["none","same-origin"].includes(site))throw Object.assign(new Error("Origem cruzada não autorizada."),{status:403});
+  const origin=request.headers?.origin;
+  if(origin&&request.headers?.host){
+    let originHost="";try{originHost=new URL(origin).host.toLowerCase();}catch{}
+    if(originHost!==String(request.headers.host).toLowerCase())
+      throw Object.assign(new Error("Origem cruzada não autorizada."),{status:403});
+  }
+}
+function validIndex(v,p){
+  const n=Number(v);
+  if(!Number.isInteger(n)||n<0||n>=p.scenes.length)throw Object.assign(new Error("Cena não encontrada."),{status:404});
+  return n;
+}
+const audioPath=(id,assetId,extension)=>join(editorStoreDir(),id+"-audio-"+assetId+"."+extension);
+function validAudioBytes(buffer,ext){
+  if(buffer.length<32||buffer.length>10*1024*1024)return false;
+  if(ext==="mp3")return buffer.subarray(0,3).toString()==="ID3"||(buffer[0]===255&&(buffer[1]&0xe0)===0xe0);
+  if(ext==="wav")return buffer.subarray(0,4).toString()==="RIFF"&&buffer.subarray(8,12).toString()==="WAVE";
+  if(ext==="m4a")return buffer.subarray(4,8).toString()==="ftyp";
+  if(ext==="ogg")return buffer.subarray(0,4).toString()==="OggS";
+  return false;
+}
+async function receiveAudio(project,body){
+  const filename=String(body.filename??"").slice(0,90),ext=filename.split(".").at(-1).toLowerCase();
+  if(!Object.hasOwn(contentTypes,ext)||typeof body.base64!=="string"||body.base64.length>14e6||
+     !/^[a-zA-Z0-9+/]+={0,2}$/.test(body.base64))
+    throw Object.assign(new Error("Áudio inválido; envie MP3, M4A, WAV ou OGG com até 10 MB."),{status:422});
+  const data=Buffer.from(body.base64,"base64");
+  if(!validAudioBytes(data,ext))throw Object.assign(new Error("O arquivo não é um áudio válido do formato selecionado."),{status:422});
+  const role=["voice","music","sfx"].includes(body.role)?body.role:"voice";
+  const start=Math.max(0,Math.min(project.totalFrames-1,Math.round(Number(body.start_seconds||0)*project.fps)));
+  const end=Number.isFinite(Number(body.duration_seconds))&&Number(body.duration_seconds)>0
+    ?Math.min(project.totalFrames,start+Math.max(1,Math.round(Number(body.duration_seconds)*project.fps)))
+    :project.totalFrames;
+  const volume=Number.isFinite(Number(body.volume))?Math.max(0,Math.min(1,Number(body.volume))):role==="music"?.24:1;
+  const id=randomUUID().replaceAll("-","");
+  const updated={...project,audio:[...project.audio,{id,assetId:id,role,extension:ext,name:filename,startFrame:start,endFrame:end,volume}]};
+  validateEditorProject(updated);
+  await mkdir(editorStoreDir(),{recursive:true});
+  await writeFile(audioPath(project.id,id,ext),data,{flag:"wx"});
+  return saveEditorProject(updated,{expectedRevision:project.revision});
+}
+export async function handleEditorStudioHttp({request,response,url,isAdminSession,parseBody,createJob,getJob}){
+  const path=url.pathname;
+  if(!(path==="/editor"||path.startsWith("/editor/")||path.startsWith("/api/editor/")))return false;
+  const authenticated=await isAdminSession(request);
+  if(!authenticated){
+    if(path.startsWith("/api/"))json(response,401,{ok:false,error:"AUTH_REQUIRED"});
+    else {response.writeHead(303,{location:"/dashboard",...headers});response.end();}
+    return true;
+  }
+  if(staticFiles.has(path)){
+    if(request.method!=="GET"&&request.method!=="HEAD"){json(response,405,{error:"METHOD_NOT_ALLOWED"});return true;}
+    const file=staticFiles.get(path);
+    const content=await readFile(new URL(file,import.meta.url));
+    const policy=path.endsWith(".html")||path==="/editor"||path==="/editor/"?
+      "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'; frame-src 'self'; media-src 'self' blob:; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; form-action 'none'":
+      "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; object-src 'none'";
+    replyText(response,200,textType(path),request.method==="HEAD"?"":content,{"content-security-policy":policy});
+    return true;
+  }
+  if(!path.startsWith("/api/editor/")){json(response,404,{error:"NOT_FOUND"});return true;}
+  const pieces=path.split("/").filter(Boolean);
+  try{
+    if(pieces.length===3&&pieces[2]==="latest"&&request.method==="GET"){
+      json(response,200,{ok:true,project:await latestEditorProject()});return true;
+    }
+    if(pieces.length===3&&pieces[2]==="projects"&&request.method==="POST"){
+      assertSameOrigin(request);
+      const project=await saveEditorProject(makeEditorProject(await parseBody(request)));
+      json(response,201,{ok:true,project,editorUrl:"/editor?project="+project.id});return true;
+    }
+    const id=pieces[3];
+    if(pieces[2]!=="projects"||!idReg.test(id)){json(response,404,{error:"NOT_FOUND"});return true;}
+    const p=await loadEditorProject(id);
+    if(pieces.length===4&&request.method==="GET"){json(response,200,{ok:true,project:p});return true;}
+    if(pieces.length===4&&request.method==="PUT"){
+      assertSameOrigin(request);
+      const body=await parseBody(request);
+      const next=updateEditorProject(p,body.project);
+      const saved=await saveEditorProject(next,{expectedRevision:p.revision});
+      json(response,200,{ok:true,project:saved});return true;
+    }
+    if(pieces.length===5&&pieces[4]==="preview"&&request.method==="GET"){
+      const scene=validIndex(url.searchParams.get("scene")??0,p);
+      const html=buildEditorIndex(p,{sceneIndex:scene,preview:true,projectId:p.id});
+      replyText(response,200,"text/html; charset=utf-8",html,{
+        "content-security-policy":"default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; object-src 'none'"
+      });return true;
+    }
+    if(pieces.length===5&&pieces[4]==="scene.mjs"&&request.method==="GET"){
+      const scene=validIndex(url.searchParams.get("scene")??0,p);
+      replyText(response,200,"text/javascript; charset=utf-8",buildEditorSceneModule(p,{sceneIndex:scene,preview:true}));return true;
+    }
+    if(pieces.length===6&&pieces[4]==="audio"&&request.method==="GET"){
+      const track=p.audio.find(a=>a.assetId===pieces[5]);
+      if(!track){json(response,404,{error:"AUDIO_NOT_FOUND"});return true;}
+      const file=await readFile(audioPath(p.id,track.assetId,track.extension));
+      replyText(response,200,contentTypes[track.extension],file);return true;
+    }
+    if(pieces.length===5&&pieces[4]==="audio"&&request.method==="POST"){
+      assertSameOrigin(request);
+      const updated=await receiveAudio(p,await parseBody(request));
+      json(response,201,{ok:true,project:updated});return true;
+    }
+    if(pieces.length===5&&pieces[4]==="render"&&request.method==="POST"){
+      assertSameOrigin(request);
+      const raw=await parseBody(request);
+      if(raw.confirm!==true){json(response,428,{ok:false,error:"RENDER_CONFIRMATION_REQUIRED"});return true;}
+      const sceneIndex=raw.sceneIndex===undefined?undefined:validIndex(raw.sceneIndex,p);
+      const files=await buildEditorRenderFiles(p,{sceneIndex});
+      if(sceneIndex===undefined)for(const a of p.audio){
+        const bytes=await readFile(audioPath(p.id,a.assetId,a.extension));
+        files.push({path:"assets/audio/"+a.assetId+"."+a.extension,contentBase64:bytes.toString("base64")});
+      }
+      const duration=sceneIndex===undefined?p.totalFrames/p.fps:(p.scenes[sceneIndex].endFrame-p.scenes[sceneIndex].startFrame)/p.fps;
+      const job=await createJob({
+        prompt:p.idea.slice(0,400),project:{
+          title:p.title+(sceneIndex===undefined?"":" / Cena "+(sceneIndex+1)),
+          durationSeconds:duration,aspectRatio:p.aspectRatio,outputs:["video"],renderer:"hyperframes",
+          fps:p.fps,preflight:raw.preflight!==false,quality:sceneIndex===undefined?"high":"draft",
+          resolution:p.aspectRatio==="9:16"?"portrait":p.aspectRatio==="16:9"?"landscape":"square"
+        },
+        projectFiles:files,
+        metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",
+          editorProjectId:p.id,editorSceneIndex:sceneIndex??null,expectsAudio:sceneIndex===undefined&&p.audio.length>0,
+          productionMode:"cinematic-3d",artisticQA:"pending-user-review"}
+      });
+      json(response,202,{ok:true,jobId:job.id,status:job.status,message:"Render enviado ao HyperFrames; o projeto editável foi preservado."});
+      return true;
+    }
+    if(pieces.length===5&&pieces[4]==="jobs"&&request.method==="GET"){
+      json(response,404,{error:"USE_GLOBAL_JOB_ROUTE"});return true;
+    }
+    if(pieces.length===3&&pieces[2]==="jobs"&&request.method==="GET"){
+      json(response,404,{error:"JOB_ID_REQUIRED"});return true;
+    }
+    json(response,404,{error:"NOT_FOUND"});return true;
+  }catch(error){
+    json(response,error.status||400,{ok:false,error:error.code||"EDITOR_ERROR",message:error.message||"Falha de edição."});return true;
+  }
+}
+export async function handleEditorJobStatus({request,response,url,isAdminSession,getJob}){
+  const m=/^\/api\/editor\/jobs\/([a-f0-9]{32})$/.exec(url.pathname);
+  if(!m)return false;
+  if(!(await isAdminSession(request))){json(response,401,{error:"AUTH_REQUIRED"});return true;}
+  const job=await getJob(m[1]);
+  if(!job||job.metadata?.source!=="mediaforge-visual-editor"){json(response,404,{error:"NOT_FOUND"});return true;}
+  json(response,200,{ok:true,status:job.status,progress:job.progress,error:job.error||null,
+    artifact:job.status==="completed"?await signedVideoDownload(job):null});
+  return true;
+}
