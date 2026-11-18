@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /* MCP adapter: adds browser_run_workflow while preserving the existing OAuth/device relay. */
 import { Readable } from 'node:stream';
-import { app } from './server.mjs';
+import { app, listBrowserToolSpecs } from './server.mjs';
 import { VIDEOS_SECRETS_TOOLS } from '../src/videos-secrets-mcp.mjs';
-import { composeUnifiedMediaTools } from './mediaforge-tool-catalog.mjs';
+import { composeUnifiedMediaTools, inspectUnifiedMediaCatalog, UNIFIED_MCP_CATALOG_VERSION } from './mediaforge-tool-catalog.mjs';
 import { handleUnifiedMediaMcp } from '../src/server.mjs';
 
 const coreHandler = app.listeners('request')[0];
@@ -108,6 +108,7 @@ async function invokeMedia(originalReq,payload){
 const MEDIAFORGE_TOOL_NAMES=new Set(VIDEOS_SECRETS_TOOLS.map(tool=>tool.name));
 if(MEDIAFORGE_TOOL_NAMES.size!==VIDEOS_SECRETS_TOOLS.length)throw Error('DUPLICATE_MEDIAFORGE_TOOL_NAME');
 const UNIFIED_MEDIA_TOOLS=VIDEOS_SECRETS_TOOLS;
+const catalogStatus=()=>inspectUnifiedMediaCatalog(listBrowserToolSpecs(),UNIFIED_MEDIA_TOOLS);
 function send(res, result) {
   const headers = {...result.headers};
   delete headers['content-length'];
@@ -140,6 +141,15 @@ function validateWorkflow(args) {
 }
 async function handle(req, res) {
   const url = new URL(req.url || '/', 'https://localhost');
+  // Public diagnostic exposes tool counts, never OAuth tokens or project data.
+  if (url.pathname === '/catalog-health' && req.method === 'GET') {
+    const status=catalogStatus();
+    return send(res,response(status.ready?200:503,{
+      'content-type':'application/json; charset=utf-8',
+      'cache-control':'no-store',
+      'x-content-type-options':'nosniff'
+    },JSON.stringify({...status,connector:'/browser/mcp'})));
+  }
   // Delegate /health to the core relay so extension and ChatGPT origins receive CORS headers.
   if (url.pathname !== '/mcp' || req.method !== 'POST') return coreHandler(req, res);
   try {
@@ -150,6 +160,19 @@ async function handle(req, res) {
     const raw = await readIncoming(req,32*1024*1024);
     let payload;
     try { payload = JSON.parse(raw); } catch { throw Object.assign(new Error('JSON-RPC inválido'), {status: 400}); }
+    if (payload?.method === 'server/discover') {
+      const result = await invokeCore(req,payload);
+      if (result.status !== 200) return send(res,result);
+      const body = JSON.parse(result.body);
+      const status=catalogStatus();
+      if (!status.ready) throw Object.assign(new Error('EDITOR_MCP_CATALOG_INCOMPLETE'),{status:503});
+      if(body?.result?.capabilities?.tools) body.result.capabilities.tools.listChanged=true;
+      if(body?.result?._meta?.['io.modelcontextprotocol/serverInfo']) {
+        body.result._meta['io.modelcontextprotocol/serverInfo'].version=UNIFIED_MCP_CATALOG_VERSION;
+      }
+      body.result._meta={...body.result._meta,'mediaforge/catalogVersion':UNIFIED_MCP_CATALOG_VERSION};
+      return send(res,response(result.status,result.headers,JSON.stringify(body)));
+    }
     if (payload?.method === 'tools/list') {
       const result = await invokeCore(req, payload);
       if (result.status !== 200) return send(res, result);
@@ -158,6 +181,9 @@ async function handle(req, res) {
       if(Array.isArray(tools)){
         if(!tools.some(tool=>tool.name===WORKFLOW_TOOL.name))tools.push(WORKFLOW_TOOL);
         body.result.tools=composeUnifiedMediaTools(tools, UNIFIED_MEDIA_TOOLS);
+        const status=catalogStatus();
+        if(!status.ready)throw Object.assign(new Error('EDITOR_MCP_CATALOG_INCOMPLETE'),{status:503});
+        body.result._meta={...body.result._meta,'mediaforge/catalogVersion':UNIFIED_MCP_CATALOG_VERSION};
       }
       return send(res, response(result.status, result.headers, JSON.stringify(body)));
     }
@@ -165,7 +191,8 @@ async function handle(req, res) {
       const result = await invokeCore(req, payload);
       if (result.status !== 200) return send(res, result);
       const body = JSON.parse(result.body);
-      if (body?.result?.serverInfo) body.result.serverInfo.version = '0.7.0';
+      if (body?.result?.serverInfo) body.result.serverInfo.version = UNIFIED_MCP_CATALOG_VERSION;
+      if (body?.result?.capabilities?.tools) body.result.capabilities.tools.listChanged=true;
       return send(res, response(result.status, result.headers, JSON.stringify(body)));
     }
     if(payload?.method==='tools/call' && MEDIAFORGE_TOOL_NAMES.has(payload?.params?.name)){
@@ -194,4 +221,4 @@ async function handle(req, res) {
 
 app.removeAllListeners('request');
 app.on('request', (req, res) => { handle(req, res).catch(error => { if (!res.writableEnded) send(res, response(500, {'content-type':'application/json; charset=utf-8'}, JSON.stringify({error:String(error?.message || error)}))); }); });
-console.error('Unific Media Browser MCP adapter 0.8.0 ativo: Chrome + Windows + MediaForge');
+console.error('Unific Media Browser MCP adapter '+UNIFIED_MCP_CATALOG_VERSION+' ativo: Chrome + Windows + Editor MediaForge');
