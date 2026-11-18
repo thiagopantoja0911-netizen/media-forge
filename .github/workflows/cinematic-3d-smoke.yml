@@ -5,6 +5,9 @@ on:
   pull_request:
     paths:
       - 'src/cinematic-3d.mjs'
+      - 'src/renderers/hyperframes.mjs'
+      - 'src/render-recovery.mjs'
+      - 'test/render-recovery.test.mjs'
       - 'src/videos-secrets-mcp.mjs'
       - 'scripts/check-cinematic-3d.mjs'
       - '.github/workflows/cinematic-3d-smoke.yml'

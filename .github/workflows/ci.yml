@@ -2,9 +2,9 @@ name: MediaForge CI
 
 on:
   push:
-    branches: [main, feature/conexoes-mediaforge-primeiro, feature/frame-lab-chat-mcp-20261113, feat/reference-motion-quality, feat/mediaforge-cinematic-motion-audio-v2-20261112, feat/chat-only-creative-director-20261114, feat/mediaforge-chat-artifact-delivery-20261114, fix/mediaforge-audio-manifest-mismatch-20261115]
+    branches: [main, feature/conexoes-mediaforge-primeiro, feature/frame-lab-chat-mcp-20261113, feat/reference-motion-quality, feat/mediaforge-cinematic-motion-audio-v2-20261112, feat/chat-only-creative-director-20261114, feat/mediaforge-chat-artifact-delivery-20261114, fix/mediaforge-audio-manifest-mismatch-20261115, fix/mediaforge-render-resilience-20261118]
   pull_request:
-    branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro, feat/forge-real-render-pipeline-20261111, feature/frame-lab-chat-mcp-20261113]
+    branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro, feat/forge-real-render-pipeline-20261111, feature/frame-lab-chat-mcp-20261113, feature/unific-media-20261116]
 
 jobs:
   validate:
@@ -45,6 +45,7 @@ jobs:
       - run: node --check src/videos-secrets-mcp.mjs
       - run: node --check src/worker.mjs
       - run: node --check src/renderers/hyperframes.mjs
+      - run: node --check src/render-recovery.mjs
       - run: node --test test/*.test.mjs
       - run: npm run validate
       - name: Validate reference motion composition

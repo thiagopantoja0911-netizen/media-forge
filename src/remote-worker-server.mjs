@@ -232,7 +232,20 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
               artifactUploaded:body.artifactUploaded===true};
             delete job.error;
           }else{
-            job.error={code:"REMOTE_RENDER_FAILED",message:String(body.error||"Render failed").slice(0,15000)};
+            const failure = body.error && typeof body.error === "object"
+              ? body.error
+              : { message: body.error };
+            job.error = {
+              code: String(failure.code || "REMOTE_RENDER_FAILED").slice(0, 100),
+              message: String(failure.message || "Render failed").slice(0, 15000),
+              recoverable: failure.recoverable === true,
+              retryable: failure.retryable === true,
+              retryAttempts: Number.isSafeInteger(failure.retryAttempts) ? failure.retryAttempts : null,
+              attempts: job.attempts || 1,
+              diagnostics: failure.diagnostics && typeof failure.diagnostics === "object"
+                ? failure.diagnostics
+                : null
+            };
           }
           delete job.workerLease;await saveJob(jobsDir,job);return job;
         });
