@@ -1,4 +1,4 @@
-const base=process.env.MEDIAFORGE_PUBLIC_URL||"https://mediaforge.salevo.site";
+const base=process.env.MEDIAFORGE_PUBLIC_URL||"https://unificmedia.salevo.site";
 async function check(path,init,expected){
   const response=await fetch(base+path,{signal:AbortSignal.timeout(12000),redirect:"manual",...init});
   console.log(path,"HTTP",response.status);
