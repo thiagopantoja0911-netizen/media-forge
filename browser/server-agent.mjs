@@ -107,7 +107,7 @@ async function invokeMedia(originalReq,payload){
 }
 const MEDIAFORGE_TOOL_NAMES=new Set(VIDEOS_SECRETS_TOOLS.map(tool=>tool.name));
 if(MEDIAFORGE_TOOL_NAMES.size!==VIDEOS_SECRETS_TOOLS.length)throw Error('DUPLICATE_MEDIAFORGE_TOOL_NAME');
-const UNIFIED_MEDIA_TOOLS=composeUnifiedMediaTools([], VIDEOS_SECRETS_TOOLS);
+const UNIFIED_MEDIA_TOOLS=VIDEOS_SECRETS_TOOLS;
 function send(res, result) {
   const headers = {...result.headers};
   delete headers['content-length'];
