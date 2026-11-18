@@ -59,7 +59,7 @@ test("homologation creates actual editable five-scene project, music and 4 separ
  assert.ok(files.filter(f=>f.path.startsWith("assets/images/")).length>=4);
  assert.match(files.find(f=>f.path==="index.html").content,/assets\/audio\//);
  const scene=buildEditorSceneModule(p);
- assert.match(scene,/preview=false,renderScale=0\\.5/);
+ assert.match(scene,/preview=false,renderScale=0\.5/);
  const modulePath=join(data,"homologation-scene.mjs");
  await writeFile(modulePath,scene);
  const syntax=spawnSync(process.execPath,["--check",modulePath],{encoding:"utf8"});
