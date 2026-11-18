@@ -73,8 +73,9 @@ test("worker can safely requeue only recoverable failed jobs and preserve projec
         metadata: { kind: "retry-test" }
       })
     });
-    assert.equal(response.status, 202, await response.text());
-    const body = await response.json();
+    const raw = await response.text();
+    assert.equal(response.status, 202, raw);
+    const body = JSON.parse(raw);
     const job = body.job;
     const jobPath = join(dataDir, "jobs", job.id + ".json");
     const stored = JSON.parse(await readFile(jobPath, "utf8"));
@@ -104,8 +105,9 @@ test("worker can safely requeue only recoverable failed jobs and preserve projec
       headers: { authorization: "Bearer " + workerToken, "content-type": "application/json" },
       body: "{}"
     });
-    assert.equal(retryResponse.status, 202, await retryResponse.text());
-    const retryBody = await retryResponse.json();
+    const retryRaw = await retryResponse.text();
+    assert.equal(retryResponse.status, 202, retryRaw);
+    const retryBody = JSON.parse(retryRaw);
     assert.equal(retryBody.ok, true);
     assert.equal(retryBody.alreadyRetried, false);
     assert.equal(retryBody.originalJobId, retryable.id);
