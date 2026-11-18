@@ -274,7 +274,7 @@ async function createFromIdea(event){
  const submit=$("submitIdea");submit.disabled=true;submit.textContent="Criando…";
  try{
    const fields={idea:$("newIdea").value.trim(),brand:$("newBrand").value.trim(),duration_seconds:Number($("newDuration").value),
-     aspect_ratio:$("newRatio").value,fps:Number($("newFps").value)};
+     aspect_ratio:$("newRatio").value,fps:Number($("newFps").value),style_preset:$("newPreset").value||undefined};
    const r=await post("/api/editor/projects",fields);
    $("newModal").hidden=true;
    await loadProject(r.project.id);
@@ -301,6 +301,81 @@ function connectProperties(){
   });
  }
  $("editDuration").addEventListener("change",()=>editSceneDuration(state.selected,Number($("editDuration").value)*state.project.fps));
+}
+function connectPremiumProperties(){
+ for(const id of ["editGlowMode","editGlowColor","editGlowIntensity","editGlowSpeed","editGlowX","editGlowY"])
+   $(id).addEventListener("change",()=>{
+     if(!state.project)return;
+     const s=state.project.scenes[state.selected];
+     if($("editGlowMode").value==="off")delete s.glow;
+     else s.glow={color:$("editGlowColor").value,
+       intensity:clamp(Number($("editGlowIntensity").value)/100,0,1),
+       speed:clamp(Number($("editGlowSpeed").value),0,3),
+       x:clamp(Number($("editGlowX").value),-1,1),y:clamp(Number($("editGlowY").value),-1,1)};
+     afterChange();
+   });
+ const keys=["editVisualType","editVisualAsset","editVisualScale","editVisualDepth","editVisualX",
+   "editVisualY","editVisualZ","editVisualRY","editGridColumns","editGridRows","editGridScroll"];
+ for(const id of keys)$(id).addEventListener("change",()=>{
+   if(!state.project)return;
+   const type=$("editVisualType").value,assetId=$("editVisualAsset").value;
+   const s=state.project.scenes[state.selected];
+   if(!type){delete s.visual;afterChange();return;}
+   if(!assetId||!(state.project.assets??[]).some(a=>a.id===assetId)){
+     toast("Importe e selecione uma imagem antes de criar o mockup.");
+     $("editVisualType").value=s.visual?.type??"";return;
+   }
+   const columns=clamp(Math.round(Number($("editGridColumns").value)),1,4);
+   const rows=clamp(Math.round(Number($("editGridRows").value)),1,Math.floor(12/columns));
+   s.visual={type,assetId,
+     position:["editVisualX","editVisualY","editVisualZ"].map(k=>clamp(Number($(k).value),-8,8)),
+     rotation:[0,clamp(Number($("editVisualRY").value),-180,180),0],
+     scale:clamp(Number($("editVisualScale").value),.2,4),
+     depth:clamp(Number($("editVisualDepth").value),0,1),columns,rows,
+     scroll:clamp(Number($("editGridScroll").value),-2,2)};
+   afterChange();fillInspector();
+ });
+}
+async function uploadImage(file){
+ if(!state.project||!file)return;
+ if(file.size>2*1024*1024)return toast("Imagem acima de 2 MB.");
+ await saveProject(false);
+ const base64=await new Promise((resolve,reject)=>{
+   const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);
+   reader.onerror=()=>reject(new Error("Falha ao ler imagem."));reader.readAsDataURL(file);
+ });
+ try{
+   out("saveStatus","Importando asset…");
+   const r=await post(src("assets"),{filename:file.name,base64});
+   state.project=r.project;state.dirty=false;renderImageList();
+   const s=state.project.scenes[state.selected];
+   if(!s.visual)s.visual={type:"screen",assetId:r.asset.id,position:[0,0,0],rotation:[0,0,0],
+     scale:1,depth:.7,columns:3,rows:4,scroll:1};
+   afterChange(true);toast("Asset importado e ligado à cena.");
+ }catch(error){out("saveStatus","Erro no asset");toast(error.message);}
+}
+async function applySelectedStyle(){
+ if(!state.project)return;
+ const style_preset=$("stylePreset").value;
+ if(!style_preset)return toast("Escolha um preset.");
+ await saveProject(false);
+ try{
+   const r=await post(src("style"),{style_preset});
+   state.project=r.project;state.dirty=false;showReviewStatus("stale");
+   updateMetadata();buildTracks();openScene(state.selected);await refreshReviewStatus();
+   toast("Preset aplicado. Revise a prévia novamente.");
+ }catch(error){toast("Preset: "+error.message);}
+}
+async function downloadStyleDna(){
+ if(!state.project)return;
+ await saveProject(false);
+ try{
+   const r=await request(src("style-dna"));
+   const blob=new Blob([JSON.stringify(r.dna,null,2)],{type:"application/json"});
+   const url=URL.createObjectURL(blob),a=document.createElement("a");
+   a.href=url;a.download="mediaforge-style-dna-"+state.project.id+".json";a.click();
+   setTimeout(()=>URL.revokeObjectURL(url),1500);
+ }catch(error){toast("DNA: "+error.message);}
 }
 function awaitStatus(jobId){
  let count=0;const timer=setInterval(async()=>{
