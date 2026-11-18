@@ -73,6 +73,7 @@ function playScene(){
     const range=$("sceneSeek");range.value=String(clamp(Math.floor(state.frame/sceneLength(state.selected)*1000),0,1000));
     out("timeCurrent",longFmt(state.frame));
     if(state.frame>=sceneLength(state.selected))pauseScene();
+    else previewAudio(true);
     else requestAnimationFrame(advance);
   }
   requestAnimationFrame(advance);
@@ -90,8 +91,12 @@ function previewAudio(play){
     const relative=global-a.startFrame/state.project.fps;
     const duration=(a.endFrame-a.startFrame)/state.project.fps;
     if(relative>=0&&relative<duration){
-      try{element.currentTime=relative;element.volume=a.volume;element.play().catch(()=>{});}catch{}
-    }
+      try{
+        if(element.paused||Math.abs(element.currentTime-relative)>.2)element.currentTime=Math.max(0,relative);
+        element.volume=a.volume;
+        if(element.paused)element.play().catch(()=>{});
+      }catch{}
+    }else if(!element.paused)element.pause();
   }
 }
 function refreshAudioPlayers(){
