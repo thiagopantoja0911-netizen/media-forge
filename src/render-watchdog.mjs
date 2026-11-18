@@ -41,13 +41,13 @@ export function framesFromHyperFramesLine(line, totalFrames) {
 
 export function createFrameWatchdog({totalFrames,startedAt=Date.now(),budgets=renderWatchdogBudgets()}){
   let framesCompleted=0,lastFrameAt=null;
-  let partial="";
-  function observe(chunk, at=Date.now()) {
-    partial += String(chunk);
-    // Keep the unfinished tail bounded even when native output never emits newline.
+  const partials=new Map();
+  function observe(chunk, at=Date.now(), channel="stdout") {
+    let partial=(partials.get(channel)||"")+String(chunk);
+    // Each output stream has its own tail, never join unrelated fragments.
     if(partial.length>16384)partial=partial.slice(-8192);
     const lines=partial.split(/[\r\n]+/);
-    partial=lines.pop()??"";
+    partials.set(channel,lines.pop()??"");
     let advanced=false;
     for(const line of lines){
       const n=framesFromHyperFramesLine(line,totalFrames);
@@ -78,4 +78,34 @@ export function orderQueuedJobs(jobs) {
     const second=Number.isFinite(right)?right:Number.MAX_SAFE_INTEGER;
     return first-second || String(a.id).localeCompare(String(b.id));
   });
+}
+
+export function applyWorkerProgress(job,body,now=new Date().toISOString()){
+  const progress=Number(body.progress);
+  const attempt=Number(body.renderAttempt);
+  const previousAttempt=Number(job.renderTelemetry?.renderAttempt||0);
+  const hasAttempt=Number.isSafeInteger(attempt)&&attempt>0&&attempt<=20;
+  if(hasAttempt&&attempt<previousAttempt)return job; // stale HTTP frame update
+  const newAttempt=hasAttempt&&attempt>previousAttempt;
+  if(newAttempt){
+    job.renderTelemetry={renderAttempt:attempt,framesCompleted:0,totalFrames:null,lastFrameAt:null,startedAt:now};
+  }
+  if(Number.isFinite(progress)){
+    const bounded=Math.max(0,Math.min(99,Math.floor(progress)));
+    job.progress=newAttempt?bounded:Math.max(job.progress||0,bounded);
+  }
+  const total=Number(body.totalFrames),completed=Number(body.framesCompleted);
+  if(Number.isSafeInteger(total)&&total>0&&total<=2_000_000 &&
+     Number.isSafeInteger(completed)&&completed>=0&&completed<=total){
+    const prior=job.renderTelemetry||{renderAttempt:0,framesCompleted:0};
+    if(completed>Number(prior.framesCompleted||0)){
+      job.renderTelemetry={...prior,totalFrames:total,framesCompleted:completed,lastFrameAt:now};
+    }else if(prior.totalFrames===null||prior.totalFrames===undefined){
+      job.renderTelemetry={...prior,totalFrames:total};
+    }
+  }
+  if(typeof body.phase==="string")job.phase=body.phase.slice(0,40);
+  job.progressMessage=String(body.message||"Renderizando").replace(/[\r\n]+/g," ").slice(0,255);
+  job.updatedAt=now;
+  return job;
 }
