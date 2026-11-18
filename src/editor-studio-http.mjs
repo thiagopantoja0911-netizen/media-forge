@@ -10,6 +10,7 @@ import { storeEditorVisualAsset, loadEditorVisualAsset } from "./editor-visual-a
 import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } from "./editor-style-presets.mjs";
 import { decodeAudioToPcm, analyzePcmForBeats, synchronizeSceneCutsToBeats } from "./editor-beat-sync.mjs";
 import { demoProject as remotionDemoProject } from "../remotion/project.mjs";
+import { buildHyperFramesHtml } from "../remotion/hyperframes-html.mjs";
 
 const idReg=/^[a-f0-9]{32}$/;
 const contentTypes={mp3:"audio/mpeg",m4a:"audio/mp4",wav:"audio/wav",ogg:"audio/ogg"};
@@ -103,28 +104,30 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
     if(pieces.length===4&&pieces[2]==="remotion"&&pieces[3]==="demo"&&request.method==="GET"){
       json(response,200,{ok:true,project:remotionDemoProject,engine:"remotion",editor:"MediaForge"});return true;
     }
-    if(pieces.length===4&&pieces[2]==="remotion"&&pieces[3]==="render"&&request.method==="POST"){
+    if(pieces.length===4&&pieces[2]==="hyperframes"&&pieces[3]==="render"&&request.method==="POST"){
       assertSameOrigin(request);
       const body=await parseBody(request);
       if(body.confirm!==true){json(response,428,{ok:false,error:"RENDER_CONFIRMATION_REQUIRED"});return true;}
       const movie=await readFile(new URL("../remotion-public/remotion-assets/background.mp4",import.meta.url));
       const badge=await readFile(new URL("../remotion-public/remotion-assets/badge.png",import.meta.url));
+      const gsap=await readFile(new URL("../assets/gsap.min.js",import.meta.url),"utf8");
       const sourceFiles=[
-        {path:"index.html",content:"<!doctype html><title>MediaForge Remotion worker project</title>"},
+        {path:"index.html",content:buildHyperFramesHtml(remotionDemoProject)},
         {path:"remotion/project.json",content:JSON.stringify(remotionDemoProject)},
-        {path:"public/remotion-assets/background.mp4",contentBase64:movie.toString("base64")},
-        {path:"public/remotion-assets/badge.png",contentBase64:badge.toString("base64")}
+        {path:"assets/background.mp4",contentBase64:movie.toString("base64")},
+        {path:"assets/badge.png",contentBase64:badge.toString("base64")},
+        {path:"assets/gsap.min.js",content:gsap}
       ];
       const job=await createJob({
-        prompt:"MediaForge Remotion: vídeo de fundo MP4, sobreposição PNG e texto animado em camadas simultâneas.",
+        prompt:"MediaForge Etapa 1: renderizar a mesma composição de três camadas via HyperFrames CLI no PC Windows — vídeo de fundo, PNG sobreposto e texto animado.",
         project:{title:remotionDemoProject.title,durationSeconds:12,aspectRatio:"9:16",
-          outputs:["video"],renderer:"remotion",fps:30,quality:"high",resolution:"portrait",preflight:true},
+          outputs:["video"],renderer:"hyperframes",fps:30,quality:"high",preflight:true},
         projectFiles:sourceFiles,
-        metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",engine:"remotion",
-          remotionProjectId:remotionDemoProject.id,expectsAudio:false,productionMode:"remotion",
+        metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",engine:"hyperframes-cli",
+          remotionProjectId:remotionDemoProject.id,expectsAudio:false,productionMode:"study",
           artisticQA:"pending-user-review"}
       });
-      json(response,202,{ok:true,jobId:job.id,status:job.status,engine:"remotion"});return true;
+      json(response,202,{ok:true,jobId:job.id,status:job.status,engine:"hyperframes"});return true;
     }
     if(pieces.length===3&&pieces[2]==="styles"&&request.method==="GET"){
       json(response,200,{ok:true,styles:listEditorStylePresets()});return true;
