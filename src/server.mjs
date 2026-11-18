@@ -8,6 +8,7 @@ import {
   validateProjectFiles,
   isSafeRelativePath
 } from "./job-schema.mjs";
+import { normalizeProjectFiles } from "./project-files.mjs";
 import { handleVideosSecretsMcp } from "./videos-secrets-mcp.mjs";
 import { authenticateBearer, handleOAuth } from "./oauth.mjs";
 import { handlePanel, isAdminSession } from "./panel.mjs";
@@ -53,16 +54,6 @@ async function readRawBody(request) {
     }
   }
   return raw;
-}
-
-function normalizeProjectFiles(files) {
-  if (!Array.isArray(files)) return files;
-  return files.map((file) => {
-    if (file?.encoding === "base64") {
-      return { path: file.path, contentBase64: file.content };
-    }
-    return { path: file?.path, content: file?.content };
-  });
 }
 
 function normalizePayload(input) {
