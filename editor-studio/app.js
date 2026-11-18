@@ -332,6 +332,7 @@ function connectPremiumProperties(){
      rotation:[0,clamp(Number($("editVisualRY").value),-180,180),0],
      scale:clamp(Number($("editVisualScale").value),.2,4),
      depth:clamp(Number($("editVisualDepth").value),0,1),columns,rows,
+     ...(s.visual?.assetIds?{assetIds:s.visual.assetIds}:{}),
      scroll:clamp(Number($("editGridScroll").value),-2,2)};
    afterChange();fillInspector();
  });
