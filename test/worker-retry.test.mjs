@@ -49,7 +49,7 @@ test("worker can safely requeue only recoverable failed jobs and preserve projec
     stream.on("data", chunk => { logs += chunk.toString(); });
   }
 
-  const createFailedJob = async (failureMessage) => {
+  const createFailedJob = async (failureMessage, failureFlags = {}) => {
     const response = await fetch(base + "/v1/jobs", {
       method: "POST",
       headers: {
@@ -80,7 +80,7 @@ test("worker can safely requeue only recoverable failed jobs and preserve projec
     const jobPath = join(dataDir, "jobs", job.id + ".json");
     const stored = JSON.parse(await readFile(jobPath, "utf8"));
     stored.status = "failed";
-    stored.error = { code: "REMOTE_RENDER_FAILED", message: failureMessage };
+    stored.error = { code: "REMOTE_RENDER_FAILED", message: failureMessage, ...failureFlags };
     await writeFile(jobPath, JSON.stringify(stored, null, 2) + "\n");
     return job;
   };
@@ -138,6 +138,18 @@ test("worker can safely requeue only recoverable failed jobs and preserve projec
     assert.equal(claim.status, 200);
     const claimed = await claim.json();
     assert.equal(claimed.job.id, retryBody.job.id);
+
+    const exhaustedButRecoverable = await createFailedJob(
+      "[Render] Sequential screenshot capture stalled after automatic attempts.",
+      { recoverable: true, retryable: false, retryAttempts: 3 }
+    );
+    const manualRetry = await fetch(base + "/v1/worker/jobs/" + exhaustedButRecoverable.id + "/retry", {
+      method: "POST",
+      headers: { authorization: "Bearer " + workerToken, "content-type": "application/json" },
+      body: "{}"
+    });
+    assert.equal(manualRetry.status, 202);
+    assert.equal((await manualRetry.json()).job.status, "queued");
 
     const invalid = await createFailedJob(
       "missing_timeline_registry: Missing window.__timelines registration; gsap_css_transform_conflict."

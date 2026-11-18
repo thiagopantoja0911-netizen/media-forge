@@ -142,7 +142,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
 
           const failure=original.error&&typeof original.error==="object"
             ?original.error:{message:original.error};
-          if(!isRecoverableRenderFailure(failure))
+          if(failure.recoverable!==true&&!isRecoverableRenderFailure(failure))
             throw Object.assign(new Error("JOB_FAILURE_NOT_RETRYABLE"),{status:422});
           if(original.project?.inlineFiles!==true||original.project?.sourceDir!==id)
             throw Object.assign(new Error("JOB_PROJECT_NOT_RETRYABLE"),{status:422});
