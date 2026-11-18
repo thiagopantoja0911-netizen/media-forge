@@ -6,9 +6,9 @@ button.addEventListener("click",()=>{panel.hidden=!panel.hidden;
  button.textContent=panel.hidden?"Abrir compositor Remotion · 12s":"Ocultar compositor Remotion";});
 if(render)render.addEventListener("click",async()=>{
  if(!window.confirm("Enviar a composição de 12 segundos ao PC Windows para renderizar em MP4?"))return;
- render.disabled=true;status.textContent="Enviando ao HyperFrames/Remotion...";
+ render.disabled=true;status.textContent="Enviando ao HyperFrames CLI no PC Windows...";
  try{
-  const res=await fetch("/api/editor/remotion/render",{method:"POST",credentials:"same-origin",
+  const res=await fetch("/api/editor/hyperframes/render",{method:"POST",credentials:"same-origin",
    headers:{"content-type":"application/json"},body:JSON.stringify({confirm:true})});
   const data=await res.json();
   if(!res.ok||!data.ok)throw new Error(data.message||data.error||"Erro HTTP "+res.status);
@@ -19,7 +19,7 @@ if(render)render.addEventListener("click",async()=>{
     checks++;const q=await fetch("/api/editor/jobs/"+id,{credentials:"same-origin",cache:"no-store"});
     const job=await q.json();
     if(!q.ok)throw new Error(job.error||"Falha ao consultar o job");
-    status.textContent="Remotion: "+job.status+" · "+(job.progress||0)+"%";
+    status.textContent="HyperFrames: "+job.status+" · "+(job.progress||0)+"%";
     if(job.status==="completed"||job.status==="failed"||checks>300){
       clearInterval(interval);render.disabled=false;
       if(job.artifact&&job.artifact.url){
