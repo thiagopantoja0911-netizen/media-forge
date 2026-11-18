@@ -104,7 +104,12 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     assert.equal(modernList.data.result.cacheScope, "private");
     assert.equal(modernList.data.result.ttlMs, 0);
     assert.deepEqual(modernList.data.result.tools.map(tool => tool.name), [
-      "plan_video_from_brief", "create_video", "create_motion_video", "create_cinematic_3d", "renderer_status", "list_videos", "get_video",
+      "create_editor_homologation_project", "create_editor_project", "render_editor_project",
+      "upload_editor_asset", "apply_editor_style_preset", "get_editor_style_dna",
+      "list_editor_style_presets", "sync_editor_beats", "get_editor_project",
+      "review_editor_preview", "edit_editor_project", "list_editing_styles", "edit_motion_plan",
+      "plan_video_from_brief", "create_video", "create_motion_video", "create_cinematic_3d",
+      "renderer_status", "list_videos", "get_video",
       "frame_lab_capabilities", "frame_lab_create_project", "frame_lab_list_projects",
       "frame_lab_start_upload", "frame_lab_upload_chunk", "frame_lab_upload_status",
       "frame_lab_finish_upload", "frame_lab_analyze", "frame_lab_status",
@@ -192,7 +197,7 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     const legacyList = await call("tools/list", LEGACY);
     assert.equal(legacyList.status, 200, JSON.stringify(legacyList.data));
     assert.deepEqual(legacyList.data.result.tools.map(x=>x.name),modernList.data.result.tools.map(x=>x.name));
-    assert.equal(legacyList.data.result.tools.length, 19);
+    assert.equal(legacyList.data.result.tools.length, 32);
     assert.equal(legacyList.data.result.resultType, undefined);
   } finally {
     server.kill("SIGTERM");

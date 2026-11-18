@@ -352,12 +352,10 @@ async function requireBearer(request, authenticateBearer) {
   const required = process.env.MEDIAFORGE_REQUIRE_AUTH === "true" || !loopback;
 
   if (!required) return { scopes: ["videos:read", "videos:write", "offline_access"], legacy: true };
-  if (!expected) {
-    const error = new Error("MEDIAFORGE_MCP_TOKEN is required when MCP authentication is enabled");
-    error.code = "MCP_AUTH_NOT_CONFIGURED";
-    error.status = 500;
-    throw error;
-  }
+  // OAuth bearer tokens are validated by authenticateBearer above. The
+  // static legacy token is optional; if it is absent, an unauthenticated or
+  // invalid request is still an authentication challenge (401), not a server
+  // configuration failure (500).
   if (!tokenMatches(token, expected)) {
     const error = new Error("MCP authentication required");
     error.code = "MCP_AUTH_REQUIRED";

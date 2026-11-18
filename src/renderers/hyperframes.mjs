@@ -2,6 +2,14 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { inspectMotionProject } from "../motion/preflight.mjs";
 import { spawn } from "node:child_process";
 import { isAbsolute, join, relative, resolve } from "node:path";
+import {
+  buildHyperFramesRenderEnvironment,
+  collectRenderResources,
+  isRecoverableRenderFailure,
+  renderRetryDelayMs,
+  resolveRenderMaxAttempts,
+  shouldResumeHyperFramesSegments
+} from "../render-recovery.mjs";
 
 const projectsRoot = resolve(process.env.MEDIAFORGE_PROJECTS_DIR ?? ".mediaforge/projects");
 const outputRoot = resolve(process.env.MEDIAFORGE_OUTPUT_DIR ?? ".mediaforge/outputs");
@@ -45,7 +53,7 @@ export function summarizeCheck(stdout) {
   } catch { return ""; }
 }
 
-function run(command, args, cwd, diagnosticBase) {
+function run(command, args, cwd, diagnosticBase, { env = process.env } = {}) {
   return new Promise((resolvePromise, reject) => {
     const isWindowsCmd = process.platform === "win32" && command.toLowerCase().endsWith(".cmd");
     const spawnCommand = isWindowsCmd ? (process.env.ComSpec ?? "cmd.exe") : command;
@@ -56,7 +64,7 @@ function run(command, args, cwd, diagnosticBase) {
       cwd,
       shell: false,
       windowsHide: true,
-      env: { ...process.env, CI: "1" }
+      env: { ...env, CI: "1" }
     });
 
     let stdout = "";
@@ -105,7 +113,7 @@ function addOption(args, name, value) {
   args.push("--" + name, String(value));
 }
 
-export function renderArgs(job, outputPath) {
+export function renderArgs(job, outputPath, { resume = false } = {}) {
   const args = ["render", "-o", outputPath];
   addOption(args, "resolution", job.project.resolution);
   addOption(args, "fps", job.project.fps);
@@ -120,6 +128,7 @@ export function renderArgs(job, outputPath) {
     }
     args.push("--cinematic-motion-blur");
   }
+  if (resume) args.push("--resume");
   return args;
 }
 
@@ -166,8 +175,58 @@ export async function renderWithHyperFrames(job, { onProgress = async () => {} }
       throw error;
     }
   }
-  await onProgress(40, "Renderizando vídeo com HyperFrames");
-  const render = await run(command, cliArgs(command, ...renderArgs(job, outputPath)), projectDir, join(diagnosticsDir, "render"));
+  const maxAttempts = resolveRenderMaxAttempts(process.env);
+  const segmented = shouldResumeHyperFramesSegments(buildHyperFramesRenderEnvironment(process.env, 1));
+  let render = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const renderEnv = buildHyperFramesRenderEnvironment(process.env, attempt);
+    const attemptDiagnostics = join(
+      diagnosticsDir,
+      attempt === 1 ? "render" : "render-attempt-" + attempt
+    );
+    await onProgress(
+      40,
+      attempt === 1
+        ? "Renderizando com captura segmentada e recuperação habilitada"
+        : "Nova tentativa " + attempt + "/" + maxAttempts + " em perfil de baixa memória"
+    );
+
+    try {
+      render = await run(
+        command,
+        cliArgs(command, ...renderArgs(job, outputPath, { resume: segmented })),
+        projectDir,
+        attemptDiagnostics,
+        { env: renderEnv }
+      );
+      break;
+    } catch (error) {
+      const resources = await collectRenderResources(outputRoot);
+      error.diagnostics = {
+        ...(error.diagnostics ?? {}),
+        attempt,
+        maxAttempts,
+        resources
+      };
+      const recoverable = isRecoverableRenderFailure(error);
+      error.recoverable = recoverable;
+      error.retryable = recoverable && attempt < maxAttempts;
+      error.retryAttempts = attempt;
+
+      if (!error.retryable) throw error;
+
+      const delay = renderRetryDelayMs(attempt);
+      await onProgress(
+        42,
+        "Captura interrompida sem progresso. Preservando segmentos e tentando novamente em " +
+          Math.round(delay / 1000) + " segundos."
+      );
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, delay));
+    }
+  }
+
+  if (!render) throw new Error("HyperFrames encerrou sem resultado de renderização.");
   await onProgress(92, "Render concluído; verificando o MP4");
 
   return {

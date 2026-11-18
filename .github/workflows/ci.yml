@@ -2,9 +2,9 @@ name: MediaForge CI
 
 on:
   push:
-    branches: [main, feature/conexoes-mediaforge-primeiro, feature/frame-lab-chat-mcp-20261113, feat/reference-motion-quality, feat/mediaforge-cinematic-motion-audio-v2-20261112, feat/chat-only-creative-director-20261114, feat/mediaforge-chat-artifact-delivery-20261114, fix/mediaforge-audio-manifest-mismatch-20261115]
+    branches: [main, feature/unific-media-20261116, feature/conexoes-mediaforge-primeiro, feature/frame-lab-chat-mcp-20261113, feat/reference-motion-quality, feat/mediaforge-cinematic-motion-audio-v2-20261112, feat/chat-only-creative-director-20261114, feat/mediaforge-chat-artifact-delivery-20261114, fix/mediaforge-audio-manifest-mismatch-20261115, fix/mediaforge-render-resilience-20261118]
   pull_request:
-    branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro, feat/forge-real-render-pipeline-20261111, feature/frame-lab-chat-mcp-20261113]
+    branches: [main, migration/videos-secrets-to-mediaforge, feature/conexoes-mediaforge-primeiro, feat/forge-real-render-pipeline-20261111, feature/frame-lab-chat-mcp-20261113, feature/unific-media-20261116]
 
 jobs:
   validate:
@@ -45,6 +45,7 @@ jobs:
       - run: node --check src/videos-secrets-mcp.mjs
       - run: node --check src/worker.mjs
       - run: node --check src/renderers/hyperframes.mjs
+      - run: node --check src/render-recovery.mjs
       - run: node --test test/*.test.mjs
       - run: npm run validate
       - name: Validate reference motion composition
@@ -78,7 +79,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Verify public staging TLS, OAuth and access controls
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/unific-media-20261116'
         run: node scripts/staging-health.mjs
 
 
@@ -108,6 +109,8 @@ jobs:
             "desktop/connect-remote.ps1",
             "desktop/install-worker.ps1",
             "desktop/update-worker-safe.ps1",
+            "desktop/update-worker-auto.ps1",
+            "desktop/update-and-retry.ps1",
             "desktop/prepare-worker-migration.ps1"
           )
           foreach ($path in $paths) {

@@ -1,4 +1,4 @@
-const base=process.env.MEDIAFORGE_PUBLIC_URL||"https://mediaforge.salevo.site";
+const base=process.env.MEDIAFORGE_PUBLIC_URL||"https://unificmedia.salevo.site";
 async function check(path,init,expected){
   const response=await fetch(base+path,{signal:AbortSignal.timeout(12000),redirect:"manual",...init});
   console.log(path,"HTTP",response.status);
@@ -17,8 +17,16 @@ for(let i=0;i<8;i++){
     const resource=await check("/.well-known/oauth-protected-resource/mcp",undefined,200);
     const resourceMeta=await resource.json();
     if(resourceMeta.resource!==base+"/mcp")throw new Error("MCP protected resource mismatch");
-    const denied=await fetch(base+"/mcp",{method:"POST",headers:{"content-type":"application/json"},
-      body:JSON.stringify({jsonrpc:"2.0",id:1,method:"initialize",params:{protocolVersion:"2025-06-18"}}),
+    const denied=await fetch(base+"/mcp",{method:"POST",headers:{
+      "content-type":"application/json",
+      "accept":"application/json, text/event-stream",
+      "mcp-protocol-version":"2025-06-18"
+    },
+      body:JSON.stringify({jsonrpc:"2.0",id:1,method:"initialize",params:{
+        protocolVersion:"2025-06-18",
+        clientInfo:{name:"mediaforge-staging-health",version:"1.0.0"},
+        capabilities:{}
+      }}),
       signal:AbortSignal.timeout(12000)});
     if(denied.status!==401)throw new Error("MCP authentication absent: "+denied.status);
     if(!String(denied.headers.get("www-authenticate")).includes("resource_metadata="))

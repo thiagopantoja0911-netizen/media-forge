@@ -48,6 +48,10 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "Sintaxe invalida do Worker" }
   & node --check (Join-Path $InstallDir "src\video-qa.mjs")
   if ($LASTEXITCODE -ne 0) { throw "Sintaxe invalida do QA" }
+  & node --check (Join-Path $InstallDir "src\renderers\hyperframes.mjs")
+  if ($LASTEXITCODE -ne 0) { throw "Sintaxe invalida do renderer HyperFrames" }
+  & node --check (Join-Path $InstallDir "src\render-recovery.mjs")
+  if ($LASTEXITCODE -ne 0) { throw "Sintaxe invalida da recuperacao de render" }
   $current = (& git -C $InstallDir rev-parse HEAD | Out-String).Trim()
   Write-Output "Worker atualizado: $current"
   if (Get-Command ffprobe -ErrorAction SilentlyContinue) {

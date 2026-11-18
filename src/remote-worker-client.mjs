@@ -5,6 +5,7 @@ import { resolve, join, relative, sep, basename } from "node:path";
 import { hostname } from "node:os";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
 import { inspectRenderedVideo, inspectRenderedAudio } from "./video-qa.mjs";
+import { collectRenderResources } from "./render-recovery.mjs";
 
 const url=String(process.env.MEDIAFORGE_REMOTE_URL||"").replace(/\/$/,"");
 const token=process.env.MEDIAFORGE_WORKER_TOKEN||"";
@@ -131,8 +132,24 @@ async function processRemote(job,leaseId) {
     console.log("Remote job completed:",job.id);
   }catch(error){
     console.error("Remote job failed:",job.id,error.stack||error.message);
+    const resources = await collectRenderResources(projectsRoot).catch((snapshotError) => ({
+      unavailable: true,
+      reason: String(snapshotError?.message ?? snapshotError).slice(0, 240)
+    }));
+    const failure = {
+      code: String(error.code || "REMOTE_RENDER_FAILED").slice(0, 100),
+      message: String(error.message || error).slice(0, 12000),
+      recoverable: error.recoverable === true,
+      retryable: error.retryable === true,
+      retryAttempts: Number.isSafeInteger(error.retryAttempts) ? error.retryAttempts : null,
+      diagnostics: {
+        ...(error.diagnostics && typeof error.diagnostics === "object" ? error.diagnostics : {}),
+        resources,
+        stack: String(error.stack || "").slice(0, 12000)
+      }
+    };
     try{await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
-      leaseId,success:false,error:String(error.stack||error.message).slice(0,15000)
+      leaseId,success:false,error:failure
     });}catch(e){console.error("Could not report failure:",e.message);}
   }finally{clearInterval(interval);}
 }
