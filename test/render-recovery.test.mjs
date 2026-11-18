@@ -62,6 +62,9 @@ test("render retry classification distinguishes transient capture failures from 
     "[Render] Sequential screenshot capture stalled: no frame progress for 180000ms"
   )), true);
   assert.equal(isRecoverableRenderFailure(new Error("Protocol error: Target closed")), true);
+  assert.equal(isRecoverableRenderFailure(Object.assign(new Error("capture stalled"),{code:"RENDER_CAPTURE_STALLED"})),true);
+  assert.equal(isRecoverableRenderFailure(Object.assign(new Error("first frame missing"),{code:"RENDER_FIRST_FRAME_TIMEOUT"})),true);
+  assert.equal(isRecoverableRenderFailure(Object.assign(new Error("hard limit"),{code:"RENDER_HARD_TIMEOUT"})),false);
   assert.equal(isRecoverableRenderFailure(new Error("Error: out of memory allocating frame buffer")), true);
   assert.equal(isRecoverableRenderFailure(Object.assign(
     new Error("missing_timeline_registry: Missing window.__timelines registration"),
