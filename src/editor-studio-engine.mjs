@@ -95,7 +95,13 @@ function editorRuntime(){
   });
   const glowQuad=new THREE.Mesh(new THREE.PlaneGeometry(32,36),glowMat);
   glowQuad.renderOrder=-30;glowQuad.frustumCulled=false;world.add(glowQuad);
-  const assetLoader=new THREE.TextureLoader(),texturePromises=[];
+  const assetLoader=new THREE.TextureLoader(),texturePromises=[],textureCache=new Map();
+  function textureFor(url){
+    if(!textureCache.has(url))textureCache.set(url,assetLoader.loadAsync(url).then(tex=>{
+      tex.colorSpace=THREE.SRGBColorSpace;return tex;
+    }));
+    return textureCache.get(url);
+  }
   function roundedGeometry(width,height,radius){
     const s=new THREE.Shape(),x=-width/2,y=-height/2,r=Math.min(radius,width/2,height/2);
     s.moveTo(x+r,y);s.lineTo(x+width-r,y);s.quadraticCurveTo(x+width,y,x+width,y+r);
@@ -117,8 +123,7 @@ function editorRuntime(){
     const face=new THREE.Mesh(roundedGeometry(width,height,.18),
       new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}));
     face.position.z=.02;group.add(face);
-    texturePromises.push(assetLoader.loadAsync(url).then(tex=>{
-      tex.colorSpace=THREE.SRGBColorSpace;
+    texturePromises.push(textureFor(url).then(tex=>{
       face.material.map=tex;face.material.needsUpdate=true;
     }));
     return group;
@@ -264,9 +269,9 @@ export function buildEditorSceneModule(p,{sceneIndex,preview=false}={}){
   const assets=Object.fromEntries((p.assets??[]).map(a=>[a.id,preview
     ?"/api/editor/projects/"+p.id+"/assets/"+a.id
     :"./assets/images/"+a.id+"."+a.extension]));
-  return 'import * as THREE from "three";\\nconst shots='+JSON.stringify(shots)+';\\n'+
-    'const assets='+JSON.stringify(assets)+';\\n'+
-    'const W='+w+',H='+h+',FPS='+p.fps+',D='+d+',preview='+Boolean(preview)+';\\n('+
+  return 'import * as THREE from "three";\nconst shots='+JSON.stringify(shots)+';\n'+
+    'const assets='+JSON.stringify(assets)+';\n'+
+    'const W='+w+',H='+h+',FPS='+p.fps+',D='+d+',preview='+Boolean(preview)+';\n('+
     editorRuntime.toString()+')();\n';
 }
 export async function buildEditorRenderFiles(p,{sceneIndex}={}){
