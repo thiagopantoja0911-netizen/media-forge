@@ -69,7 +69,7 @@ export function runSupervisedCommand(command,args,cwd,diagnosticBase,{
       const text=chunk.toString("utf8");
       if(isStderr)stderr=keepTail(stderr,text);else stdout=keepTail(stdout,text);
       if(tracker){
-        const observation=tracker.observe(text);
+        const observation=tracker.observe(text,Date.now(),isStderr?"stderr":"stdout");
         if(observation){
           try{Promise.resolve(onVerifiedFrame(observation)).catch(error=>console.warn("Frame progress report failed:",error.message));}
           catch(error){console.warn("Frame progress report failed:",error.message);}
