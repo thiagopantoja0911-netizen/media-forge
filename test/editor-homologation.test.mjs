@@ -7,6 +7,8 @@ import {buildHomologationAudio,createEditorHomologationProject} from "../src/edi
 import {analyzePcmForBeats,synchronizeSceneCutsToBeats} from "../src/editor-beat-sync.mjs";
 import {loadEditorProject,validateEditorProject,editorStoreDir} from "../src/editor-studio-core.mjs";
 import {buildEditorRenderFiles,buildEditorSceneModule} from "../src/editor-studio-engine.mjs";
+import {handleEditorStudioHttp} from "../src/editor-studio-http.mjs";
+import {VIDEOS_SECRETS_TOOLS} from "../src/videos-secrets-mcp.mjs";
 
 const originalEnv=process.env.MEDIAFORGE_DATA_DIR;
 const data=await mkdtemp(join(tmpdir(),"mediaforge-final-homologation-"));
@@ -62,4 +64,18 @@ test("homologation creates actual editable five-scene project, music and 4 separ
  assert.equal(synced.project.totalFrames,720);
  assert.ok(synced.syncedCuts>=1,"Nenhum corte alinhado com BPM");
  assert.equal(validateEditorProject(synced.project),synced.project);
+});
+
+test("MCP exposes dedicated authenticated homologation builder",()=>{
+ const tool=VIDEOS_SECRETS_TOOLS.find(t=>t.name==="create_editor_homologation_project");
+ assert.ok(tool);
+ assert.deepEqual(tool.inputSchema.properties,{});
+});
+test("homologation creation endpoint is inaccessible without an admin session",async()=>{
+ const request={url:"/api/editor/homologation",method:"POST",headers:{host:"studio.example",origin:"https://studio.example","sec-fetch-site":"same-origin"}};
+ const response={status:null,body:null,writeHead(status){this.status=status;},end(body){this.body=body;}};
+ const handled=await handleEditorStudioHttp({request,response,url:new URL("https://studio.example/api/editor/homologation"),
+  isAdminSession:async()=>false,parseBody:async()=>({}),createJob:async()=>{throw Error("Must not render");},getJob:async()=>null});
+ assert.equal(handled,true);
+ assert.equal(response.status,401);
 });
