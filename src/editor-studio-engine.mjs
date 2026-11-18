@@ -68,6 +68,8 @@ function editorRuntime(){
   // The result does not depend on requestAnimationFrame, last captured frame or GPU history.
   const pixelsW=Math.round(W*scale),pixelsH=Math.round(H*scale);
   const colorTarget=new THREE.WebGLRenderTarget(pixelsW,pixelsH,{depthBuffer:true,stencilBuffer:false});
+  colorTarget.depthTexture=new THREE.DepthTexture(pixelsW,pixelsH,THREE.UnsignedIntType);
+  colorTarget.depthTexture.format=THREE.DepthFormat;
   const accumulationTarget=new THREE.WebGLRenderTarget(pixelsW,pixelsH,{depthBuffer:false,stencilBuffer:false});
   const passCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
   const passScene=new THREE.Scene();
@@ -81,6 +83,51 @@ function editorRuntime(){
   const resolveScene=new THREE.Scene();
   const resolveQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.MeshBasicMaterial({map:accumulationTarget.texture,depthTest:false,depthWrite:false,toneMapped:false}));
   resolveQuad.frustumCulled=false;resolveScene.add(resolveQuad);
+  // Depth-aware cinematic blur runs after temporal exposure accumulation. The
+  // center exposure supplies a stable depth map, while the color can retain motion blur.
+  const dofScene=new THREE.Scene();
+  const dofMaterial=new THREE.ShaderMaterial({
+    uniforms:{
+      tColor:{value:accumulationTarget.texture},tDepth:{value:colorTarget.depthTexture},
+      uTexel:{value:new THREE.Vector2(1/pixelsW,1/pixelsH)},uDof:{value:0},
+      uFocusDistance:{value:7.5},uFocusRange:{value:3.2},uNear:{value:.1},uFar:{value:60},
+      uMaxRadiusPixels:{value:14}
+    },
+    depthTest:false,depthWrite:false,toneMapped:false,
+    vertexShader:"varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}",
+    fragmentShader:`precision highp float;
+      varying vec2 vUv;uniform sampler2D tColor;uniform sampler2D tDepth;
+      uniform vec2 uTexel;uniform float uDof;uniform float uFocusDistance;
+      uniform float uFocusRange;uniform float uNear;uniform float uFar;uniform float uMaxRadiusPixels;
+      float linearDistance(float depth){
+        float z=depth*2.0-1.0;
+        return (2.0*uNear*uFar)/(uFar+uNear-z*(uFar-uNear));
+      }
+      void main(){
+        vec4 center=texture2D(tColor,vUv);
+        float centerDepth=linearDistance(texture2D(tDepth,vUv).x);
+        float coc=clamp(abs(centerDepth-uFocusDistance)/max(.001,uFocusRange),0.0,1.0)*uDof;
+        vec2 radius=uTexel*(uMaxRadiusPixels*coc);
+        vec2 offsets[8];
+        offsets[0]=vec2(1.0,0.0); offsets[1]=vec2(-1.0,0.0);
+        offsets[2]=vec2(0.0,1.0); offsets[3]=vec2(0.0,-1.0);
+        offsets[4]=vec2(.707,.707); offsets[5]=vec2(-.707,.707);
+        offsets[6]=vec2(.707,-.707); offsets[7]=vec2(-.707,-.707);
+        vec3 sum=center.rgb*.2;float total=.2;
+        for(int i=0;i<8;i++){
+          vec2 uv=clamp(vUv+offsets[i]*radius,vec2(0.001),vec2(.999));
+          vec3 sampleColor=texture2D(tColor,uv).rgb;
+          float sampleDepth=linearDistance(texture2D(tDepth,uv).x);
+          float edge=1.0-.65*smoothstep(uFocusRange*.35,uFocusRange,abs(sampleDepth-centerDepth));
+          float weight=.1*edge;
+          sum+=sampleColor*weight;total+=weight;
+        }
+        gl_FragColor=vec4(sum/max(.001,total),center.a);
+      }`
+  });
+  const dofQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),dofMaterial);
+  dofQuad.frustumCulled=false;dofScene.add(dofQuad);
+  const focusPoint=new THREE.Vector3(0,.08,0);
   const world=new THREE.Scene();
   world.background=new THREE.Color(baseBackground);
   world.fog=new THREE.Fog(baseBackground,7,21);
@@ -298,45 +345,43 @@ function editorRuntime(){
     let chosen=shots.findIndex(s=>t>=s.startFrame/FPS&&t<s.endFrame/FPS);
     if(chosen<0)chosen=shots.length-1;
     const samples=temporalShutterSamples(shots[chosen],t,FPS,preview);
-    if(samples.length===1){drawAt(t);return;}
-    const priorAutoClear=renderer.autoClear;
-    const clearColor=renderer.getClearColor(new THREE.Color()).clone();
-    const clearAlpha=renderer.getClearAlpha();
-    renderer.autoClear=false;
-    try{
-      renderer.setRenderTarget(accumulationTarget);
-      renderer.setClearColor(0x000000,0);
-      renderer.clear(true,true,true);
-      for(const moment of samples){
-        renderer.setRenderTarget(colorTarget);
-        renderer.clear(true,true,true);
-        drawAt(moment,colorTarget);
-        blurPass.uniforms.weight.value=1/samples.length;
+    const dofStrength=Math.max(0,Math.min(1,Number(shots[chosen].depthOfField??0)));
+    if(samples.length===1&&dofStrength<=0){drawAt(t);return;}
+    if(samples.length===1){
+      drawAt(t,accumulationTarget);
+    }else{
+      const priorAutoClear=renderer.autoClear;
+      const clearColor=renderer.getClearColor(new THREE.Color()).clone();
+      const clearAlpha=renderer.getClearAlpha();
+      renderer.autoClear=false;
+      try{
         renderer.setRenderTarget(accumulationTarget);
-        renderer.render(passScene,passCam);
+        renderer.setClearColor(0x000000,0);
+        renderer.clear(true,true,true);
+        for(const moment of samples){
+          renderer.setRenderTarget(colorTarget);
+          renderer.clear(true,true,true);
+          drawAt(moment,colorTarget);
+          blurPass.uniforms.weight.value=1/samples.length;
+          renderer.setRenderTarget(accumulationTarget);
+          renderer.render(passScene,passCam);
+        }
+      }finally{
+        renderer.setRenderTarget(null);
+        renderer.setClearColor(clearColor,clearAlpha);
+        renderer.autoClear=priorAutoClear;
       }
-      renderer.setRenderTarget(null);
-      renderer.clear(true,true,true);
-      renderer.render(resolveScene,passCam);
-    }finally{
-      renderer.setRenderTarget(null);
-      renderer.setClearColor(clearColor,clearAlpha);
-      renderer.autoClear=priorAutoClear;
     }
-    // Restore DOM typography and uniforms to the requested timestamp.
-    // Do not render a new scene frame here: that would overwrite the accumulation.
-    const active=shots[chosen],duration=(active.endFrame-active.startFrame)/FPS;
-    const progress=Math.max(0,Math.min(1,(t-active.startFrame/FPS)/duration));
-    labels.forEach((label,i)=>{
-      if(i!==chosen){label.style.opacity="0";label.style.visibility="hidden";return;}
-      const ease=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);};
-      const intro=ease(progress*8),outro=ease((1-progress)*12),show=intro*outro;
-      label.style.opacity=String(show);label.style.visibility=show>.001?"visible":"hidden";
-      label.style.transform="translate3d("+(35*(1-intro)-22*(1-outro)).toFixed(1)+"px,"+
-        (72*(1-intro)+32*(1-outro)).toFixed(1)+"px,0) rotateY("+(-7*(1-intro)).toFixed(2)+"deg) scale("+
-        ((.93+.07*intro)*active.textScale).toFixed(3)+")";
-      updateTypography(i,progress);
-    });
+    // Re-render the requested timestamp into the depth target. This keeps the
+    // focus plane frame-accurate even when color is accumulated across subframes.
+    drawAt(t,colorTarget);
+    if(dofStrength>0){
+      dofMaterial.uniforms.uDof.value=dofStrength;
+      dofMaterial.uniforms.uFocusDistance.value=camera.position.distanceTo(focusPoint);
+      renderer.render(dofScene,passCam);
+    }else{
+      renderer.render(resolveScene,passCam);
+    }
   }
   // Browser playback is driven by GSAP ticker; HyperFrames capture is seek-only.
   let time=0,playing=false;
