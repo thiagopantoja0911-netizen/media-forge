@@ -103,6 +103,29 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
     if(pieces.length===4&&pieces[2]==="remotion"&&pieces[3]==="demo"&&request.method==="GET"){
       json(response,200,{ok:true,project:remotionDemoProject,engine:"remotion",editor:"MediaForge"});return true;
     }
+    if(pieces.length===4&&pieces[2]==="remotion"&&pieces[3]==="render"&&request.method==="POST"){
+      assertSameOrigin(request);
+      const body=await parseBody(request);
+      if(body.confirm!==true){json(response,428,{ok:false,error:"RENDER_CONFIRMATION_REQUIRED"});return true;}
+      const movie=await readFile(new URL("../remotion-public/remotion-assets/background.mp4",import.meta.url));
+      const badge=await readFile(new URL("../remotion-public/remotion-assets/badge.png",import.meta.url));
+      const sourceFiles=[
+        {path:"index.html",content:"<!doctype html><title>MediaForge Remotion worker project</title>"},
+        {path:"remotion/project.json",content:JSON.stringify(remotionDemoProject)},
+        {path:"remotion-assets/background.mp4",contentBase64:movie.toString("base64")},
+        {path:"remotion-assets/badge.png",contentBase64:badge.toString("base64")}
+      ];
+      const job=await createJob({
+        prompt:"MediaForge Remotion: vídeo de fundo MP4, sobreposição PNG e texto animado em camadas simultâneas.",
+        project:{title:remotionDemoProject.title,durationSeconds:12,aspectRatio:"9:16",
+          outputs:["video"],renderer:"remotion",fps:30,quality:"high",resolution:"portrait",preflight:true},
+        projectFiles:sourceFiles,
+        metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",engine:"remotion",
+          remotionProjectId:remotionDemoProject.id,expectsAudio:false,productionMode:"remotion",
+          artisticQA:"pending-user-review"}
+      });
+      json(response,202,{ok:true,jobId:job.id,status:job.status,engine:"remotion"});return true;
+    }
     if(pieces.length===3&&pieces[2]==="styles"&&request.method==="GET"){
       json(response,200,{ok:true,styles:listEditorStylePresets()});return true;
     }
