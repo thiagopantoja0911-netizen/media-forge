@@ -70,10 +70,10 @@ function editorRuntime(){
   const passCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
   const passScene=new THREE.Scene();
   const blurPass=new THREE.ShaderMaterial({
-    uniforms:{sample:{value:colorTarget.texture},weight:{value:1}},
+    uniforms:{tInput:{value:colorTarget.texture},weight:{value:1}},
     depthTest:false,depthWrite:false,transparent:true,blending:THREE.AdditiveBlending,
     vertexShader:"varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.,1.);}",
-    fragmentShader:"uniform sampler2D sample;uniform float weight;varying vec2 v;void main(){vec4 c=texture2D(sample,v);gl_FragColor=vec4(c.rgb*weight,1.);}"
+    fragmentShader:"uniform sampler2D tInput;uniform float weight;varying vec2 v;void main(){vec4 c=texture2D(tInput,v);gl_FragColor=vec4(c.rgb*weight,1.);}"
   });
   const passQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),blurPass);passQuad.frustumCulled=false;passScene.add(passQuad);
   const resolveScene=new THREE.Scene();
