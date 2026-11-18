@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, readdir, mkdir, writeFile, rename, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { getEditorStylePreset, applyEditorStylePreset } from "./editor-style-presets.mjs";
+import { validateSceneTypography } from "./editor-typography.mjs";
 
 const TITLE_MAX=100, MAX_AUDIO=10, MAX_SCENES=12, MAX_VISUAL_ASSETS=8;
 export const EDITOR_VISUAL_TYPES=["screen","card-grid"];
@@ -68,7 +69,8 @@ export function makeEditorProject(input={}){
       textScale:number(src.textScale,.5,1.5)?src.textScale:1,
       ...(src.glow?{glow:src.glow}:{}),
       ...(src.visual?{visual:src.visual}:{}),
-      ...(src.motionBlur!==undefined?{motionBlur:src.motionBlur}:{})
+      ...(src.motionBlur!==undefined?{motionBlur:src.motionBlur}:{}),
+      ...(src.typography!==undefined?{typography:src.typography}:{})
     });
     cursor=end;
   }
@@ -125,6 +127,8 @@ export function validateEditorProject(p){
     }
     if(s.motionBlur!==undefined&&!number(s.motionBlur,0,1))
       throw failure("SCENE_MOTION_BLUR_INVALID","Motion blur fora do intervalo 0–1.");
+    if(s.typography!==undefined&&!validateSceneTypography(s.typography))
+      throw failure("SCENE_TYPOGRAPHY_INVALID","Tipografia inválida: use família segura, modo, pesos 100–900, bloom e stagger 0–1.");
     if(s.visual!==undefined){
       const v=s.visual;
       if(v?.assetIds!==undefined&&(!Array.isArray(v.assetIds)||!v.assetIds.length||v.assetIds.length>12||v.assetIds.some(id=>!assetIds.has(id))))

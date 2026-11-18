@@ -41,6 +41,15 @@ export const VIDEOS_SECRETS_TOOLS = [
         accent:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},
         energy:{type:"number",minimum:0,maximum:1},
         depth:{type:"number",minimum:0,maximum:1},
+        typography:{type:["object","null"],additionalProperties:false,properties:{
+            mode:{type:"string",enum:["whole","words","letters"]},
+            family:{type:"string",enum:["sans","serif","mono"]},
+            weightFrom:{type:"integer",minimum:100,maximum:900},
+            weightTo:{type:"integer",minimum:100,maximum:900},
+            bloom:{type:"number",minimum:0,maximum:1},
+            bloomColor:{type:"string",pattern:"^#[a-fA-F0-9]{6}$"},
+            stagger:{type:"number",minimum:0,maximum:1}
+          },required:["mode","family","weightFrom","weightTo","bloom","bloomColor","stagger"]},
         duration_seconds:{type:"number",minimum:1,maximum:30}
       }}}
     },required:["idea"]}
@@ -123,6 +132,15 @@ export const VIDEOS_SECRETS_TOOLS = [
           detail:{type:"string",maxLength:150},shape:{type:"string"},camera:{type:"string"},
           transition:{type:"string"},accent:{type:"string"},energy:{type:"number"},depth:{type:"number"},
           textScale:{type:"number",minimum:0.5,maximum:1.5},
+          typography:{type:["object","null"],additionalProperties:false,properties:{
+            mode:{type:"string",enum:["whole","words","letters"]},
+            family:{type:"string",enum:["sans","serif","mono"]},
+            weightFrom:{type:"integer",minimum:100,maximum:900},
+            weightTo:{type:"integer",minimum:100,maximum:900},
+            bloom:{type:"number",minimum:0,maximum:1},
+            bloomColor:{type:"string",pattern:"^#[a-fA-F0-9]{6}$"},
+            stagger:{type:"number",minimum:0,maximum:1}
+          },required:["mode","family","weightFrom","weightTo","bloom","bloomColor","stagger"]},
           motionBlur:{type:"number",minimum:0,maximum:1,description:"Desfoque temporal real via subframes acumulados no WebGL para objetos e movimentos de câmera; aumenta custo de GPU."},
           glow:{type:["object","null"],additionalProperties:false,properties:{
             color:{type:"string",pattern:"^#[a-fA-F0-9]{6}$"},intensity:{type:"number",minimum:0,maximum:1},
@@ -580,7 +598,7 @@ export async function handleVideosSecretsMcp({
         const index=copy.scenes.findIndex(s=>s.id===edit.scene_id);
         if(index<0)return writeError(response,id,-32602,"Scene not found",422,version);
         const patch=edit.changes||{},scene=copy.scenes[index];
-        const allowed=["headline","kicker","detail","shape","camera","transition","accent","energy","depth","textScale","visual","glow","motionBlur"];
+        const allowed=["headline","kicker","detail","shape","camera","transition","accent","energy","depth","textScale","visual","glow","motionBlur","typography"];
         if(Object.keys(patch).some(k=>![...allowed,"duration_seconds"].includes(k)))
           return writeError(response,id,-32602,"Unsupported property",422,version);
         if(patch.duration_seconds!==undefined){
@@ -593,7 +611,7 @@ export async function handleVideosSecretsMcp({
           scene.endFrame=scene.startFrame+frames;next.startFrame=scene.endFrame;
         }
         for(const k of allowed)if(Object.hasOwn(patch,k)){
-          if((k==="visual"||k==="glow")&&patch[k]===null)delete scene[k];
+          if((k==="visual"||k==="glow"||k==="typography")&&patch[k]===null)delete scene[k];
           else scene[k]=patch[k];
         }
       }

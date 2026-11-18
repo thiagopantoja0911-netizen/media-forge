@@ -4,6 +4,7 @@ import { validateEditorProject } from "./editor-studio-core.mjs";
 import { buildEditorVisualAssets } from "./editor-visual-assets.mjs";
 import { buildEditorStyleDna, getEditorStylePreset } from "./editor-style-presets.mjs";
 import { temporalShutterSamples } from "./editor-motion-blur.mjs";
+import { sceneTypography, renderKineticTitle, EDITOR_FONT_STACKS } from "./editor-typography.mjs";
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dims=ratio=>ratio==="16:9"?[1920,1080]:ratio==="1:1"?[1080,1080]:[1080,1920];
 function selectScenes(p,index){
@@ -19,7 +20,7 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
   const labels=shots.map((s,i)=>
     '<div id="caption-'+i+'" class="caption clip" data-layout-ignore data-start="'+s.startFrame/p.fps+'" data-duration="'+(s.endFrame-s.startFrame)/p.fps+'" data-track-index="'+(i+2)+'">'+
     '<span class="eyebrow">'+esc(s.kicker)+'</span>'+
-    '<h1 class="hero-title">'+esc(s.headline)+'</h1>'+
+    '<h1 class="hero-title" aria-label="'+esc(s.headline)+'" style="font-family:'+EDITOR_FONT_STACKS[sceneTypography(s).family]+'">'+renderKineticTitle(s.headline,s.typography)+'</h1>'+
     '<p class="detail">'+esc(s.detail)+'</p>'+
     '<small class="chapter">CENA '+String(i+1).padStart(2,"0")+' / '+String(shots.length).padStart(2,"0")+'</small>'+
     '</div>').join("");
@@ -40,7 +41,8 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
     "#world{position:absolute;inset:0;width:100%;height:100%;z-index:0;display:block}",
     ".caption{position:absolute;top:14%;left:10%;width:80%;z-index:3;pointer-events:none;transform-origin:15% 50%;will-change:transform,opacity}",
     ".eyebrow{display:inline-block;padding:13px 25px;border:2px solid #ffffff66;border-radius:100px;letter-spacing:.19em;font-size:28px;font-weight:800;background:#03030688}",
-    ".hero-title{margin:47px 0 0;font-size:"+titleSize+"px;line-height:1.02;letter-spacing:-.06em;font-weight:900;overflow-wrap:anywhere;text-shadow:0 14px 34px #000c}",
+    ".hero-title{margin:47px 0 0;font-size:"+titleSize+"px;line-height:1.02;letter-spacing:-.06em;font-weight:900;overflow-wrap:anywhere;white-space:pre-wrap;text-shadow:0 14px 34px #000c}",
+    ".kinetic-unit{display:inline-block;white-space:pre;will-change:transform,opacity,filter;transform-origin:50% 90%}",
     ".detail{margin:33px 0 0;max-width:88%;font-size:"+detailSize+"px;font-weight:600;line-height:1.35;color:"+supporting+";text-shadow:0 8px 22px #0005}",
     ".chapter{display:block;margin-top:32px;font-size:20px;letter-spacing:.2em;color:#a5afca;font-weight:800}"
   ].join("");
@@ -206,6 +208,29 @@ function editorRuntime(){
     return {group,hero,orbit1,orbit2,particles,visualGroup};
   });
   const labels=shots.map((s,i)=>document.getElementById("caption-"+i));
+  const titles=labels.map(label=>label.querySelector(".hero-title"));
+  const unitLists=titles.map(title=>Array.from(title.querySelectorAll(".kinetic-unit")));
+  function updateTypography(index,local){
+    const s=shots[index],typ=s.typography;
+    if(!typ)return;
+    const title=titles[index],units=unitLists[index];
+    const power=Math.max(0,Math.min(1,typ.bloom));
+    if(power>0){
+      const n=Math.round(6+power*28),large=Math.round(12+power*65);
+      title.style.textShadow="0 0 "+n+"px "+typ.bloomColor+
+        ",0 0 "+large+"px "+typ.bloomColor+",0 0 "+Math.round(large*1.6)+"px "+typ.bloomColor;
+    }else title.style.textShadow="none";
+    if(!units.length){title.style.fontWeight=String(typ.weightTo);return;}
+    for(let i=0;i<units.length;i++){
+      const delay=units.length>1?(i/(units.length-1))*(typ.stagger*.49):0;
+      const progress=Math.max(0,Math.min(1,(local-delay)/.25));
+      const e=progress*progress*(3-2*progress),unit=units[i];
+      unit.style.opacity=String(e);
+      unit.style.transform="translate3d(0,"+((1-e)*52).toFixed(2)+"px,0) rotateX("+((1-e)*-25).toFixed(2)+"deg) scale("+(.88+.12*e).toFixed(3)+")";
+      unit.style.filter="blur("+((1-e)*4).toFixed(2)+"px)";
+      unit.style.fontWeight=String(Math.round(typ.weightFrom+(typ.weightTo-typ.weightFrom)*e));
+    }
+  }
   const clamp=x=>Math.max(0,Math.min(1,x));
   const ease=x=>{x=clamp(x);return x*x*(3-2*x);};
   function drawAt(time,target=null){
@@ -262,6 +287,7 @@ function editorRuntime(){
       label.style.transform="translate3d("+(35*(1-intro)-22*(1-outro)).toFixed(1)+"px,"+
         (72*(1-intro)+32*(1-outro)).toFixed(1)+"px,0) rotateY("+(-7*(1-intro)).toFixed(2)+"deg) scale("+
         ((.93+.07*intro)*s.textScale).toFixed(3)+")";
+      if(on)updateTypography(i,local);
     });
     renderer.setRenderTarget(target);
     renderer.render(world,camera);
@@ -309,6 +335,7 @@ function editorRuntime(){
       label.style.transform="translate3d("+(35*(1-intro)-22*(1-outro)).toFixed(1)+"px,"+
         (72*(1-intro)+32*(1-outro)).toFixed(1)+"px,0) rotateY("+(-7*(1-intro)).toFixed(2)+"deg) scale("+
         ((.93+.07*intro)*active.textScale).toFixed(3)+")";
+      updateTypography(i,progress);
     });
   }
   // Browser playback is driven by GSAP ticker; HyperFrames capture is seek-only.

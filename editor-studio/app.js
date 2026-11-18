@@ -192,6 +192,7 @@ function fillInspector(){
    const el=document.createElement("option");el.value=a.id;el.textContent=a.name;assetSelect.append(el);
  }
  const g=s.glow??{color:s.accent,intensity:.55,speed:.7,x:0,y:0};
+ const typ=s.typography??{mode:"whole",family:"sans",weightFrom:400,weightTo:900,bloom:0,bloomColor:"#ffffff",stagger:.65};
  const v=s.visual??{type:"",assetId:"",position:[0,0,0],rotation:[0,0,0],
    scale:1,depth:.7,columns:3,rows:4,scroll:1};
  const fields={editGlowMode:s.glow?"on":"off",editGlowColor:g.color,
@@ -203,10 +204,13 @@ function fillInspector(){
   editKicker:s.kicker,editHeadline:s.headline,editDetail:s.detail,editShape:s.shape,editCamera:s.camera,
   editTransition:s.transition,editAccent:s.accent,editDuration:sceneLength(state.selected).toFixed(1),
   editEnergy:Math.round(s.energy*100),editDepth:Math.round(s.depth*100),editTextScale:Math.round(s.textScale*100),
-  editMotionBlur:Math.round((s.motionBlur??0)*100)};
+  editMotionBlur:Math.round((s.motionBlur??0)*100),
+  editTextMode:typ.mode,editFontFamily:typ.family,editWeightFrom:typ.weightFrom,editWeightTo:typ.weightTo,
+  editTextStagger:Math.round(typ.stagger*100),editTextBloom:Math.round(typ.bloom*100),editTextBloomColor:typ.bloomColor};
  for(const [id,value] of Object.entries(fields))$(id).value=value;
  out("energyNumber",fields.editEnergy+"%");out("depthNumber",fields.editDepth+"%");out("textScaleNumber",fields.editTextScale+"%");
  out("motionBlurNumber",fields.editMotionBlur+"%");
+ out("textStaggerNumber",fields.editTextStagger+"%");out("textBloomNumber",fields.editTextBloom+"%");
  $("editDuration").disabled=state.selected===p.scenes.length-1;
 }
 function renderImageList(){
@@ -308,6 +312,27 @@ function connectProperties(){
   });
  }
  $("editDuration").addEventListener("change",()=>editSceneDuration(state.selected,Number($("editDuration").value)*state.project.fps));
+}
+function connectTypographyProperties(){
+ const fields=["editTextMode","editFontFamily","editWeightFrom","editWeightTo",
+   "editTextStagger","editTextBloom","editTextBloomColor"];
+ for(const id of fields)$(id).addEventListener("change",()=>{
+   if(!state.project)return;
+   const s=state.project.scenes[state.selected];
+   const bounded=(id,min,max)=>Math.max(min,Math.min(max,Number($(id).value)||0));
+   s.typography={
+     mode:$("editTextMode").value,
+     family:$("editFontFamily").value,
+     weightFrom:Math.round(bounded("editWeightFrom",100,900)),
+     weightTo:Math.round(bounded("editWeightTo",100,900)),
+     stagger:bounded("editTextStagger",0,100)/100,
+     bloom:bounded("editTextBloom",0,100)/100,
+     bloomColor:$("editTextBloomColor").value
+   };
+   out("textStaggerNumber",Math.round(s.typography.stagger*100)+"%");
+   out("textBloomNumber",Math.round(s.typography.bloom*100)+"%");
+   afterChange();
+ });
 }
 function connectPremiumProperties(){
  for(const id of ["editGlowMode","editGlowColor","editGlowIntensity","editGlowSpeed","editGlowX","editGlowY"])
@@ -472,7 +497,7 @@ $("sceneSeek").addEventListener("input",event=>{
 $("audioUpload").addEventListener("change",async event=>{
  const file=event.target.files?.[0];if(file)await uploadAudio(file);event.target.value="";
 });
-connectProperties();connectPremiumProperties();
+connectProperties();connectPremiumProperties();connectTypographyProperties();
 $("applyPreset").addEventListener("click",applySelectedStyle);
 $("downloadDna").addEventListener("click",downloadStyleDna);
 $("imageUpload").addEventListener("change",async event=>{
