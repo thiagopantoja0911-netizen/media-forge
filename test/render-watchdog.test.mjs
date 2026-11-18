@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {framesFromHyperFramesLine,createFrameWatchdog,percentageFromFrames,orderQueuedJobs,renderWatchdogBudgets} from "../src/render-watchdog.mjs";
+import {framesFromHyperFramesLine,createFrameWatchdog,percentageFromFrames,orderQueuedJobs,renderWatchdogBudgets,applyWorkerProgress} from "../src/render-watchdog.mjs";
 
 test("observes only evidence of captured frames (including split output and carriage return)",()=>{
  const tracker=createFrameWatchdog({totalFrames:360,startedAt:0,budgets:{firstFrameMs:100,noFrameMs:70,hardMs:1000}});
@@ -47,4 +47,23 @@ test("queue claims oldest createdAt rather than lexicographic job id",()=>{
  ];
  assert.deepEqual(orderQueuedJobs(jobs).map(x=>x.id),["bbbb","ffff","0000"]);
  assert.deepEqual(jobs.map(x=>x.id),["0000","ffff","bbbb"]);
+});
+
+test("progress updates require verified frames and only reset for a newer render attempt",()=>{
+ const job={progress:10};
+ applyWorkerProgress(job,{progress:40,phase:"capturing",renderAttempt:1,framesCompleted:0,totalFrames:360},"2026-11-18T22:00:00.000Z");
+ assert.equal(job.progress,40);
+ assert.equal(job.renderTelemetry.lastFrameAt,null);
+ applyWorkerProgress(job,{progress:53,phase:"capturing",renderAttempt:1,framesCompleted:100,totalFrames:360},"2026-11-18T22:00:30.000Z");
+ assert.equal(job.renderTelemetry.framesCompleted,100);
+ assert.equal(job.renderTelemetry.lastFrameAt,"2026-11-18T22:00:30.000Z");
+ applyWorkerProgress(job,{progress:55,phase:"capturing",renderAttempt:1,framesCompleted:100,totalFrames:360},"2026-11-18T22:00:31.000Z");
+ assert.equal(job.renderTelemetry.lastFrameAt,"2026-11-18T22:00:30.000Z");
+ applyWorkerProgress(job,{progress:40,phase:"capturing",renderAttempt:2,framesCompleted:0,totalFrames:360},"2026-11-18T22:01:00.000Z");
+ assert.equal(job.progress,40);
+ assert.equal(job.renderTelemetry.framesCompleted,0);
+ assert.equal(job.renderTelemetry.lastFrameAt,null);
+ applyWorkerProgress(job,{progress:80,renderAttempt:1,framesCompleted:200,totalFrames:360},"2026-11-18T22:01:10.000Z");
+ assert.equal(job.progress,40);
+ assert.equal(job.renderTelemetry.framesCompleted,0);
 });
