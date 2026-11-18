@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { makeEditorProject, loadEditorProject, saveEditorProject, latestEditorProject, updateEditorProject, editorStoreDir, validateEditorProject } from "./editor-studio-core.mjs";
 import { buildEditorIndex, buildEditorSceneModule, buildEditorRenderFiles } from "./editor-studio-engine.mjs";
 import { signedVideoDownload } from "./video-artifact-delivery.mjs";
+import { createEditorHomologationProject } from "./editor-homologation.mjs";
 import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
 import { storeEditorVisualAsset, loadEditorVisualAsset } from "./editor-visual-assets.mjs";
 import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } from "./editor-style-presets.mjs";
@@ -103,6 +104,14 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       assertSameOrigin(request);
       const project=await saveEditorProject(makeEditorProject(await parseBody(request)));
       json(response,201,{ok:true,project,editorUrl:"/editor?project="+project.id});return true;
+    }
+    if(pieces.length===3&&pieces[2]==="homologation"&&request.method==="POST"){
+      assertSameOrigin(request);
+      const result=await createEditorHomologationProject();
+      json(response,201,{ok:true,project:result.project,audio:result.audio,
+        assets:result.visualAssets,editorUrl:"/editor?project="+result.project.id,
+        nextSteps:result.nextSteps});
+      return true;
     }
     const id=pieces[3];
     if(pieces[2]!=="projects"||!idReg.test(id)){json(response,404,{error:"NOT_FOUND"});return true;}
