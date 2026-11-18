@@ -250,6 +250,8 @@ Object.assign(schema,parallelExecution.toolSpecs);
 schema[CONTEXT_ACTION_TOOL.name]=CONTEXT_ACTION_TOOL;
 Object.assign(schema,behavioralLibrary.toolSpecs);
 Object.assign(schema,devforgeToolSpecs);
+// Expose only in-process specs for health checks; OAuth still protects MCP calls.
+export const listBrowserToolSpecs = () => Object.values(schema);
 function validateArgs(action,args){
   if(action===WORKFLOW_TOOL.name)return validateWorkflow(args);
  const spec=schema[action]?.inputSchema;
