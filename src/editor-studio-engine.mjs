@@ -58,7 +58,8 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
 function editorRuntime(){
   const canvas=document.getElementById("world");
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:"high-performance",preserveDrawingBuffer:true});
-  // Reduced internal GPU buffer is limited to the dedicated 24s qualification build.\n  const scale=preview?.58:renderScale;
+  // Reduced internal GPU buffer is limited to the dedicated 24s qualification build.
+  const scale=preview?.58:renderScale;
   renderer.setSize(Math.round(W*scale),Math.round(H*scale),false);
   renderer.setPixelRatio(1);
   renderer.outputColorSpace=THREE.SRGBColorSpace;
