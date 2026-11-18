@@ -73,7 +73,7 @@ export function analyzePcmForBeats(samples,sampleRate=22050){
 
   const framesPerSecond=sampleRate/HOP_SIZE;
   const minLag=Math.max(2,Math.floor(framesPerSecond*60/MAX_BPM));
-  const maxLag=Math.min(Math.ceil(framesPerSecond*60/MIN_BPM),Math.floor(frameCount/4));
+  const maxLag=Math.min(Math.ceil(framesPerSecond*60/MIN_BPM),Math.floor((frameCount-1)/3));
   const correlations=new Float64Array(maxLag*3+1);
   for(let lag=1;lag<correlations.length;lag++){
     let sum=0;
