@@ -1,0 +1,30 @@
+name: MediaForge Remotion Stage 1
+on:
+  push:
+    branches: [feat/remotion-layer-compositor]
+  pull_request:
+    branches: [feature/unific-media-20261116]
+jobs:
+  remotion-stage1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm run remotion:build-player
+      - run: node --test test/remotion-layer.test.mjs
+      - name: Render 12s MP4 with three simultaneous layers
+        run: npm run remotion:render-demo
+      - name: Validate MP4 duration and dimensions
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffprobe -v error -select_streams v:0 -show_entries stream=width,height,nb_frames -show_entries format=duration -of json .mediaforge/remotion-stage1/mediaforge-remotion-12s.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mediaforge-remotion-stage1-mp4
+          path: .mediaforge/remotion-stage1/mediaforge-remotion-12s.mp4
+          retention-days: 7
