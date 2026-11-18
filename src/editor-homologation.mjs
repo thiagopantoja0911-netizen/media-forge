@@ -76,6 +76,7 @@ export async function createEditorHomologationProject(){
     brand:"MediaForge",
     idea:"Homologação ponta a ponta do editor cinematográfico: motion blur real, tipografia letra por letra, foco de profundidade, grid de cards e trilha original sincronizada a 120 BPM.",
     duration_seconds:DURATION,fps:30,aspect_ratio:"9:16",
+    preset:"cinematic-3d-editor-homologation-v1",
     scenes:[
       {kicker:"MOVIMENTO REAL",headline:"IDEIAS EM MOVIMENTO",detail:"Uma composição tridimensional com movimento e exposição temporal.",shape:"torus-knot",camera:"reveal",transition:"cut",accent:"#75d8ff",energy:.78,depth:.86,textScale:1,motionBlur:.72,depthOfField:.32,typography:{...TYPOGRAPHY,bloom:.42,bloomColor:"#75d8ff"}},
       {kicker:"GRID DE CARDS",headline:"CADA DETALHE CONTA",detail:"Quatro cartões em profundidade, com câmera e foco seletivo.",shape:"icosahedron",camera:"arc",transition:"whip",accent:"#a58bff",energy:.86,depth:.9,textScale:1.02,motionBlur:.62,depthOfField:.72,typography:{...TYPOGRAPHY,bloom:.28,bloomColor:"#a58bff"}},
