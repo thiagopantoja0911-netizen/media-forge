@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { validateEditorProject } from "./editor-studio-core.mjs";
 import { buildEditorVisualAssets } from "./editor-visual-assets.mjs";
 import { buildEditorStyleDna, getEditorStylePreset } from "./editor-style-presets.mjs";
+import { temporalShutterSamples } from "./editor-motion-blur.mjs";
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dims=ratio=>ratio==="16:9"?[1920,1080]:ratio==="1:1"?[1080,1080]:[1080,1920];
 function selectScenes(p,index){
@@ -47,7 +48,7 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
     '<title>'+esc(p.title)+' — Editor MediaForge</title><style>'+style+'</style>'+
     '<script type="importmap">{"imports":{"three":"'+vendor+'"}}<\/script></head>'+
     '<body><div id="root" data-composition-id="main" data-width="'+w+'" data-height="'+h+
-    '" data-fps="'+p.fps+'" data-duration="'+duration+'" data-motion-blur="on" data-motion-blur-shutter="180">'+
+    '" data-fps="'+p.fps+'" data-duration="'+duration+'" data-motion-blur="off" data-motion-blur-shutter="0">'+
     '<canvas id="world" class="clip" data-start="0" data-duration="'+duration+
     '" data-track-index="1" data-layout-allow-overlap aria-label="Cena 3D"></canvas>'+labels+audio+'</div>'+
     '<script src="'+gsap+'"><\/script><script type="module" src="'+script+'"><\/script></body></html>';
@@ -61,6 +62,23 @@ function editorRuntime(){
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.18;
+  // Temporal multisampling accumulates several actual Three.js frames around each requested timestamp.
+  // The result does not depend on requestAnimationFrame, last captured frame or GPU history.
+  const pixelsW=Math.round(W*scale),pixelsH=Math.round(H*scale);
+  const colorTarget=new THREE.WebGLRenderTarget(pixelsW,pixelsH,{depthBuffer:true,stencilBuffer:false});
+  const accumulationTarget=new THREE.WebGLRenderTarget(pixelsW,pixelsH,{depthBuffer:false,stencilBuffer:false});
+  const passCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  const passScene=new THREE.Scene();
+  const blurPass=new THREE.ShaderMaterial({
+    uniforms:{sample:{value:colorTarget.texture},weight:{value:1}},
+    depthTest:false,depthWrite:false,transparent:true,blending:THREE.AdditiveBlending,
+    vertexShader:"varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.,1.);}",
+    fragmentShader:"uniform sampler2D sample;uniform float weight;varying vec2 v;void main(){vec4 c=texture2D(sample,v);gl_FragColor=vec4(c.rgb*weight,1.);}"
+  });
+  const passQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),blurPass);passQuad.frustumCulled=false;passScene.add(passQuad);
+  const resolveScene=new THREE.Scene();
+  const resolveQuad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.MeshBasicMaterial({map:accumulationTarget.texture,depthTest:false,depthWrite:false,toneMapped:false}));
+  resolveQuad.frustumCulled=false;resolveScene.add(resolveQuad);
   const world=new THREE.Scene();
   world.background=new THREE.Color(baseBackground);
   world.fog=new THREE.Fog(baseBackground,7,21);
@@ -190,7 +208,7 @@ function editorRuntime(){
   const labels=shots.map((s,i)=>document.getElementById("caption-"+i));
   const clamp=x=>Math.max(0,Math.min(1,x));
   const ease=x=>{x=clamp(x);return x*x*(3-2*x);};
-  function draw(time){
+  function drawAt(time,target=null){
     const t=clamp(Number(time)/D)*D;
     let chosen=shots.findIndex(s=>t>=s.startFrame/FPS&&t<s.endFrame/FPS);
     if(chosen===-1)chosen=shots.length-1;
@@ -245,7 +263,53 @@ function editorRuntime(){
         (72*(1-intro)+32*(1-outro)).toFixed(1)+"px,0) rotateY("+(-7*(1-intro)).toFixed(2)+"deg) scale("+
         ((.93+.07*intro)*s.textScale).toFixed(3)+")";
     });
+    renderer.setRenderTarget(target);
     renderer.render(world,camera);
+    renderer.setRenderTarget(null);
+  }
+  function draw(time){
+    const t=Math.max(0,Math.min(D,Number(time)||0));
+    let chosen=shots.findIndex(s=>t>=s.startFrame/FPS&&t<s.endFrame/FPS);
+    if(chosen<0)chosen=shots.length-1;
+    const samples=temporalShutterSamples(shots[chosen],t,FPS,preview);
+    if(samples.length===1){drawAt(t);return;}
+    const priorAutoClear=renderer.autoClear;
+    const clearColor=renderer.getClearColor(new THREE.Color()).clone();
+    const clearAlpha=renderer.getClearAlpha();
+    renderer.autoClear=false;
+    try{
+      renderer.setRenderTarget(accumulationTarget);
+      renderer.setClearColor(0x000000,0);
+      renderer.clear(true,true,true);
+      for(const moment of samples){
+        renderer.setRenderTarget(colorTarget);
+        renderer.clear(true,true,true);
+        drawAt(moment,colorTarget);
+        blurPass.uniforms.weight.value=1/samples.length;
+        renderer.setRenderTarget(accumulationTarget);
+        renderer.render(passScene,passCam);
+      }
+      renderer.setRenderTarget(null);
+      renderer.clear(true,true,true);
+      renderer.render(resolveScene,passCam);
+    }finally{
+      renderer.setRenderTarget(null);
+      renderer.setClearColor(clearColor,clearAlpha);
+      renderer.autoClear=priorAutoClear;
+    }
+    // Restore DOM typography and uniforms to the requested timestamp.
+    // Do not render a new scene frame here: that would overwrite the accumulation.
+    const active=shots[chosen],duration=(active.endFrame-active.startFrame)/FPS;
+    const progress=Math.max(0,Math.min(1,(t-active.startFrame/FPS)/duration));
+    labels.forEach((label,i)=>{
+      if(i!==chosen){label.style.opacity="0";label.style.visibility="hidden";return;}
+      const ease=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);};
+      const intro=ease(progress*8),outro=ease((1-progress)*12),show=intro*outro;
+      label.style.opacity=String(show);label.style.visibility=show>.001?"visible":"hidden";
+      label.style.transform="translate3d("+(35*(1-intro)-22*(1-outro)).toFixed(1)+"px,"+
+        (72*(1-intro)+32*(1-outro)).toFixed(1)+"px,0) rotateY("+(-7*(1-intro)).toFixed(2)+"deg) scale("+
+        ((.93+.07*intro)*active.textScale).toFixed(3)+")";
+    });
   }
   // Browser playback is driven by GSAP ticker; HyperFrames capture is seek-only.
   let time=0,playing=false;
@@ -284,6 +348,7 @@ export function buildEditorSceneModule(p,{sceneIndex,preview=false}={}){
   return 'import * as THREE from "three";\nconst shots='+JSON.stringify(shots)+';\n'+
     'const assets='+JSON.stringify(assets)+';\n'+
     'const baseBackground='+JSON.stringify(baseBackground)+';\n'+
+    'const temporalShutterSamples='+temporalShutterSamples.toString()+';\n'+
     'const W='+w+',H='+h+',FPS='+p.fps+',D='+d+',preview='+Boolean(preview)+';\n('+
     editorRuntime.toString()+')();\n';
 }
