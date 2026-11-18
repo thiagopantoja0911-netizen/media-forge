@@ -109,6 +109,7 @@ jobs:
             "desktop/connect-remote.ps1",
             "desktop/install-worker.ps1",
             "desktop/update-worker-safe.ps1",
+            "desktop/update-worker-auto.ps1",
             "desktop/prepare-worker-migration.ps1"
           )
           foreach ($path in $paths) {

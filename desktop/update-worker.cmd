@@ -1,30 +1,27 @@
 @echo off
 setlocal
-set "INSTALL_DIR=%LOCALAPPDATA%\MediaForge-Staging"
-set "UPDATER=%INSTALL_DIR%\desktop\update-worker-safe.ps1"
+set "UPDATER=%~dp0update-worker-auto.ps1"
 
 echo ================================================
 echo   MEDIAFORGE - ATUALIZACAO SEGURA DO WORKER
 echo ================================================
 echo.
 if not exist "%UPDATER%" (
-  echo ERRO: Instalacao MediaForge nao encontrada em:
-  echo %INSTALL_DIR%
-  echo.
-  echo Nenhum arquivo foi alterado.
+  echo ERRO: Coloque este CMD ao lado de update-worker-auto.ps1.
+  echo Os dois arquivos estao disponiveis na pasta desktop do repositorio.
   pause
   exit /b 2
 )
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%UPDATER%" -InstallDir "%INSTALL_DIR%"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%UPDATER%"
 if errorlevel 1 (
   echo.
-  echo FALHA NA ATUALIZACAO. Credenciais e projetos foram preservados.
+  echo FALHA NA ATUALIZACAO. Nenhuma limpeza de projetos ou credenciais foi executada.
   pause
   exit /b 1
 )
 echo.
-echo Worker atualizado e reiniciado quando a tarefa agendada existe.
-echo Verifique o status em https://unificmedia.salevo.site/health
+echo Atualizacao concluida. Confirme o Worker online antes de renderizar.
+echo https://unificmedia.salevo.site/health
 echo.
 pause
 exit /b 0

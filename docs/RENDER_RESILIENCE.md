@@ -45,5 +45,5 @@ Use these environment variables in the local worker configuration when an operat
 
 1. Run Node unit tests and the cinematic WebGL smoke workflow.
 2. Merge the tested PR into `feature/unific-media-20261116`; Hostinger staging is connected to this branch.
-3. Update the Windows worker using `desktop/update-worker.cmd` or the existing PowerShell updater.
+3. Update the Windows worker using `desktop/update-worker.cmd` (keep it beside `desktop/update-worker-auto.ps1`); it detects the installation referenced by the active scheduled task and then calls the safe updater.
 4. Confirm worker heartbeat and an isolated short render before retrying previous failed jobs.
