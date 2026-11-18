@@ -32,7 +32,7 @@ test("installer refuses non-git populated directory and never rewrites existing 
  const install=file("install-worker.ps1");
  assert.match(install,/Diretório existente sem Git/);
  assert.match(install,/if \(-not \(Test-Path -LiteralPath "\.env.local"\)\)/);
- assert.match(install,/feature\/frame-lab-chat-mcp-20261113/);
+ assert.match(install,/feature\/unific-media-20261116/);
  assert.match(file("update-worker-safe.ps1"),/feature\/unific-media-20261116/);
 });
 
