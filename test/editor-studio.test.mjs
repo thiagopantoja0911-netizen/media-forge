@@ -119,6 +119,12 @@ test("routes enforce login and create current editor from idea",async()=>{
  assert.equal(module.status,200);
  assert.match(module.body,/THREE\.WebGLRenderer/);
 });
+test("beat-sync API refuses to run until a music track is attached",async()=>{
+ const p=await saveEditorProject(fresh());
+ const result=await call("/api/editor/projects/"+p.id+"/beat-sync",{method:"POST",body:{}});
+ assert.equal(result.status,422,result.body);
+ assert.equal(JSON.parse(result.body).error,"MUSIC_TRACK_REQUIRED");
+});
 test("full and single-scene render require explicit confirmation; no queue on missing confirmation",async()=>{
  const p=await saveEditorProject(fresh());
  let count=0;
