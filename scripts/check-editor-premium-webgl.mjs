@@ -49,6 +49,8 @@ try{
  project.scenes[2].glow={color:"#64ffd5",intensity:.65,speed:.6,x:.2,y:-.2};
  project.scenes[0].motionBlur=.65;
  project.scenes[1].motionBlur=.75;
+ project.scenes[0].depthOfField=.62;
+ project.scenes[1].depthOfField=.84;
  project.scenes[0].typography={
    mode:"words",family:"sans",weightFrom:300,weightTo:900,bloom:.6,bloomColor:"#55ffd0",stagger:.8
  };

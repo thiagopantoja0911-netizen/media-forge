@@ -66,6 +66,7 @@ export function makeEditorProject(input={}){
       accent:rgb(rawColor)?rawColor:"#ffffff",
       energy:number(src.energy,0,1)?src.energy:.72,
       depth:number(src.depth,0,1)?src.depth:.85,
+      depthOfField:number(src.depthOfField,0,1)?src.depthOfField:0,
       textScale:number(src.textScale,.5,1.5)?src.textScale:1,
       ...(src.glow?{glow:src.glow}:{}),
       ...(src.visual?{visual:src.visual}:{}),
@@ -127,6 +128,8 @@ export function validateEditorProject(p){
     }
     if(s.motionBlur!==undefined&&!number(s.motionBlur,0,1))
       throw failure("SCENE_MOTION_BLUR_INVALID","Motion blur fora do intervalo 0–1.");
+    if(s.depthOfField!==undefined&&!number(s.depthOfField,0,1))
+      throw failure("SCENE_DOF_INVALID","Depth of Field fora do intervalo 0–1.");
     if(s.typography!==undefined&&!validateSceneTypography(s.typography))
       throw failure("SCENE_TYPOGRAPHY_INVALID","Tipografia inválida: use família segura, modo, pesos 100–900, bloom e stagger 0–1.");
     if(s.visual!==undefined){

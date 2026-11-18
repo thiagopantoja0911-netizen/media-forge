@@ -42,6 +42,7 @@ export const VIDEOS_SECRETS_TOOLS = [
         accent:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},
         energy:{type:"number",minimum:0,maximum:1},
         depth:{type:"number",minimum:0,maximum:1},
+        depthOfField:{type:"number",minimum:0,maximum:1,description:"Intensidade de desfoque óptico por profundidade da câmera, 0–100%."},
         typography:{type:["object","null"],additionalProperties:false,properties:{
             mode:{type:"string",enum:["whole","words","letters"]},
             family:{type:"string",enum:["sans","serif","mono"]},
@@ -151,6 +152,7 @@ export const VIDEOS_SECRETS_TOOLS = [
             stagger:{type:"number",minimum:0,maximum:1}
           },required:["mode","family","weightFrom","weightTo","bloom","bloomColor","stagger"]},
           motionBlur:{type:"number",minimum:0,maximum:1,description:"Desfoque temporal real via subframes acumulados no WebGL para objetos e movimentos de câmera; aumenta custo de GPU."},
+          depthOfField:{type:"number",minimum:0,maximum:1,description:"Desfoque óptico cinematográfico com amostragem do depth buffer; intensidade 0–100% por cena."},
           glow:{type:["object","null"],additionalProperties:false,properties:{
             color:{type:"string",pattern:"^#[a-fA-F0-9]{6}$"},intensity:{type:"number",minimum:0,maximum:1},
             speed:{type:"number",minimum:0,maximum:3},x:{type:"number",minimum:-1,maximum:1},
@@ -624,7 +626,7 @@ export async function handleVideosSecretsMcp({
         const index=copy.scenes.findIndex(s=>s.id===edit.scene_id);
         if(index<0)return writeError(response,id,-32602,"Scene not found",422,version);
         const patch=edit.changes||{},scene=copy.scenes[index];
-        const allowed=["headline","kicker","detail","shape","camera","transition","accent","energy","depth","textScale","visual","glow","motionBlur","typography"];
+        const allowed=["headline","kicker","detail","shape","camera","transition","accent","energy","depth","textScale","visual","glow","motionBlur","typography","depthOfField"];
         if(Object.keys(patch).some(k=>![...allowed,"duration_seconds"].includes(k)))
           return writeError(response,id,-32602,"Unsupported property",422,version);
         if(patch.duration_seconds!==undefined){

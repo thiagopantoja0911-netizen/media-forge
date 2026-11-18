@@ -205,12 +205,12 @@ function fillInspector(){
   editKicker:s.kicker,editHeadline:s.headline,editDetail:s.detail,editShape:s.shape,editCamera:s.camera,
   editTransition:s.transition,editAccent:s.accent,editDuration:sceneLength(state.selected).toFixed(1),
   editEnergy:Math.round(s.energy*100),editDepth:Math.round(s.depth*100),editTextScale:Math.round(s.textScale*100),
-  editMotionBlur:Math.round((s.motionBlur??0)*100),
+  editMotionBlur:Math.round((s.motionBlur??0)*100),editDepthOfField:Math.round((s.depthOfField??0)*100),
   editTextMode:typ.mode,editFontFamily:typ.family,editWeightFrom:typ.weightFrom,editWeightTo:typ.weightTo,
   editTextStagger:Math.round(typ.stagger*100),editTextBloom:Math.round(typ.bloom*100),editTextBloomColor:typ.bloomColor};
  for(const [id,value] of Object.entries(fields))$(id).value=value;
  out("energyNumber",fields.editEnergy+"%");out("depthNumber",fields.editDepth+"%");out("textScaleNumber",fields.editTextScale+"%");
- out("motionBlurNumber",fields.editMotionBlur+"%");
+ out("motionBlurNumber",fields.editMotionBlur+"%");out("dofNumber",fields.editDepthOfField+"%");
  out("textStaggerNumber",fields.editTextStagger+"%");out("textBloomNumber",fields.editTextBloom+"%");
  $("editDuration").disabled=state.selected===p.scenes.length-1;
 }
@@ -297,20 +297,21 @@ async function createFromIdea(event){
 }
 function connectProperties(){
  const entries={editKicker:"kicker",editHeadline:"headline",editDetail:"detail",editShape:"shape",
-   editCamera:"camera",editTransition:"transition",editAccent:"accent",editEnergy:"energy",editDepth:"depth",editTextScale:"textScale",editMotionBlur:"motionBlur"};
+   editCamera:"camera",editTransition:"transition",editAccent:"accent",editEnergy:"energy",editDepth:"depth",editTextScale:"textScale",editMotionBlur:"motionBlur",editDepthOfField:"depthOfField"};
  for(const [id,key] of Object.entries(entries)){
   const el=$(id),evt=["editKicker","editHeadline","editDetail"].includes(id)?"input":"change";
   el.addEventListener(evt,()=>{
    if(!state.project)return;
    const s=state.project.scenes[state.selected];
    if(["energy","depth"].includes(key))s[key]=Number(el.value)/100;
-   else if(key==="textScale"||key==="motionBlur")s[key]=Number(el.value)/100;
+   else if(key==="textScale"||key==="motionBlur"||key==="depthOfField")s[key]=Number(el.value)/100;
    else s[key]=el.value;
    if(key==="headline"&&!s[key].trim())return;
    if(key==="energy")out("energyNumber",el.value+"%");
    if(key==="depth")out("depthNumber",el.value+"%");
    if(key==="textScale")out("textScaleNumber",el.value+"%");
    if(key==="motionBlur")out("motionBlurNumber",el.value+"%");
+   if(key==="depthOfField")out("dofNumber",el.value+"%");
    afterChange();
   });
  }

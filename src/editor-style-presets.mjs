@@ -2,19 +2,19 @@
 export const EDITOR_STYLE_PRESETS=Object.freeze({
   "apple-clean":Object.freeze({
     name:"Apple Clean",palette:["#e9f0ef","#b1c1c1","#e8c6a0"],background:"#e9f0ed",
-    camera:"dolly",transition:"match-cut",shape:"sphere",energy:.43,depth:.72,textScale:.94,
+    camera:"dolly",transition:"match-cut",shape:"sphere",energy:.43,depth:.72,depthOfField:.18,textScale:.94,
     glow:{color:"#cce6e2",intensity:.3,speed:.27,x:.2,y:-.15},
     typography:{mode:"words",family:"sans",weightFrom:300,weightTo:700,bloom:0,bloomColor:"#e9f0ef",stagger:.45}
   }),
   "spotify-dark-glow":Object.freeze({
     name:"Spotify Dark Glow",palette:["#1ed760","#a770ff","#42d5f2"],background:"#080b11",
-    camera:"arc",transition:"whip",shape:"torus",energy:.88,depth:1,textScale:1,
+    camera:"arc",transition:"whip",shape:"torus",energy:.88,depth:1,depthOfField:.48,textScale:1,
     glow:{color:"#8754f6",intensity:.86,speed:.85,x:0,y:0},
     typography:{mode:"letters",family:"sans",weightFrom:400,weightTo:900,bloom:.55,bloomColor:"#1ed760",stagger:.7}
   }),
   "motivational-bw":Object.freeze({
     name:"Motivational B&W",palette:["#f5f5f2","#bebebe","#e2e2df"],background:"#080808",
-    camera:"reveal",transition:"dip",shape:"rings",energy:.63,depth:.69,textScale:1.08,
+    camera:"reveal",transition:"dip",shape:"rings",energy:.63,depth:.69,depthOfField:.3,textScale:1.08,
     glow:{color:"#dadada",intensity:.17,speed:.24,x:0,y:.18},
     typography:{mode:"words",family:"sans",weightFrom:400,weightTo:900,bloom:.18,bloomColor:"#f5f5f2",stagger:.66}
   })
@@ -35,7 +35,7 @@ export function applyEditorStylePreset(project,id){
     scenes:project.scenes.map((s,i)=>({
       ...s,accent:preset.palette[i%preset.palette.length],
       camera:preset.camera,transition:i===0?"cut":preset.transition,
-      shape:s.visual?s.shape:preset.shape,energy:preset.energy,depth:preset.depth,
+      shape:s.visual?s.shape:preset.shape,energy:preset.energy,depth:preset.depth,depthOfField:preset.depthOfField,
       textScale:preset.textScale,glow:{...preset.glow},typography:{...preset.typography}
     }))
   };
@@ -45,7 +45,7 @@ export function buildEditorStyleDna(project){
     durationFrames:s.endFrame-s.startFrame,
     energy:s.energy,camera:s.camera,transition:s.transition,shape:s.shape,
     accent:s.accent,depth:s.depth,textScale:s.textScale,
-    motionBlur:s.motionBlur??0,glow:s.glow??null,typography:s.typography??null,visual:s.visual?{
+    motionBlur:s.motionBlur??0,depthOfField:s.depthOfField??0,glow:s.glow??null,typography:s.typography??null,visual:s.visual?{
       type:s.visual.type,scale:s.visual.scale,
       rotation:s.visual.rotation,position:s.visual.position,
       columns:s.visual.columns,rows:s.visual.rows,scroll:s.visual.scroll
