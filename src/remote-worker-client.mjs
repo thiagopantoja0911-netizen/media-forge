@@ -4,6 +4,7 @@ import { mkdir, stat, writeFile, access } from "node:fs/promises";
 import { resolve, join, relative, sep, basename } from "node:path";
 import { hostname } from "node:os";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
+import { renderWithRemotion } from "./renderers/remotion.mjs";
 import { inspectRenderedVideo, inspectRenderedAudio } from "./video-qa.mjs";
 import { collectRenderResources } from "./render-recovery.mjs";
 
@@ -97,8 +98,8 @@ async function processRemote(job,leaseId) {
   try{
     await downloadProject(job.id,leaseId);
     const configured={...job,project:{...job.project,sourceDir:job.id}};
-    if(configured.project.renderer!=="hyperframes")throw new Error("Unsupported renderer for remote worker");
-    const rendered=await renderWithHyperFrames(configured);
+    if(!["hyperframes","remotion"].includes(configured.project.renderer))throw new Error("Unsupported renderer for remote worker");
+    const rendered=configured.project.renderer==="remotion" ? await renderWithRemotion(configured) : await renderWithHyperFrames(configured);
     const info=await stat(rendered.outputPath);
     if(!info.isFile()||info.size===0)throw new Error("Video artifact missing or empty");
     const technicalQA=await inspectRenderedVideo(rendered.outputPath,{...configured.project,width:rendered.motionReview?.width,height:rendered.motionReview?.height},
