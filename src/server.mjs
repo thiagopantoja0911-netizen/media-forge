@@ -199,11 +199,20 @@ async function rendererStatus() {
   const jobs = await listJobs(200);
   const queued = jobs.filter((job) => job.status === "queued").length;
   const processing = jobs.filter((job) => job.status === "processing").length;
+  const active_jobs=jobs.filter(job=>job.status==="processing").map(job=>({
+    id:job.id,title:job.project?.title,progress:job.progress,
+    phase:job.phase??null,message:job.progressMessage??null,
+    frames_completed:job.renderTelemetry?.framesCompleted??null,
+    total_frames:job.renderTelemetry?.totalFrames??null,
+    last_frame_at:job.renderTelemetry?.lastFrameAt??null,
+    capture_telemetry_available:Boolean(job.renderTelemetry?.lastFrameAt)
+  }));
   return {
     online,
     last_seen: lastSeen,
     queued_jobs: queued,
     processing_jobs: processing,
+    active_jobs,
     renderer: worker?.renderer ?? process.env.MEDIAFORGE_RENDERER ?? "dry-run",
     message: online
       ? "Computador conectado e renderizador MediaForge ativo."
