@@ -1,0 +1,25 @@
+name: Browser MCP + Editor catalog smoke
+on:
+  push:
+    branches: [fix/browser-mcp-editor-catalog-refresh-20261118]
+  pull_request:
+    branches: [feature/unific-media-20261116]
+jobs:
+  editor-mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned dependencies
+        run: npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+      - name: Validate Browser MCP and adapter syntax
+        run: |
+          node --check browser/server.mjs
+          node --check browser/server-agent.mjs
+          node --check browser/mediaforge-tool-catalog.mjs
+          node --check unific-media-entry.mjs
+      - name: Test combined catalog, OAuth and editor guardrails
+        run: node --test --test-concurrency=1 test/editor-mcp-bridge.test.mjs test/editor-studio.test.mjs test/editor-review-gate.test.mjs

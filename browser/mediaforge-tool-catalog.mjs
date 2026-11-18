@@ -31,3 +31,37 @@ export function composeUnifiedMediaTools(browserTools, mediaTools) {
   }
   return result;
 }
+
+/**
+ * Stable version for the combined Browser + Editor MCP catalog. Reconnection
+ * must discover this catalog, not the older Browser-only/legacy-media snapshot.
+ */
+export const UNIFIED_MCP_CATALOG_VERSION = "0.9.1";
+export const EDITOR_MCP_TOOL_NAMES = Object.freeze([
+  "create_editor_homologation_project",
+  "create_editor_project",
+  "get_editor_project",
+  "edit_editor_project",
+  "review_editor_preview",
+  "render_editor_project",
+  "upload_editor_asset",
+  "apply_editor_style_preset",
+  "get_editor_style_dna",
+  "list_editor_style_presets",
+  "sync_editor_beats"
+]);
+
+export function inspectUnifiedMediaCatalog(browserTools, mediaTools) {
+  const combined = composeUnifiedMediaTools(browserTools, mediaTools);
+  const available = new Set(combined.map(tool => tool.name));
+  const missingEditorTools = EDITOR_MCP_TOOL_NAMES.filter(name => !available.has(name));
+  return {
+    ready: missingEditorTools.length === 0,
+    version: UNIFIED_MCP_CATALOG_VERSION,
+    browserTools: browserTools.length,
+    mediaTools: mediaTools.length,
+    totalTools: combined.length,
+    editorTools: EDITOR_MCP_TOOL_NAMES.length - missingEditorTools.length,
+    missingEditorTools
+  };
+}
