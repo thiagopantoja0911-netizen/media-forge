@@ -421,7 +421,7 @@ export function buildEditorSceneModule(p,{sceneIndex,preview=false}={}){
     'const assets='+JSON.stringify(assets)+';\n'+
     'const baseBackground='+JSON.stringify(baseBackground)+';\n'+
     'const temporalShutterSamples='+temporalShutterSamples.toString()+';\n'+
-    'const W='+w+',H='+h+',FPS='+p.fps+',D='+d+',preview='+Boolean(preview)+',renderScale='+ (p.preset==="cinematic-3d-editor-homologation-v1"?.5:1)+';\\n('+
+    'const W='+w+',H='+h+',FPS='+p.fps+',D='+d+',preview='+Boolean(preview)+',renderScale='+ (p.preset==="cinematic-3d-editor-homologation-v1"?.5:1)+';\n('+
     editorRuntime.toString()+')();\n';
 }
 export async function buildEditorRenderFiles(p,{sceneIndex}={}){
