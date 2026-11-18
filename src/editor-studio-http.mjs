@@ -5,6 +5,8 @@ import { makeEditorProject, loadEditorProject, saveEditorProject, latestEditorPr
 import { buildEditorIndex, buildEditorSceneModule, buildEditorRenderFiles } from "./editor-studio-engine.mjs";
 import { signedVideoDownload } from "./video-artifact-delivery.mjs";
 import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
+import { storeEditorVisualAsset, loadEditorVisualAsset } from "./editor-visual-assets.mjs";
+import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } from "./editor-style-presets.mjs";
 
 const idReg=/^[a-f0-9]{32}$/;
 const contentTypes={mp3:"audio/mpeg",m4a:"audio/mp4",wav:"audio/wav",ogg:"audio/ogg"};
@@ -90,6 +92,9 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
   if(!path.startsWith("/api/editor/")){json(response,404,{error:"NOT_FOUND"});return true;}
   const pieces=path.split("/").filter(Boolean);
   try{
+    if(pieces.length===3&&pieces[2]==="styles"&&request.method==="GET"){
+      json(response,200,{ok:true,styles:listEditorStylePresets()});return true;
+    }
     if(pieces.length===3&&pieces[2]==="latest"&&request.method==="GET"){
       json(response,200,{ok:true,project:await latestEditorProject()});return true;
     }
@@ -108,6 +113,27 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       const next=updateEditorProject(p,body.project);
       const saved=await saveEditorProject(next,{expectedRevision:p.revision});
       json(response,200,{ok:true,project:saved});return true;
+    }
+    if(pieces.length===5&&pieces[4]==="style-dna"&&request.method==="GET"){
+      json(response,200,{ok:true,dna:buildEditorStyleDna(p)});return true;
+    }
+    if(pieces.length===5&&pieces[4]==="style"&&request.method==="POST"){
+      assertSameOrigin(request);
+      const body=await parseBody(request);
+      const next=applyEditorStylePreset(p,body.style_preset);
+      validateEditorProject(next);
+      const project=await saveEditorProject(next,{expectedRevision:p.revision});
+      json(response,200,{ok:true,project});return true;
+    }
+    if(pieces.length===5&&pieces[4]==="assets"&&request.method==="POST"){
+      assertSameOrigin(request);
+      const result=await storeEditorVisualAsset(p,await parseBody(request));
+      json(response,201,{ok:true,...result});return true;
+    }
+    if(pieces.length===6&&pieces[4]==="assets"&&request.method==="GET"){
+      const {asset,bytes}=await loadEditorVisualAsset(p,pieces[5]);
+      replyText(response,200,asset.mime,bytes,{"content-security-policy":"default-src 'none'; sandbox"});
+      return true;
     }
     if(pieces.length===5&&pieces[4]==="preview"&&request.method==="GET"){
       const scene=validIndex(url.searchParams.get("scene")??0,p);
