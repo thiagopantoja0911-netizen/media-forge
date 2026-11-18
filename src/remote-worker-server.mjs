@@ -2,7 +2,8 @@ import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { Transform } from "node:stream";
-import { readdir, readFile, writeFile, rename, stat, mkdir, rm } from "node:fs/promises";
+import { readdir, readFile, writeFile, rename, stat, mkdir, rm, cp } from "node:fs/promises";
+import { isRecoverableRenderFailure } from "./render-recovery.mjs";
 import { join, resolve, relative, sep } from "node:path";
 import { readState, updateState, verifySecret } from "./state-store.mjs";
 import {deliveredVideoRoot,deliveredVideoPath,MAX_DELIVERED_VIDEO_BYTES} from "./video-artifact-delivery.mjs";
@@ -119,9 +120,77 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
       });
       reply(response,200,{ok:true,job:job?{...job,workerLease:undefined}:null,leaseId:job?.workerLease?.id||null});return true;
     }
-    const match=/^\/v1\/worker\/jobs\/([a-f0-9]{32})\/(project|progress|complete|artifact)$/.exec(path);
+    const match=/^\/v1\/worker\/jobs\/([a-f0-9]{32})\/(project|progress|complete|artifact|retry)$/.exec(path);
     if(match) {
       const id=match[1],action=match[2];
+      if(action==="retry"&&request.method==="POST"){
+        const result=await updateState(async()=>{
+          const original=await loadJob(jobsDir,id);
+          if(!original)throw Object.assign(new Error("JOB_NOT_FOUND"),{status:404});
+          if(original.status!=="failed")throw Object.assign(new Error("JOB_NOT_FAILED"),{status:409});
+
+          const duplicates=[];
+          for(const filename of await readdir(jobsDir)){
+            if(!filename.endsWith(".json")||!HEX_ID.test(filename.slice(0,-5)))continue;
+            const candidate=await loadJob(jobsDir,filename.slice(0,-5));
+            if(candidate?.metadata?.retryOf===id)duplicates.push(candidate);
+          }
+          if(duplicates.length){
+            const existing=duplicates.sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))).at(-1);
+            return {alreadyRetried:true,job:existing};
+          }
+
+          const failure=original.error&&typeof original.error==="object"
+            ?original.error:{message:original.error};
+          if(!isRecoverableRenderFailure(failure))
+            throw Object.assign(new Error("JOB_FAILURE_NOT_RETRYABLE"),{status:422});
+          if(original.project?.inlineFiles!==true||original.project?.sourceDir!==id)
+            throw Object.assign(new Error("JOB_PROJECT_NOT_RETRYABLE"),{status:422});
+
+          const source=resolve(projectsRoot,id);
+          const sourceInfo=await stat(source).catch(()=>null);
+          if(!sourceInfo?.isDirectory())
+            throw Object.assign(new Error("JOB_PROJECT_FILES_MISSING"),{status:422});
+
+          const retryId=randomUUID().replaceAll("-","");
+          const target=resolve(projectsRoot,retryId);
+          try{
+            await cp(source,target,{recursive:true,errorOnExist:true,force:false});
+            const now=new Date().toISOString();
+            const retry=JSON.parse(JSON.stringify(original));
+            retry.id=retryId;
+            retry.status="queued";
+            retry.attempts=0;
+            retry.progress=0;
+            retry.createdAt=now;
+            retry.updatedAt=now;
+            retry.project={...retry.project,sourceDir:retryId};
+            retry.metadata={
+              ...(retry.metadata&&typeof retry.metadata==="object"?retry.metadata:{}),
+              retryOf:id,
+              retryReason:"recoverable-render-failure",
+              retryRequestedAt:now
+            };
+            delete retry.error;
+            delete retry.workerLease;
+            delete retry.artifactReceived;
+            delete retry.result;
+            delete retry.progressMessage;
+            await saveJob(jobsDir,retry);
+            return {alreadyRetried:false,job:retry};
+          }catch(error){
+            await rm(target,{recursive:true,force:true}).catch(()=>{});
+            throw error;
+          }
+        });
+        reply(response,result.alreadyRetried?200:202,{
+          ok:true,
+          alreadyRetried:result.alreadyRetried,
+          originalJobId:id,
+          job:{id:result.job.id,status:result.job.status,title:result.job.project?.title}
+        });
+        return true;
+      }
       if(action==="project"&&request.method==="GET"){
         const leaseId=String(request.headers["x-mediaforge-lease"]||"");
         const job=await loadJob(jobsDir,id);
