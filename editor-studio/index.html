@@ -35,6 +35,8 @@
   <select id="audioRole"><option value="voice">Locução</option><option value="music">Música</option><option value="sfx">Efeito sonoro</option></select>
   <label class="upload-action">+ Adicionar áudio<input id="audioUpload" type="file" accept=".mp3,.m4a,.wav,.ogg,audio/*" hidden></label>
   <div id="audioList" class="audio-list"><span class="muted">Nenhum áudio anexado.</span></div>
+  <button id="beatSyncButton" class="ghost" disabled>♫ Sincronizar cortes com BPM</button>
+  <small id="beatSyncStatus" class="muted">Adicione uma faixa de música para analisar o ritmo.</small>
  </aside>
  <section class="mainpanel">
   <div class="preview-head"><div><h1>Prévia de cena</h1><p id="sceneDescription">Abra uma ideia para começar.</p></div><div class="preview-tags"><span class="pill">WEBGL AO VIVO</span><span class="pill"><i class="tiny-dot"></i><span id="previewState">Aguardando</span></span><span class="pill" id="qaStatus">PRÉVIA: PENDENTE</span></div></div>
