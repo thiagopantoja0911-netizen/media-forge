@@ -8,12 +8,6 @@ const assetUrl=(src)=>{
   if(typeof src!=="string"||!/^remotion-assets\/[a-zA-Z0-9._-]+$/.test(src))throw Error("Unsafe Remotion asset path");
   return "./assets/"+src.slice("remotion-assets/".length);
 };
-const keyframeProps=(frame)=>{
-  const out={};
-  for(const key of ["x","y","opacity","rotation","scale"])if(Number.isFinite(frame[key]))out[key]=frame[key];
-  return out;
-};
-
 export function buildHyperFramesHtml(inputProject){
   const project=validateLayerProject(inputProject);
   const compositionId=safeId(project.id);
@@ -48,7 +42,8 @@ export function buildHyperFramesHtml(inputProject){
     " timeline.set(element,{x:layer.x,y:layer.y,opacity:layer.opacity,rotation:0,scale:1},0);",
     " const keys=layer.keyframes;",
     " if(!keys.length)continue;",
-    " timeline.set(element,"+ "keys[0] && {x:keys[0].x,y:keys[0].y,opacity:keys[0].opacity,rotation:keys[0].rotation,scale:keys[0].scale},"+"keys[0].frame/"+project.fps+");",
+    " const initial={};for(const key of ['x','y','opacity','rotation','scale'])if(Number.isFinite(keys[0][key]))initial[key]=keys[0][key];",
+    " timeline.set(element,initial,keys[0].frame/"+project.fps+");",
     " for(let i=1;i<keys.length;i++){",
     "  const previous=keys[i-1],current=keys[i],props={};",
     "  for(const key of ['x','y','opacity','rotation','scale'])if(Number.isFinite(current[key]))props[key]=current[key];",
