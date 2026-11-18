@@ -3,6 +3,7 @@
 import { Readable } from 'node:stream';
 import { app } from './server.mjs';
 import { VIDEOS_SECRETS_TOOLS } from '../src/videos-secrets-mcp.mjs';
+import { composeUnifiedMediaTools } from './mediaforge-tool-catalog.mjs';
 import { handleUnifiedMediaMcp } from '../src/server.mjs';
 
 const coreHandler = app.listeners('request')[0];
@@ -106,11 +107,7 @@ async function invokeMedia(originalReq,payload){
 }
 const MEDIAFORGE_TOOL_NAMES=new Set(VIDEOS_SECRETS_TOOLS.map(tool=>tool.name));
 if(MEDIAFORGE_TOOL_NAMES.size!==VIDEOS_SECRETS_TOOLS.length)throw Error('DUPLICATE_MEDIAFORGE_TOOL_NAME');
-const UNIFIED_MEDIA_TOOLS=VIDEOS_SECRETS_TOOLS.map(tool=>({
-  ...tool,
-  // The installed ChatGPT connector holds only this single Browser OAuth grant.
-  securitySchemes:[{type:'oauth2',scopes:['browser:control']}]
-}));
+const UNIFIED_MEDIA_TOOLS=composeUnifiedMediaTools([], VIDEOS_SECRETS_TOOLS);
 function send(res, result) {
   const headers = {...result.headers};
   delete headers['content-length'];
@@ -160,10 +157,7 @@ async function handle(req, res) {
       const tools = body?.result?.tools;
       if(Array.isArray(tools)){
         if(!tools.some(tool=>tool.name===WORKFLOW_TOOL.name))tools.push(WORKFLOW_TOOL);
-        for(const videoTool of UNIFIED_MEDIA_TOOLS){
-          if(tools.some(tool=>tool.name===videoTool.name))throw new Error('UNIFIED_TOOL_NAME_CONFLICT: '+videoTool.name);
-          tools.push(videoTool);
-        }
+        body.result.tools=composeUnifiedMediaTools(tools, UNIFIED_MEDIA_TOOLS);
       }
       return send(res, response(result.status, result.headers, JSON.stringify(body)));
     }
