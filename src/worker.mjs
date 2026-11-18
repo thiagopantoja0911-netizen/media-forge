@@ -2,6 +2,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
+import { renderWithRemotion } from "./renderers/remotion.mjs";
 import { inspectRenderedVideo, inspectRenderedAudio } from "./video-qa.mjs";
 
 const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
@@ -50,8 +51,8 @@ async function processJob(job) {
   delete job.nextAttemptAt;
   await save(job);
 
-  if (rendererMode === "hyperframes" && job.project.renderer === "hyperframes") {
-    const result = await renderWithHyperFrames(job);
+  if (rendererMode === "hyperframes" && ["hyperframes","remotion"].includes(job.project.renderer)) {
+    const result = job.project.renderer === "remotion" ? await renderWithRemotion(job) : await renderWithHyperFrames(job);
     const technicalQA = await inspectRenderedVideo(result.outputPath,
       { ...job.project, width: result.motionReview?.width, height: result.motionReview?.height },
       job.metadata?.expectsAudio === true || result.motionReview?.expectsAudio === true);

@@ -146,8 +146,8 @@ export function validateJob(input) {
     errors.push("voice must be an object when provided");
   }
 
-  if (project.renderer && !["hyperframes", "dry-run"].includes(project.renderer)) {
-    errors.push("project.renderer must be hyperframes or dry-run");
+  if (project.renderer && !["hyperframes", "dry-run", "remotion"].includes(project.renderer)) {
+    errors.push("project.renderer must be hyperframes, remotion or dry-run");
   }
 
   if (project.sourceDir !== undefined && !isSafeRelativePath(project.sourceDir)) {

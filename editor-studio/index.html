@@ -52,7 +52,14 @@
    <div class="seek"><input id="sceneSeek" type="range" min="0" max="1000" value="0"><div class="times"><span id="timeCurrent">00:00.0</span><span id="timeTotal">00:00.0</span></div></div>
    <button id="renderSceneButton" class="outline-action">Renderizar só esta cena</button>
   </div>
-  <section class="timeline-panel">
+  <section class="remotion-stage1" style="margin:16px 0;border:1px solid #32434f;border-radius:12px;background:#121b2a;padding:16px">
+  <div class="preview-head"><div><h2 style="margin:0;font-size:16px">Compositor Remotion · Camadas reais</h2><p>Mesmo editor MediaForge. Vídeo MP4 + imagem PNG + texto animado, em 12 segundos.</p></div>
+  <button id="remotionOpen" class="ghost" type="button">Abrir compositor Remotion · 12s</button></div>
+  <div id="remotionLayerPanel" hidden><iframe title="Prévia Remotion MediaForge" src="/editor/remotion-player.html"
+  loading="lazy" style="display:block;width:100%;height:700px;max-width:430px;margin:12px auto;border:1px solid #2b4765;border-radius:10px"
+  referrerpolicy="no-referrer"></iframe><small>As três camadas são renderizadas pelo mesmo componente React usado na exportação MP4.</small><div style="margin:12px 0;display:flex;gap:8px;align-items:center"><button class="primary" id="remotionRender" type="button">Renderizar Remotion MP4 no PC</button><span id="remotionJobStatus" style="font-size:12px">Sem renderização.</span></div></div>
+ </section>
+ <section class="timeline-panel">
    <div class="timeline-header"><div><b>TIMELINE</b><span id="timelineMeta">Selecione uma cena para editar</span></div><div class="timeline-tools"><span>ARRASTE PARA REORDENAR</span><span>PUXE A BORDA PARA AJUSTAR</span></div></div>
    <div class="ruler"><span>00:00</span><div id="rulerTicks" class="ruler-ticks"></div><span id="lastRuler">00:30</span></div>
    <div class="tracks"><div class="track-name">◩ CENAS</div><div id="sceneTrack" class="track-content scene-track"></div>
@@ -124,4 +131,4 @@
  <div class="modal-actions"><button type="button" class="ghost" id="cancelModal2">Cancelar</button><button type="submit" class="primary" id="submitIdea">Criar storyboard 3D</button></div>
 </form></div>
 </div>
-<script src="/editor/app.js" defer></script></body></html>
+<script src="/editor/app.js" defer></script><script src="/editor/remotion-toggle.js" defer></script></body></html>
