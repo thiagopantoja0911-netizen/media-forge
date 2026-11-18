@@ -498,6 +498,15 @@ window.addEventListener("message",event=>{
 if(event.data?.mediaforge==="ended")pauseScene();
 });
 window.addEventListener("resize",configureViewport);
+$("createHomologation").addEventListener("click",async()=>{
+ const button=$("createHomologation");button.disabled=true;button.textContent="Montando teste…";
+ try{
+   const result=await post("/api/editor/homologation",{});
+   await loadProject(result.project.id);
+   toast("Projeto de 24s criado com trilha original, motion blur, DoF e grid. Sincronize o BPM e revise as prévias.");
+ }catch(error){toast("Falha no teste completo: "+error.message);}
+ finally{button.disabled=false;button.textContent="Gerar teste completo · 24s";}
+});
 $("newProject").addEventListener("click",presentModal);
 $("cancelModal").addEventListener("click",closeModal);
 $("cancelModal2").addEventListener("click",closeModal);
