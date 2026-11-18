@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtemp,rm,readFile,readdir} from "node:fs/promises";
+import {mkdtemp,rm,readFile,writeFile,readdir} from "node:fs/promises";
+import {spawnSync} from "node:child_process";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {buildHomologationAudio,createEditorHomologationProject} from "../src/editor-homologation.mjs";
@@ -58,6 +59,11 @@ test("homologation creates actual editable five-scene project, music and 4 separ
  assert.ok(files.filter(f=>f.path.startsWith("assets/images/")).length>=4);
  assert.match(files.find(f=>f.path==="index.html").content,/assets\/audio\//);
  const scene=buildEditorSceneModule(p);
+ assert.match(scene,/preview=false,renderScale=0\\.5/);
+ const modulePath=join(data,"homologation-scene.mjs");
+ await writeFile(modulePath,scene);
+ const syntax=spawnSync(process.execPath,["--check",modulePath],{encoding:"utf8"});
+ assert.equal(syntax.status,0,syntax.stderr);
  for(const value of ["depthOfField","motionBlur","card-grid","kinetic-unit","hf-seek"])
    assert.ok(scene.includes(value),"ausente no WebGL: "+value);
  const synced=synchronizeSceneCutsToBeats(p,analyzePcmForBeats(buildHomologationAudio().samples,22050),p.audio[0]);
