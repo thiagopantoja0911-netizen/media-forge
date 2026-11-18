@@ -13,7 +13,7 @@ export async function renderWithRemotion(job) {
   const project=validateLayerProject(JSON.parse(await readFile(join(root,"remotion/project.json"),"utf8")));
   await mkdir(outputRoot,{recursive:true});
   const serveUrl=await bundle({entryPoint:resolve("remotion/root.jsx"),publicDir:root,
-    outDir:join(root,".remotion-bundle")});
+    outDir:join(outputRoot,job.id+"-bundle")});
   const composition=await selectComposition({serveUrl,id:"MediaForgeLayers",inputProps:{project}});
   const outputPath=join(outputRoot,job.id+".mp4");
   await renderMedia({serveUrl,composition,inputProps:{project},codec:"h264",outputLocation:outputPath,
