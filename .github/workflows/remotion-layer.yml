@@ -1,7 +1,7 @@
 name: MediaForge Remotion Stage 1
 on:
   push:
-    branches: [feat/remotion-layer-compositor]
+    branches: [feat/remotion-layer-compositor, feat/remotion-hyperframes-windows-validation]
   pull_request:
     branches: [feature/unific-media-20261116]
 jobs:
@@ -15,7 +15,8 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm run remotion:build-player
-      - run: node --test test/remotion-layer.test.mjs
+      - run: node --check src/editor-studio-http.mjs && node --check remotion/hyperframes-html.mjs && node --check editor-studio/remotion-toggle.js
+      - run: node --test test/remotion-layer.test.mjs test/remotion-hyperframes-adapter.test.mjs
       - name: Render 12s MP4 with three simultaneous layers
         run: npm run remotion:render-demo
       - name: Validate MP4 duration and dimensions
