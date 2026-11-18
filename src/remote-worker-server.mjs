@@ -4,6 +4,7 @@ import { pipeline } from "node:stream/promises";
 import { Transform } from "node:stream";
 import { readdir, readFile, writeFile, rename, stat, mkdir, rm, cp } from "node:fs/promises";
 import { isRecoverableRenderFailure } from "./render-recovery.mjs";
+import {orderQueuedJobs} from "./render-watchdog.mjs";
 import { join, resolve, relative, sep } from "node:path";
 import { readState, updateState, verifySecret } from "./state-store.mjs";
 import {deliveredVideoRoot,deliveredVideoPath,MAX_DELIVERED_VIDEO_BYTES} from "./video-artifact-delivery.mjs";
@@ -101,10 +102,15 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
       const workerId=String(body.workerId||"").slice(0,100);
       if(!workerId)throw new Error("workerId required");
       const job=await updateState(async()=>{
-        const names=(await readdir(jobsDir)).filter(x=>HEX_ID.test(x.slice(0,-5))&&x.endsWith(".json")).sort();
-        for(const filename of names) {
-          const id=filename.slice(0,-5);
-          const j=await loadJob(jobsDir,id);
+        const names=(await readdir(jobsDir)).filter(x=>HEX_ID.test(x.slice(0,-5))&&x.endsWith(".json"));
+        const candidates=[];
+        for(const filename of names){
+          const j=await loadJob(jobsDir,filename.slice(0,-5));
+          if(j)candidates.push(j);
+        }
+        // FIFO by createdAt. Hexadecimal job ids are random, not a valid queue order.
+        const ordered=orderQueuedJobs(candidates);
+        for(const j of ordered) {
           if(!j)continue;
           if(j.status==="processing"&&j.workerLease&&Date.parse(j.workerLease.expiresAt)<Date.now()){
             if((j.attempts||0)<3){j.status="queued";delete j.workerLease;await saveJob(jobsDir,j);}
@@ -113,6 +119,8 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           if(j.status!=="queued" || (j.nextAttemptAt&&Date.parse(j.nextAttemptAt)>Date.now()))continue;
           if(!j.project?.inlineFiles){j.status="failed";j.error={code:"REMOTE_FILES_REQUIRED",message:"Remote worker requires inline project files"};await saveJob(jobsDir,j);continue;}
           j.status="processing";j.progress=10;j.attempts=(j.attempts||0)+1;
+          j.progressMessage="Job aceito no Windows; aguardando início do render";
+          j.updatedAt=new Date().toISOString();
           j.workerLease={id:randomUUID(),workerId,expiresAt:new Date(Date.now()+LEASE_MS).toISOString()};
           await saveJob(jobsDir,j);return j;
         }
@@ -270,10 +278,32 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
         const result=await updateState(async()=>{
           const job=await loadJob(jobsDir,id);
           if(!validLease(job,body.leaseId))return null;
+          const now=new Date().toISOString();
           const progress=Number(body.progress);
-          job.progress=Number.isFinite(progress)
-            ?Math.max(0,Math.min(99,Math.floor(progress))):job.progress;
+          const attempt=Number(body.renderAttempt);
+          const previousAttempt=Number(job.renderTelemetry?.renderAttempt||0);
+          const newAttempt=Number.isSafeInteger(attempt)&&attempt>previousAttempt&&attempt<=20;
+          if(newAttempt){
+            job.renderTelemetry={renderAttempt:attempt,framesCompleted:0,totalFrames:null,lastFrameAt:null,startedAt:now};
+          }
+          if(Number.isFinite(progress)){
+            const bounded=Math.max(0,Math.min(99,Math.floor(progress)));
+            // Only an explicitly new capture attempt may reset the bar.
+            job.progress=newAttempt?bounded:Math.max(job.progress||0,bounded);
+          }
+          const total=Number(body.totalFrames),completed=Number(body.framesCompleted);
+          if(Number.isSafeInteger(total)&&total>0&&total<=2_000_000 &&
+             Number.isSafeInteger(completed)&&completed>=0&&completed<=total){
+            const prior=job.renderTelemetry||{renderAttempt:0,framesCompleted:0};
+            if(completed>Number(prior.framesCompleted||0)){
+              job.renderTelemetry={...prior,totalFrames:total,framesCompleted:completed,lastFrameAt:now};
+            }else if(prior.totalFrames===null||prior.totalFrames===undefined){
+              job.renderTelemetry={...prior,totalFrames:total};
+            }
+          }
+          if(typeof body.phase==="string")job.phase=body.phase.slice(0,40);
           job.progressMessage=String(body.message||"Renderizando").replace(/[\r\n]+/g," ").slice(0,255);
+          job.updatedAt=now;
           await saveJob(jobsDir,job);
           return job;
         });
