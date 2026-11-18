@@ -45,5 +45,5 @@ Use these environment variables in the local worker configuration when an operat
 
 1. Run Node unit tests and the cinematic WebGL smoke workflow.
 2. Merge the tested PR into `feature/unific-media-20261116`; Hostinger staging is connected to this branch.
-3. After Hostinger publishes the merged branch, run `desktop/update-worker.cmd` (a self-contained launcher). It downloads the two signed-off PowerShell scripts from the public repository, detects the active Windows installation, updates it safely, waits for a fresh heartbeat, then requeues only the three confirmed transient capture failures. It uses the existing DPAPI worker token in memory and never prints it.
+3. After Hostinger publishes the merged branch, the staging TLS/OAuth/authentication probe runs on the push to `feature/unific-media-20261116`. Then run `desktop/update-worker.cmd` (a self-contained launcher). It downloads the prepared PowerShell scripts from the public repository, detects the active Windows installation, updates it safely, waits for a fresh heartbeat, then requeues only the three confirmed transient capture failures. It uses the existing DPAPI worker token in memory and never prints it.
 4. Confirm worker heartbeat and an isolated short render before retrying previous failed jobs.
