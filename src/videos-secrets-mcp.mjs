@@ -132,6 +132,7 @@ export const VIDEOS_SECRETS_TOOLS = [
           visual:{type:["object","null"],additionalProperties:false,properties:{
             type:{type:"string",enum:["screen","card-grid"]},
             assetId:{type:"string",pattern:"^[a-f0-9]{32}$"},
+            assetIds:{type:"array",minItems:1,maxItems:12,items:{type:"string",pattern:"^[a-f0-9]{32}$"}},
             position:{type:"array",minItems:3,maxItems:3,items:{type:"number",minimum:-8,maximum:8}},
             rotation:{type:"array",minItems:3,maxItems:3,items:{type:"number",minimum:-180,maximum:180}},
             scale:{type:"number",minimum:0.2,maximum:4},
