@@ -33,11 +33,14 @@ export function buildHomologationAudio({durationSeconds=DURATION,bpm=BPM,sampleR
       const frequency=92-48*(beatAge/.17);
       value+=.82*Math.exp(-beatAge*24)*Math.sin(2*Math.PI*frequency*beatAge);
     }
+    // A uniform high-frequency transient on EACH quarter-note prevents the
+    // autocorrelation from mistaking alternating snares for a 60 BPM half-time pulse.
+    if(beatAge<.035)value+=.92*Math.exp(-beatAge*125)*Math.sin(2*Math.PI*1100*beatAge);
     if(beatIndex%2===1&&beatAge<.13){
-      value+=.22*Math.exp(-beatAge*25)*(noise*.72+Math.sin(2*Math.PI*185*beatAge)*.28);
+      value+=.085*Math.exp(-beatAge*25)*(noise*.72+Math.sin(2*Math.PI*185*beatAge)*.28);
     }
     const hatAge=t-Math.floor(t/.25)*.25;
-    if(hatAge<.022)value+=.11*Math.exp(-hatAge*150)*noise;
+    if(hatAge<.022)value+=.04*Math.exp(-hatAge*150)*noise;
     const chord=Math.floor(t/2)%4;
     const bass=[55,65.4,73.4,49][chord];
     value+=.09*Math.sin(2*Math.PI*bass*t)+.035*Math.sin(2*Math.PI*(bass*2)*t);
