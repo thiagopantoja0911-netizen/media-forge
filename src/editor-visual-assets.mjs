@@ -27,8 +27,9 @@ export function validateEditorVisualBytes(bytes,extension){
       throw fail("VISUAL_ASSET_FORMAT_INVALID","Cabeçalho WEBP inválido.");
   } else {
     const text=bytes.toString("utf8");
+    const inspected=text.replaceAll("http://www.w3.org/2000/svg","");
     if(!/<svg(?:\s|>)/i.test(text)||!/<\/svg\s*>/i.test(text)||
-      /<!doctype|<!entity|<\?xml-stylesheet|<script|<style|<foreignObject|<iframe|<image|<use|<audio|<video|<object|<embed|<animate|<set\b|on[a-z]+\s*=|\bhref\s*=|\b(?:src|xlink:href)\s*=|url\s*\(|@import|data:|https?:|javascript:|&(?:#|[a-z])/i.test(text))
+      /<!doctype|<!entity|<\?xml-stylesheet|<script|<style|<foreignObject|<iframe|<image|<use|<audio|<video|<object|<embed|<animate|<set\b|on[a-z]+\s*=|\bhref\s*=|\b(?:src|xlink:href)\s*=|url\s*\(|@import|data:|https?:|javascript:|&(?:#|[a-z])/i.test(inspected))
       throw fail("VISUAL_ASSET_SVG_UNSAFE","SVG com referências, scripts ou conteúdo ativo não permitido.");
   }
   return TYPES[extension];
