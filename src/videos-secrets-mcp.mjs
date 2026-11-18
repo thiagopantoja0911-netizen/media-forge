@@ -123,7 +123,7 @@ export const VIDEOS_SECRETS_TOOLS = [
           detail:{type:"string",maxLength:150},shape:{type:"string"},camera:{type:"string"},
           transition:{type:"string"},accent:{type:"string"},energy:{type:"number"},depth:{type:"number"},
           textScale:{type:"number",minimum:0.5,maximum:1.5},
-          motionBlur:{type:"number",minimum:0,maximum:1,description:"Intensidade registrada; render global ainda não implementado por cena"},
+          motionBlur:{type:"number",minimum:0,maximum:1,description:"Desfoque temporal real via subframes acumulados no WebGL para objetos e movimentos de câmera; aumenta custo de GPU."},
           glow:{type:["object","null"],additionalProperties:false,properties:{
             color:{type:"string",pattern:"^#[a-fA-F0-9]{6}$"},intensity:{type:"number",minimum:0,maximum:1},
             speed:{type:"number",minimum:0,maximum:3},x:{type:"number",minimum:-1,maximum:1},

@@ -202,9 +202,11 @@ function fillInspector(){
   editGridColumns:v.columns??3,editGridRows:v.rows??4,editGridScroll:v.scroll??1,
   editKicker:s.kicker,editHeadline:s.headline,editDetail:s.detail,editShape:s.shape,editCamera:s.camera,
   editTransition:s.transition,editAccent:s.accent,editDuration:sceneLength(state.selected).toFixed(1),
-  editEnergy:Math.round(s.energy*100),editDepth:Math.round(s.depth*100),editTextScale:Math.round(s.textScale*100)};
+  editEnergy:Math.round(s.energy*100),editDepth:Math.round(s.depth*100),editTextScale:Math.round(s.textScale*100),
+  editMotionBlur:Math.round((s.motionBlur??0)*100)};
  for(const [id,value] of Object.entries(fields))$(id).value=value;
  out("energyNumber",fields.editEnergy+"%");out("depthNumber",fields.editDepth+"%");out("textScaleNumber",fields.editTextScale+"%");
+ out("motionBlurNumber",fields.editMotionBlur+"%");
  $("editDuration").disabled=state.selected===p.scenes.length-1;
 }
 function renderImageList(){
@@ -288,19 +290,20 @@ async function createFromIdea(event){
 }
 function connectProperties(){
  const entries={editKicker:"kicker",editHeadline:"headline",editDetail:"detail",editShape:"shape",
-   editCamera:"camera",editTransition:"transition",editAccent:"accent",editEnergy:"energy",editDepth:"depth",editTextScale:"textScale"};
+   editCamera:"camera",editTransition:"transition",editAccent:"accent",editEnergy:"energy",editDepth:"depth",editTextScale:"textScale",editMotionBlur:"motionBlur"};
  for(const [id,key] of Object.entries(entries)){
   const el=$(id),evt=["editKicker","editHeadline","editDetail"].includes(id)?"input":"change";
   el.addEventListener(evt,()=>{
    if(!state.project)return;
    const s=state.project.scenes[state.selected];
    if(["energy","depth"].includes(key))s[key]=Number(el.value)/100;
-   else if(key==="textScale")s[key]=Number(el.value)/100;
+   else if(key==="textScale"||key==="motionBlur")s[key]=Number(el.value)/100;
    else s[key]=el.value;
    if(key==="headline"&&!s[key].trim())return;
    if(key==="energy")out("energyNumber",el.value+"%");
    if(key==="depth")out("depthNumber",el.value+"%");
    if(key==="textScale")out("textScaleNumber",el.value+"%");
+   if(key==="motionBlur")out("motionBlurNumber",el.value+"%");
    afterChange();
   });
  }
