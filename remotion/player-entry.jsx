@@ -12,6 +12,6 @@ fetch("/api/editor/remotion/demo",{credentials:"same-origin",cache:"no-store"})
    createRoot(target).render(<Player component={LayeredComposition}
      inputProps={{project:p}} durationInFrames={p.durationInFrames}
      compositionWidth={p.width} compositionHeight={p.height} fps={p.fps}
-     controls autoPlay={false} style={{width:"100%",aspectRatio:\`\${p.width}/\${p.height}\`}} />);
-   status.textContent=\`Remotion Player · \${p.layers.length} camadas · \${p.durationInFrames/p.fps}s\`;
+     controls autoPlay={false} style={{width:"100%",aspectRatio:p.width+"/"+p.height}} />);
+   status.textContent="Remotion Player · "+p.layers.length+" camadas · "+(p.durationInFrames/p.fps)+"s";
  }).catch(e=>{status.textContent="Prévia Remotion indisponível: "+e.message;});
