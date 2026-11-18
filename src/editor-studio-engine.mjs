@@ -156,7 +156,7 @@ function editorRuntime(){
       visualGroup=new THREE.Group();group.add(visualGroup);
       visualGroup.position.set(...v.position);visualGroup.position.z+=(v.depth-.5)*1.4;
       visualGroup.rotation.set(...v.rotation.map(n=>n*Math.PI/180));
-      orbit1.visible=false;orbit2.visible=false;
+
       visualGroup.scale.setScalar(v.scale);
       if(v.type==="screen"){visualGroup.add(makeScreen(3.6,2.3,url));}
       else {
@@ -180,6 +180,10 @@ function editorRuntime(){
     for(let j=0;j<12;j++){
       const p=new THREE.Mesh(new THREE.OctahedronGeometry(.07+j%3*.014),new THREE.MeshBasicMaterial({color:j%4?0xe8f2ff:s.accent}));
       group.add(p);particles.push(p);
+    }
+    if(s.visual){
+      orbit1.visible=false;orbit2.visible=false;
+      for(const particle of particles)particle.visible=false;
     }
     return {group,hero,orbit1,orbit2,particles,visualGroup};
   });
