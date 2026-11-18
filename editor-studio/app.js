@@ -438,7 +438,12 @@ window.addEventListener("message",event=>{
    state.ready=true;out("previewState","Pronta");
    $("previewNotice").hidden=true;configureViewport();
  }
- if(event.data?.mediaforge==="ended")pauseScene();
+ if(event.data?.mediaforge==="error"){
+ state.ready=false;out("previewState","Erro na cena");
+ $("previewNotice").hidden=false;$("previewNotice").textContent="Falha ao carregar asset ou renderizar a prévia.";
+ return;
+}
+if(event.data?.mediaforge==="ended")pauseScene();
 });
 window.addEventListener("resize",configureViewport);
 $("newProject").addEventListener("click",presentModal);
@@ -459,7 +464,12 @@ $("sceneSeek").addEventListener("input",event=>{
 $("audioUpload").addEventListener("change",async event=>{
  const file=event.target.files?.[0];if(file)await uploadAudio(file);event.target.value="";
 });
-connectProperties();
+connectProperties();connectPremiumProperties();
+$("applyPreset").addEventListener("click",applySelectedStyle);
+$("downloadDna").addEventListener("click",downloadStyleDna);
+$("imageUpload").addEventListener("change",async event=>{
+ const file=event.target.files?.[0];if(file)await uploadImage(file);event.target.value="";
+});
 workerHealth();setInterval(workerHealth,12000);
 // Keep the editor in sync when GPT approves/rejects the visual preview through MCP.
 setInterval(()=>{if(state.project&&!state.dirty)refreshReviewStatus().catch(()=>{});},6000);
