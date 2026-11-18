@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { readFile, readdir, mkdir, writeFile, rename, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { getEditorStylePreset, applyEditorStylePreset } from "./editor-style-presets.mjs";
 
-const TITLE_MAX=100, MAX_AUDIO=10, MAX_SCENES=12;
+const TITLE_MAX=100, MAX_AUDIO=10, MAX_SCENES=12, MAX_VISUAL_ASSETS=8;
+export const EDITOR_VISUAL_TYPES=["screen","card-grid"];
+export const EDITOR_ASSET_EXTENSIONS=["png","webp","svg"];
 export const EDITOR_SHAPES=["torus-knot","icosahedron","sphere","torus","cube","cone","rings"];
 export const EDITOR_CAMERAS=["orbit","dolly","reveal","truck-left","truck-right","arc"];
 export const EDITOR_TRANSITIONS=["cut","match-cut","push","iris","whip","dip"];
@@ -62,16 +65,20 @@ export function makeEditorProject(input={}){
       accent:rgb(rawColor)?rawColor:"#ffffff",
       energy:number(src.energy,0,1)?src.energy:.72,
       depth:number(src.depth,0,1)?src.depth:.85,
-      textScale:number(src.textScale,.5,1.5)?src.textScale:1
+      textScale:number(src.textScale,.5,1.5)?src.textScale:1,
+      ...(src.glow?{glow:src.glow}:{}),
+      ...(src.visual?{visual:src.visual}:{}),
+      ...(src.motionBlur!==undefined?{motionBlur:src.motionBlur}:{})
     });
     cursor=end;
   }
   const project={version:1,id:randomUUID().replaceAll("-",""),revision:0,brand,title,idea,
     fps,aspectRatio,totalFrames,
     mode:"cinematic-3d",preset:compact(input.preset||"cinematic-3d-editor-v1",80),
-    scenes,audio:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
-  validateEditorProject(project);
-  return project;
+    scenes,audio:[],assets:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+  const prepared=input.style_preset?applyEditorStylePreset(project,input.style_preset):project;
+  validateEditorProject(prepared);
+  return prepared;
 }
 export function validateEditorProject(p){
   if(!p||typeof p!=="object"||Array.isArray(p))throw failure("PROJECT_INVALID","Projeto inválido.");
@@ -83,6 +90,18 @@ export function validateEditorProject(p){
   if(![30,60].includes(p.fps)||!ALLOWED_RATIOS.includes(p.aspectRatio)||!integer(p.totalFrames,p.fps*10,p.fps*60))
     throw failure("PROJECT_FORMAT_INVALID","FPS, proporção ou duração não suportados.");
   if(p.mode!=="cinematic-3d")throw failure("PROJECT_MODE_INVALID","Somente cinematic-3d é suportado nesta versão.");
+  if(p.stylePreset!==undefined)getEditorStylePreset(p.stylePreset);
+  if(p.assets!==undefined&&(!Array.isArray(p.assets)||p.assets.length>MAX_VISUAL_ASSETS))
+    throw failure("VISUAL_ASSETS_INVALID","Máximo de oito assets visuais.");
+  const assetIds=new Set();let assetBytes=0;
+  for(const a of p.assets??[]){
+    if(!a||!FILE_ID.test(a.id)||assetIds.has(a.id)||!EDITOR_ASSET_EXTENSIONS.includes(a.extension)||
+      typeof a.name!=="string"||!a.name.trim()||a.name.length>90||
+      !integer(a.size,32,2*1024*1024)||!["image/png","image/webp","image/svg+xml"].includes(a.mime))
+      throw failure("VISUAL_ASSET_INVALID","Asset visual inválido.");
+    assetIds.add(a.id);assetBytes+=a.size;
+  }
+  if(assetBytes>8*1024*1024)throw failure("VISUAL_ASSETS_TOO_LARGE","Assets visuais ultrapassam 8 MB.");
   if(!Array.isArray(p.scenes)||p.scenes.length<3||p.scenes.length>MAX_SCENES)throw failure("SCENES_INVALID","O projeto precisa de 3 a 12 cenas.");
   let cursor=0; const names=new Set();
   for(const [i,s] of p.scenes.entries()){
@@ -98,6 +117,23 @@ export function validateEditorProject(p){
     if(!EDITOR_SHAPES.includes(s.shape)||!EDITOR_CAMERAS.includes(s.camera)||!EDITOR_TRANSITIONS.includes(s.transition)||
        !rgb(s.accent)||!number(s.energy,0,1)||!number(s.depth,0,1)||!number(s.textScale,.5,1.5))
       throw failure("SCENE_STYLE_INVALID","Estilo 3D inválido na cena "+(i+1));
+    if(s.glow!==undefined){
+      const g=s.glow;
+      if(!g||typeof g!=="object"||!rgb(g.color)||!number(g.intensity,0,1)||
+        !number(g.speed,0,3)||!number(g.x,-1,1)||!number(g.y,-1,1))
+        throw failure("SCENE_GLOW_INVALID","Configuração de glow inválida na cena "+(i+1));
+    }
+    if(s.motionBlur!==undefined&&!number(s.motionBlur,0,1))
+      throw failure("SCENE_MOTION_BLUR_INVALID","Motion blur fora do intervalo 0–1.");
+    if(s.visual!==undefined){
+      const v=s.visual;
+      if(!v||!EDITOR_VISUAL_TYPES.includes(v.type)||!assetIds.has(v.assetId)||
+        !Array.isArray(v.position)||v.position.length!==3||!v.position.every(n=>number(n,-8,8))||
+        !Array.isArray(v.rotation)||v.rotation.length!==3||!v.rotation.every(n=>number(n,-180,180))||
+        !number(v.scale,.2,4)||!number(v.depth,0,1)||
+        (v.type==="card-grid"&&(!integer(v.columns,1,4)||!integer(v.rows,1,4)||v.columns*v.rows>12||!number(v.scroll,-2,2))))
+        throw failure("SCENE_VISUAL_INVALID","Asset, mockup ou grid inválido na cena "+(i+1));
+    }
   }
   if(cursor!==p.totalFrames)throw failure("SCENES_GAP","A timeline não termina no último frame.");
   if(!Array.isArray(p.audio)||p.audio.length>MAX_AUDIO)throw failure("AUDIO_INVALID","Máximo de dez faixas de áudio.");
