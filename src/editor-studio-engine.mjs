@@ -58,7 +58,8 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
 function editorRuntime(){
   const canvas=document.getElementById("world");
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:"high-performance",preserveDrawingBuffer:true});
-  const scale=preview?.58:1;
+  // Reduced internal GPU buffer is limited to the dedicated 24s qualification build.
+  const scale=preview?.58:renderScale;
   renderer.setSize(Math.round(W*scale),Math.round(H*scale),false);
   renderer.setPixelRatio(1);
   renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -421,7 +422,7 @@ export function buildEditorSceneModule(p,{sceneIndex,preview=false}={}){
     'const assets='+JSON.stringify(assets)+';\n'+
     'const baseBackground='+JSON.stringify(baseBackground)+';\n'+
     'const temporalShutterSamples='+temporalShutterSamples.toString()+';\n'+
-    'const W='+w+',H='+h+',FPS='+p.fps+',D='+d+',preview='+Boolean(preview)+';\n('+
+    'const W='+w+',H='+h+',FPS='+p.fps+',D='+d+',preview='+Boolean(preview)+',renderScale='+ (p.preset==="cinematic-3d-editor-homologation-v1"?.5:1)+';\n('+
     editorRuntime.toString()+')();\n';
 }
 export async function buildEditorRenderFiles(p,{sceneIndex}={}){

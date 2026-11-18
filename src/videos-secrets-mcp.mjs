@@ -16,6 +16,7 @@ import {signedVideoDownload} from "./video-artifact-delivery.mjs";
 import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
 import { storeEditorVisualAsset } from "./editor-visual-assets.mjs";
 import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } from "./editor-style-presets.mjs";
+import { createEditorHomologationProject } from "./editor-homologation.mjs";
 import { decodeAudioToPcm, analyzePcmForBeats, synchronizeSceneCutsToBeats } from "./editor-beat-sync.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
@@ -25,6 +26,11 @@ const DEFAULT_PROTOCOL = "2025-06-18";
 const NO_CACHE = { ttlMs: 0, cacheScope: "private" };
 
 export const VIDEOS_SECRETS_TOOLS = [
+  {
+    name:"create_editor_homologation_project",
+    description:"Cria um projeto COMPLETO para homologação do editor: MP4 previsto de 24s, cinco cenas 3D, trilha WAV original 120 BPM, grid 2x2 de cards, motion blur, DOF 0–100%, tipografia letra por letra. Não renderiza. A sincronização de BPM e a revisão de todas as prévias devem ocorrer antes do render.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{}}
+  },
   {
     name:"create_editor_project",
     description:"Transforma uma ideia em um storyboard cinematográfico 3D realmente editável e abre a timeline visual no MediaForge. Padrão: Three.js real, câmera, luz e objetos 3D, não slides. Opcionalmente envie cenas autoradas especificamente para a ideia. Não dispara renderização.",
@@ -510,6 +516,14 @@ export async function handleVideosSecretsMcp({
       return writeResult(response, id, textResult(result, false, version), version);
     }
 
+    if(name==="create_editor_homologation_project"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const result=await createEditorHomologationProject();
+      return writeResult(response,id,textResult({ok:true,projectId:result.project.id,
+        revision:result.project.revision,editorUrl:result.editorUrl,audio:result.audio,
+        assets:result.visualAssets,scenes:result.project.scenes,
+        nextSteps:result.nextSteps},false,version),version);
+    }
     if(name==="create_editor_project"){
       if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
       const project=await saveEditorProject(makeEditorProject(args));
