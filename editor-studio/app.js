@@ -73,8 +73,7 @@ function playScene(){
     const range=$("sceneSeek");range.value=String(clamp(Math.floor(state.frame/sceneLength(state.selected)*1000),0,1000));
     out("timeCurrent",longFmt(state.frame));
     if(state.frame>=sceneLength(state.selected))pauseScene();
-    else previewAudio(true);
-    else requestAnimationFrame(advance);
+    else {previewAudio(true);requestAnimationFrame(advance);}
   }
   requestAnimationFrame(advance);
 }
