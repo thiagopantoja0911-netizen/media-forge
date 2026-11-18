@@ -16,7 +16,7 @@
     "motion:compose": "node scripts/compose-motion.mjs",
     "reference:analyze": "node scripts/analyze-reference.mjs",
     "frame-lab:test": "node --test frame-lab/tests/curves.test.mjs frame-lab/tests/api.test.mjs frame-lab/tests/synthetic-node.test.mjs",
-    "media-tools:install": "npm rebuild ffmpeg-static @derhuerst/ffprobe-static && node scripts/verify-media-tools.mjs",
+    "media-tools:install": "npm rebuild ffmpeg-static @derhuerst/ffprobe-static && node scripts/verify-media-tools.mjs && npm run remotion:prepare",
     "test:integrated": "node --test --test-concurrency=1 test/*.test.mjs frame-lab/tests/*.test.mjs",
     "remotion:build-player": "node scripts/build-remotion-player.mjs",
     "remotion:prepare": "node scripts/build-remotion-player.mjs && node scripts/prepare-remotion-assets.mjs",
