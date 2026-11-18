@@ -65,7 +65,7 @@ async function receiveAudio(project,body){
     :project.totalFrames;
   const volume=Number.isFinite(Number(body.volume))?Math.max(0,Math.min(1,Number(body.volume))):role==="music"?.24:1;
   const id=randomUUID().replaceAll("-","");
-  const updated={...project,audio:[...project.audio,{id,assetId:id,role,extension:ext,name:filename,startFrame:start,endFrame:end,volume}]};
+  const updated={...project,...(role==="music"?{beatSync:undefined}:{}),audio:[...project.audio,{id,assetId:id,role,extension:ext,name:filename,startFrame:start,endFrame:end,volume}]};
   validateEditorProject(updated);
   await mkdir(editorStoreDir(),{recursive:true});
   await writeFile(audioPath(project.id,id,ext),data,{flag:"wx"});
