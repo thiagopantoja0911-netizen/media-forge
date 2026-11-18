@@ -7,6 +7,7 @@ import { signedVideoDownload } from "./video-artifact-delivery.mjs";
 import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
 import { storeEditorVisualAsset, loadEditorVisualAsset } from "./editor-visual-assets.mjs";
 import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } from "./editor-style-presets.mjs";
+import { decodeAudioToPcm, analyzePcmForBeats, synchronizeSceneCutsToBeats } from "./editor-beat-sync.mjs";
 
 const idReg=/^[a-f0-9]{32}$/;
 const contentTypes={mp3:"audio/mpeg",m4a:"audio/mp4",wav:"audio/wav",ogg:"audio/ogg"};
@@ -156,6 +157,25 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       assertSameOrigin(request);
       const updated=await receiveAudio(p,await parseBody(request));
       json(response,201,{ok:true,project:updated});return true;
+    }
+    if(pieces.length===5&&pieces[4]==="beat-sync"&&request.method==="POST"){
+      assertSameOrigin(request);
+      const body=await parseBody(request);
+      const requested=typeof body.audioId==="string"?body.audioId:"";
+      const track=p.audio.find(a=>a.role==="music"&&(!requested||a.id===requested||a.assetId===requested));
+      if(!track)throw Object.assign(new Error("Adicione ou selecione uma faixa com o papel Música antes de sincronizar."),{code:"MUSIC_TRACK_REQUIRED",status:422});
+      const bytes=await readFile(audioPath(p.id,track.assetId,track.extension));
+      const maxSeconds=Math.min(60,(track.endFrame-track.startFrame)/p.fps);
+      const samples=await decodeAudioToPcm(bytes,{maxSeconds});
+      const analysis=analyzePcmForBeats(samples);
+      const synced=synchronizeSceneCutsToBeats(p,analysis,track);
+      const updated=await saveEditorProject(synced.project,{expectedRevision:p.revision});
+      json(response,200,{ok:true,project:updated,
+        analysis:{bpm:analysis.bpm,confidence:analysis.confidence,beatCount:analysis.beatTimes.length,
+          beatIntervalSeconds:analysis.beatIntervalSeconds,durationSeconds:analysis.durationSeconds},
+        sync:{syncedCuts:synced.syncedCuts,totalCuts:synced.totalCuts,cutFrames:synced.cutFrames,
+          offsetFrames:synced.offsetFrames,maxShiftSeconds:synced.maxShiftSeconds}});
+      return true;
     }
 
     if(pieces.length===5&&pieces[4]==="review"&&request.method==="GET"){
