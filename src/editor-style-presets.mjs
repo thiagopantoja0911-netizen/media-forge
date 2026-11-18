@@ -1,7 +1,7 @@
 /* Native editor presets and reusable style DNA; no licensed media is embedded. */
 export const EDITOR_STYLE_PRESETS=Object.freeze({
   "apple-clean":Object.freeze({
-    name:"Apple Clean",palette:["#e9f0ef","#b1c1c1","#e8c6a0"],background:"#101717",
+    name:"Apple Clean",palette:["#e9f0ef","#b1c1c1","#e8c6a0"],background:"#e9f0ed",
     camera:"dolly",transition:"match-cut",shape:"sphere",energy:.43,depth:.72,textScale:.94,
     glow:{color:"#cce6e2",intensity:.3,speed:.27,x:.2,y:-.15},
     typography:{family:"Arial",weight:700,tracking:-.045,glow:0}
