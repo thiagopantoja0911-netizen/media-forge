@@ -45,7 +45,7 @@ export function buildEditorStyleDna(project){
     durationFrames:s.endFrame-s.startFrame,
     energy:s.energy,camera:s.camera,transition:s.transition,shape:s.shape,
     accent:s.accent,depth:s.depth,textScale:s.textScale,
-    glow:s.glow??null,visual:s.visual?{
+    motionBlur:s.motionBlur??0,glow:s.glow??null,visual:s.visual?{
       type:s.visual.type,scale:s.visual.scale,
       rotation:s.visual.rotation,position:s.visual.position,
       columns:s.visual.columns,rows:s.visual.rows,scroll:s.visual.scroll
