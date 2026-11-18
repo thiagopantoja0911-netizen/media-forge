@@ -44,6 +44,7 @@ Write-Output ("URL remota configurada: " + $(if($urlOk){"OK"}else{"AUSENTE/INCOR
 $credentialPath = Join-Path $InstallDir ".mediaforge\worker-token.dpapi"
 $legacyLine = $envLines | Where-Object { $_ -match '^\s*MEDIAFORGE_WORKER_TOKEN=' } | Select-Object -Last 1
 $token = $null
+$credentialKind = if(Test-Path -LiteralPath $credentialPath){"DPAPI"}elseif($legacyLine){"legada"}else{"ausente"}
 $authOk = $false
 $authMessage = "credencial ausente"
 $ptr = [IntPtr]::Zero
@@ -68,7 +69,7 @@ try {
   if ($ptr -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
   Remove-Variable -Name token,secureToken,cipher,auth,legacyLine -ErrorAction SilentlyContinue
 }
-Write-Output ("Credencial DPAPI/legada: " + $(if(Test-Path -LiteralPath $credentialPath){"presente"}elseif($legacyLine){"legada"}else{"ausente"}))
+Write-Output ("Credencial local: " + $credentialKind)
 Write-Output ("Pré-validação de autenticação: " + $authMessage)
 
 $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
