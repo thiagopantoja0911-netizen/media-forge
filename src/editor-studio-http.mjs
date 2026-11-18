@@ -112,8 +112,8 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       const sourceFiles=[
         {path:"index.html",content:"<!doctype html><title>MediaForge Remotion worker project</title>"},
         {path:"remotion/project.json",content:JSON.stringify(remotionDemoProject)},
-        {path:"remotion-assets/background.mp4",contentBase64:movie.toString("base64")},
-        {path:"remotion-assets/badge.png",contentBase64:badge.toString("base64")}
+        {path:"public/remotion-assets/background.mp4",contentBase64:movie.toString("base64")},
+        {path:"public/remotion-assets/badge.png",contentBase64:badge.toString("base64")}
       ];
       const job=await createJob({
         prompt:"MediaForge Remotion: vídeo de fundo MP4, sobreposição PNG e texto animado em camadas simultâneas.",
