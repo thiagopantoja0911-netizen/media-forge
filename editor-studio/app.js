@@ -239,8 +239,8 @@ function renderAudioList(){
    const starts=document.createElement("div"),start=document.createElement("input"),end=document.createElement("input");
    start.type="number";start.min="0";start.max=sec(p.totalFrames-1);start.step=".1";start.value=sec(a.startFrame).toFixed(1);start.title="Início (s)";
    end.type="number";end.min="0.1";end.max=sec(p.totalFrames);end.step=".1";end.value=sec(a.endFrame).toFixed(1);end.title="Fim (s)";
-   start.addEventListener("change",()=>{a.startFrame=clamp(Math.round(Number(start.value)*p.fps),0,a.endFrame-1);afterChange();});
-   end.addEventListener("change",()=>{a.endFrame=clamp(Math.round(Number(end.value)*p.fps),a.startFrame+1,p.totalFrames);afterChange();});
+   start.addEventListener("change",()=>{a.startFrame=clamp(Math.round(Number(start.value)*p.fps),0,a.endFrame-1);if(a.role==="music")delete p.beatSync;afterChange();});
+   end.addEventListener("change",()=>{a.endFrame=clamp(Math.round(Number(end.value)*p.fps),a.startFrame+1,p.totalFrames);if(a.role==="music")delete p.beatSync;afterChange();});
    starts.append(start,end);box.append(row,volume,starts);container.append(box);
  }
 }
