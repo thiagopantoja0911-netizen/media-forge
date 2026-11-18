@@ -47,6 +47,8 @@ try{
  project.scenes[1].visual={type:"card-grid",assetId:asset.id,
    position:[0,0,0],rotation:[0,15,0],scale:.58,depth:.8,columns:3,rows:4,scroll:1};
  project.scenes[2].glow={color:"#64ffd5",intensity:.65,speed:.6,x:.2,y:-.2};
+ project.scenes[0].motionBlur=.65;
+ project.scenes[1].motionBlur=.75;
  const root=join(dir,"project");
  await mkdir(root,{recursive:true});
  const files=await buildEditorRenderFiles(project);
