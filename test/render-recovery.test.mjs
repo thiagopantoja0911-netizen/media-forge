@@ -44,12 +44,17 @@ test("operator overrides are respected and segmentation can be disabled explicit
   assert.equal(shouldResumeHyperFramesSegments(env), false);
 });
 
-test("retries activate low-memory mode without lowering output quality settings", () => {
+test("retry attempts shorten capture segments without lowering output quality settings", () => {
   const first = buildHyperFramesRenderEnvironment({}, 1);
   const second = buildHyperFramesRenderEnvironment({}, 2);
-  assert.equal(first.PRODUCER_LOW_MEMORY_MODE, undefined);
-  assert.equal(second.PRODUCER_LOW_MEMORY_MODE, "true");
+  assert.equal(first.HF_SEGMENT_FRAMES, "300");
+  assert.equal(second.HF_SEGMENT_FRAMES, "150");
   assert.equal(second.HF_SEGMENTED_CAPTURE, "true");
+  assert.equal(second.PRODUCER_LOW_MEMORY_MODE, undefined);
+  const operatorOverride = buildHyperFramesRenderEnvironment({
+    MEDIAFORGE_SEGMENT_FRAMES: "120"
+  }, 2);
+  assert.equal(operatorOverride.HF_SEGMENT_FRAMES, "120");
 });
 
 test("render retry classification distinguishes transient capture failures from authoring errors", () => {

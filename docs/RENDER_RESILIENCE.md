@@ -10,7 +10,7 @@ The Windows HyperFrames worker uses a conservative capture profile by default:
 - Chrome is recycled at every segment boundary.
 - The CLI receives `--resume`, so a subsequent attempt can validate and reuse completed segments.
 - Up to three total attempts are made for transient capture, browser, protocol and memory failures. Backoff is 10 seconds, then 30 seconds.
-- Attempts after the first enable HyperFrames low-memory mode. Resolution, FPS, quality and authored scene timing are not silently downgraded.
+- Attempts after the first shorten the segment size to 150 frames (or a smaller operator override), reducing peak browser/frame memory. Resolution, FPS, quality and authored scene timing are not silently downgraded.
 
 Preflight, composition, GSAP, audio-QA and technical-QA errors are not retried as transient failures.
 
@@ -39,6 +39,7 @@ Use these environment variables in the local worker configuration when an operat
 | `MEDIAFORGE_SEGMENT_MIN_SECONDS` | 10 |
 | `MEDIAFORGE_SEGMENT_FRAMES` | 300 |
 | `MEDIAFORGE_SEGMENT_BROWSER_RECYCLE` | 1 |
+| `MEDIAFORGE_RETRY_SEGMENT_FRAMES` | 150 |
 | `MEDIAFORGE_RENDER_MAX_ATTEMPTS` | 3 (hard cap) |
 
 ## Rollout

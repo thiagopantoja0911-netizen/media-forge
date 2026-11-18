@@ -8,6 +8,7 @@ const DEFAULT_PLAYER_READY_TIMEOUT_MS = 120_000;
 const DEFAULT_SEGMENT_MIN_SECONDS = 10;
 const DEFAULT_SEGMENT_FRAMES = 300;
 const DEFAULT_SEGMENT_BROWSER_RECYCLE = 1;
+const DEFAULT_RETRY_SEGMENT_FRAMES = 150;
 const MAX_RENDER_ATTEMPTS = 3;
 
 function positiveInteger(value, fallback) {
@@ -67,9 +68,17 @@ export function buildHyperFramesRenderEnvironment(base = process.env, attempt = 
     ));
   }
 
-  // Only retries switch to the renderer's low-memory profile. Resolution,
-  // FPS, quality and authored motion remain unchanged.
-  if (attempt > 1) env.PRODUCER_LOW_MEMORY_MODE = "true";
+  // Retries use shorter segments to reduce peak browser/frame memory.
+  // This is a documented HyperFrames control; output resolution, FPS, quality
+  // and authored motion remain unchanged.
+  if (attempt > 1 && segmented) {
+    const currentFrames = positiveInteger(env.HF_SEGMENT_FRAMES, DEFAULT_SEGMENT_FRAMES);
+    const retryFrames = positiveInteger(
+      env.MEDIAFORGE_RETRY_SEGMENT_FRAMES,
+      DEFAULT_RETRY_SEGMENT_FRAMES
+    );
+    env.HF_SEGMENT_FRAMES = String(Math.min(currentFrames, retryFrames));
+  }
   return env;
 }
 
