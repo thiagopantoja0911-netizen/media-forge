@@ -127,6 +127,8 @@ export function validateEditorProject(p){
       throw failure("SCENE_MOTION_BLUR_INVALID","Motion blur fora do intervalo 0–1.");
     if(s.visual!==undefined){
       const v=s.visual;
+      if(v?.assetIds!==undefined&&(!Array.isArray(v.assetIds)||!v.assetIds.length||v.assetIds.length>12||v.assetIds.some(id=>!assetIds.has(id))))
+        throw failure("SCENE_VISUAL_ASSETS_INVALID","Grid contém imagens não importadas.");
       if(!v||!EDITOR_VISUAL_TYPES.includes(v.type)||!assetIds.has(v.assetId)||
         !Array.isArray(v.position)||v.position.length!==3||!v.position.every(n=>number(n,-8,8))||
         !Array.isArray(v.rotation)||v.rotation.length!==3||!v.rotation.every(n=>number(n,-180,180))||
