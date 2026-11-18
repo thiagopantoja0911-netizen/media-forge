@@ -243,20 +243,20 @@ function editorRuntime(){
     });
     renderer.render(world,camera);
   }
-  let time=0,last=0,playing=false;
-  function tick(now){
+  // Browser playback is driven by GSAP ticker; HyperFrames capture is seek-only.
+  let time=0,playing=false;
+  function stopPlayback(){if(playing)gsap.ticker.remove(tick);playing=false;}
+  function tick(_,deltaMs){
     if(!playing)return;
-    if(!last)last=now;
-    time=Math.min(D,time+(now-last)/1000);last=now;draw(time);
-    if(time<D)requestAnimationFrame(tick);
-    else{playing=false;window.parent.postMessage({mediaforge:"ended"},"*");}
+    time=Math.min(D,time+Math.max(0,Number(deltaMs)||0)/1000);draw(time);
+    if(time>=D){stopPlayback();window.parent.postMessage({mediaforge:"ended"},"*");}
   }
   window.addEventListener("message",e=>{
     if(e.origin!==location.origin)return;
     const d=e.data||{};
-    if(d.mediaforge==="seek"){playing=false;time=Math.min(D,Math.max(0,Number(d.time)||0));last=0;draw(time);}
-    if(d.mediaforge==="play"&&!playing){playing=true;last=0;requestAnimationFrame(tick);}
-    if(d.mediaforge==="pause"){playing=false;}
+    if(d.mediaforge==="seek"){stopPlayback();time=Math.min(D,Math.max(0,Number(d.time)||0));draw(time);}
+    if(d.mediaforge==="play"&&!playing){playing=true;gsap.ticker.add(tick);}
+    if(d.mediaforge==="pause")stopPlayback();
   });
   window.addEventListener("hf-seek",event=>{
     const t=Number(event.detail.time??0);
