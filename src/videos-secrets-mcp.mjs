@@ -16,6 +16,7 @@ import {signedVideoDownload} from "./video-artifact-delivery.mjs";
 import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
 import { storeEditorVisualAsset } from "./editor-visual-assets.mjs";
 import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } from "./editor-style-presets.mjs";
+import { decodeAudioToPcm, analyzePcmForBeats, synchronizeSceneCutsToBeats } from "./editor-beat-sync.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
@@ -93,6 +94,14 @@ export const VIDEOS_SECRETS_TOOLS = [
     name:"list_editor_style_presets",
     description:"Lista presets nativos do Editor Visual: apple-clean, spotify-dark-glow e motivational-bw.",
     inputSchema:{type:"object",additionalProperties:false}
+  },
+  {
+    name:"sync_editor_beats",
+    description:"Analisa automaticamente uma faixa Música anexada ao projeto, estima o BPM por fluxo espectral e reposiciona os cortes da timeline nos pulsos detectados. Preserva duração total, ordem e cenas com pelo menos um segundo. Invalida a aprovação visual anterior.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
+      audio_id:{type:"string",pattern:"^[a-f0-9]{32}$"}
+    },required:["project_id"]}
   },
   {
     name:"get_editor_project",
@@ -574,6 +583,23 @@ export async function handleVideosSecretsMcp({
         editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id},false,version),version);
     }
 
+    if(name==="sync_editor_beats"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const old=await loadEditorProject(args.project_id);
+      const track=old.audio.find(a=>a.role==="music"&&(!args.audio_id||a.id===args.audio_id||a.assetId===args.audio_id));
+      if(!track)return writeError(response,id,-32602,"MUSIC_TRACK_REQUIRED: adicione uma faixa com o papel Música.",422,version);
+      const bytes=await readFile(join(editorStoreDir(),old.id+"-audio-"+track.assetId+"."+track.extension));
+      const samples=await decodeAudioToPcm(bytes,{maxSeconds:Math.min(60,(track.endFrame-track.startFrame)/old.fps)});
+      const analysis=analyzePcmForBeats(samples);
+      const synced=synchronizeSceneCutsToBeats(old,analysis,track);
+      const project=await saveEditorProject(synced.project,{expectedRevision:old.revision});
+      return writeResult(response,id,textResult({ok:true,project,
+        analysis:{bpm:analysis.bpm,confidence:analysis.confidence,beatCount:analysis.beatTimes.length,
+          beatIntervalSeconds:analysis.beatIntervalSeconds},
+        sync:{syncedCuts:synced.syncedCuts,totalCuts:synced.totalCuts,cutFrames:synced.cutFrames,
+          offsetFrames:synced.offsetFrames,maxShiftSeconds:synced.maxShiftSeconds},
+        nextStep:"Revise novamente as prévias de todas as cenas antes de renderizar."},false,version),version);
+    }
     if(name==="review_editor_preview"){
       if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
       const project=await loadEditorProject(args.project_id);

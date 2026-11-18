@@ -110,6 +110,7 @@ function refreshAudioPlayers(){
 function editSceneDuration(index,newFrames){
   const p=state.project,one=p.scenes[index],two=p.scenes[index+1];
   if(!two)return toast("A última cena fecha a duração total. Ajuste as cenas anteriores.");
+  delete p.beatSync;
   const budget=two.endFrame-one.startFrame;
   const amount=clamp(Math.round(newFrames),p.fps,budget-p.fps);
   one.endFrame=one.startFrame+amount;
@@ -150,7 +151,7 @@ function buildTracks(){
      if(from===null||from===i)return;
      const arr=p.scenes,entry=arr.splice(from,1)[0];arr.splice(i,0,entry);
      let cursor=0;arr.forEach((shot,j)=>{const len=shot.endFrame-shot.startFrame;shot.id="scene-"+(j+1);shot.startFrame=cursor;shot.endFrame=cursor+len;cursor+=len;});
-     state.selected=i;afterChange(true);
+     delete p.beatSync;state.selected=i;afterChange(true);
    });
    if(i<p.scenes.length-1){
      const handle=document.createElement("span");handle.className="clip-handle";handle.title="Arraste para ajustar duração";
@@ -167,7 +168,7 @@ function buildTracks(){
          item.style.width=(value/p.totalFrames*100)+"%";
          if(item.nextSibling)item.nextSibling.style.width=((total-value)/p.totalFrames*100)+"%";
        };
-       const up=()=>{handle.removeEventListener("pointermove",move);handle.removeEventListener("pointerup",up);afterChange(true);};
+       const up=()=>{handle.removeEventListener("pointermove",move);handle.removeEventListener("pointerup",up);delete p.beatSync;afterChange(true);};
        handle.addEventListener("pointermove",move);handle.addEventListener("pointerup",up,{once:true});
      });item.append(handle);
    }
@@ -223,21 +224,23 @@ function renderImageList(){
 }
 function renderAudioList(){
  const container=$("audioList");container.replaceChildren();
- const p=state.project;
+ const p=state.project,music=p?.audio.find(a=>a.role==="music");
+ $("beatSyncButton").disabled=!music;
+ out("beatSyncStatus",p?.beatSync?`${p.beatSync.bpm} BPM · ${p.beatSync.syncedCuts}/${p.beatSync.totalCuts} cortes alinhados`:music?"Música pronta para análise.":"Adicione uma faixa com o papel Música.");
  if(!p?.audio.length){const el=document.createElement("span");el.className="muted";el.textContent="Nenhum áudio anexado.";container.append(el);return;}
  for(const a of p.audio){
    const box=document.createElement("div");box.className="audio-row";
    const row=document.createElement("div"),label=document.createElement("b"),remove=document.createElement("button");
    label.textContent=a.name;label.title=a.role;remove.textContent="×";remove.title="Retirar faixa";
-   remove.addEventListener("click",()=>{p.audio=p.audio.filter(x=>x.id!==a.id);refreshAudioPlayers();renderAudioList();afterChange();});
+   remove.addEventListener("click",()=>{p.audio=p.audio.filter(x=>x.id!==a.id);if(p.beatSync?.audioId===a.id)delete p.beatSync;refreshAudioPlayers();renderAudioList();afterChange();});
    row.append(label,remove);
    const volume=document.createElement("input");volume.type="range";volume.min="0";volume.max="1";volume.step=".01";volume.value=a.volume;
    volume.title="Volume da faixa";volume.addEventListener("input",()=>{a.volume=Number(volume.value);afterChange();});
    const starts=document.createElement("div"),start=document.createElement("input"),end=document.createElement("input");
    start.type="number";start.min="0";start.max=sec(p.totalFrames-1);start.step=".1";start.value=sec(a.startFrame).toFixed(1);start.title="Início (s)";
    end.type="number";end.min="0.1";end.max=sec(p.totalFrames);end.step=".1";end.value=sec(a.endFrame).toFixed(1);end.title="Fim (s)";
-   start.addEventListener("change",()=>{a.startFrame=clamp(Math.round(Number(start.value)*p.fps),0,a.endFrame-1);afterChange();});
-   end.addEventListener("change",()=>{a.endFrame=clamp(Math.round(Number(end.value)*p.fps),a.startFrame+1,p.totalFrames);afterChange();});
+   start.addEventListener("change",()=>{a.startFrame=clamp(Math.round(Number(start.value)*p.fps),0,a.endFrame-1);if(a.role==="music")delete p.beatSync;afterChange();});
+   end.addEventListener("change",()=>{a.endFrame=clamp(Math.round(Number(end.value)*p.fps),a.startFrame+1,p.totalFrames);if(a.role==="music")delete p.beatSync;afterChange();});
    starts.append(start,end);box.append(row,volume,starts);container.append(box);
  }
 }
@@ -460,6 +463,21 @@ async function uploadAudio(file){
   out("saveStatus","Salvo");toast("Faixa de áudio adicionada à timeline.");
  }catch(e){out("saveStatus","Erro no áudio");toast(e.message);}
 }
+async function synchronizeBeats(){
+ if(!state.project)return;
+ const music=state.project.audio.find(a=>a.role==="music");
+ if(!music)return toast("Adicione uma faixa e selecione Música antes de sincronizar.");
+ const button=$("beatSyncButton");button.disabled=true;button.textContent="Analisando batidas…";
+ try{
+   await saveProject(false);
+   const result=await post(src("beat-sync"),{audioId:music.id});
+   state.project=result.project;state.dirty=false;state.previewApproved=false;
+   updateMetadata();renderAudioList();buildTracks();openScene(state.selected);
+   await refreshReviewStatus();
+   toast(result.analysis.bpm+" BPM detectados · "+result.sync.syncedCuts+"/"+result.sync.totalCuts+" cortes sincronizados.");
+ }catch(error){toast("Sincronização BPM: "+error.message);}
+ finally{button.textContent="♫ Sincronizar cortes com BPM";button.disabled=!state.project?.audio.some(a=>a.role==="music");}
+}
 async function workerHealth(){
  try{const r=await request("/health");const worker=r.worker;
   out("workerState",worker?.online?"HyperFrames online":"HyperFrames offline");
@@ -494,6 +512,7 @@ $("sceneSeek").addEventListener("input",event=>{
  out("timeCurrent",longFmt(state.frame));playbackMessage({mediaforge:"seek",time:state.frame});
  previewAudio(false);
 });
+$("beatSyncButton").addEventListener("click",synchronizeBeats);
 $("audioUpload").addEventListener("change",async event=>{
  const file=event.target.files?.[0];if(file)await uploadAudio(file);event.target.value="";
 });
