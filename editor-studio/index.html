@@ -76,6 +76,15 @@
    <label class="range-label">Energia do movimento <output id="energyNumber">72%</output><input id="editEnergy" type="range" min="0" max="100"></label>
    <label class="range-label">Profundidade 3D <output id="depthNumber">85%</output><input id="editDepth" type="range" min="0" max="100"></label>
    <label class="range-label">Escala da tipografia <output id="textScaleNumber">100%</output><input id="editTextScale" type="range" min="50" max="150"></label>
+   <div class="thin-divider"></div>
+   <div class="panel-heading"><span>TIPOGRAFIA CINÉTICA</span></div>
+   <label>Animação do título<select id="editTextMode"><option value="whole">Título inteiro</option><option value="words">Palavra por palavra</option><option value="letters">Letra por letra</option></select></label>
+   <label>Família tipográfica<select id="editFontFamily"><option value="sans">Sans minimalista</option><option value="serif">Serif editorial</option><option value="mono">Monospace</option></select></label>
+   <div class="fieldrow"><label>Peso inicial<input id="editWeightFrom" type="number" min="100" max="900" step="50"></label><label>Peso final<input id="editWeightTo" type="number" min="100" max="900" step="50"></label></div>
+   <label class="range-label">Intervalo entre palavras/letras <output id="textStaggerNumber">65%</output><input id="editTextStagger" type="range" min="0" max="100" step="5"></label>
+   <label class="range-label">Bloom próprio do texto <output id="textBloomNumber">0%</output><input id="editTextBloom" type="range" min="0" max="100" step="5"></label>
+   <label>Cor do bloom do texto<input id="editTextBloomColor" type="color"></label>
+   <p class="property-tip">Animação por quadro e brilho independente do fundo. O peso segue a disponibilidade da família de fonte selecionada.</p>
    <label class="range-label">Motion blur temporal (3D + câmera) <output id="motionBlurNumber">0%</output><input id="editMotionBlur" type="range" min="0" max="100" value="0" step="5"></label>
    <p class="property-tip">Amostragem temporal real por cena. 0% desliga; valores maiores aumentam o arrasto do movimento e o custo de renderização.</p>
    <div class="thin-divider"></div>
