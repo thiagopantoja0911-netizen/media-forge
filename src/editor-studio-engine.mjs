@@ -150,16 +150,19 @@ function editorRuntime(){
       const v=s.visual,url=assets[v.assetId];
       if(!url)throw new Error("EDITOR_ASSET_NOT_FOUND: "+v.assetId);
       visualGroup=new THREE.Group();group.add(visualGroup);
-      visualGroup.position.set(...v.position);visualGroup.rotation.set(...v.rotation.map(n=>n*Math.PI/180));
+      visualGroup.position.set(...v.position);visualGroup.position.z+=(v.depth-.5)*1.4;
+      visualGroup.rotation.set(...v.rotation.map(n=>n*Math.PI/180));
+      orbit1.visible=false;orbit2.visible=false;
       visualGroup.scale.setScalar(v.scale);
       if(v.type==="screen"){visualGroup.add(makeScreen(3.6,2.3,url));}
       else {
         const count=v.columns*v.rows,w=2.15,h=1.35;
         for(let j=0;j<count;j++){
-          const panel=makeScreen(w,h,url);
+          const panelUrl=assets[v.assetIds?.[j%(v.assetIds.length||1)]??v.assetId]??url;
+          const panel=makeScreen(w,h,panelUrl);
           const col=j%v.columns,row=Math.floor(j/v.columns);
           panel.position.set((col-(v.columns-1)/2)*2.32,(row-(v.rows-1)/2)*1.52,
-            -row*.12-col*.09);
+            (-row*.12-col*.09)*(.25+v.depth));
           panel.rotation.y=-.1+.12*col;visualGroup.add(panel);
         }
       }
