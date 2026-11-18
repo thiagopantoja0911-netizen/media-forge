@@ -14,6 +14,8 @@ import { editMotionPlan } from "./motion/editor.mjs";
 import { buildOnePromptBlueprint } from "./one-prompt-production.mjs";
 import {signedVideoDownload} from "./video-artifact-delivery.mjs";
 import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
+import { storeEditorVisualAsset } from "./editor-visual-assets.mjs";
+import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } from "./editor-style-presets.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
@@ -30,6 +32,7 @@ export const VIDEOS_SECRETS_TOOLS = [
       brand:{type:"string",maxLength:80},title:{type:"string",maxLength:100},
       duration_seconds:{type:"integer",minimum:10,maximum:60},fps:{type:"integer",enum:[30,60]},
       aspect_ratio:{type:"string",enum:["9:16","16:9","1:1"]},
+      style_preset:{type:"string",enum:["apple-clean","spotify-dark-glow","motivational-bw"]},
       scenes:{type:"array",minItems:3,maxItems:12,items:{type:"object",additionalProperties:false,properties:{
         headline:{type:"string",maxLength:96},kicker:{type:"string",maxLength:45},
         detail:{type:"string",maxLength:150},shape:{type:"string",enum:["torus-knot","icosahedron","sphere","torus","cube","cone","rings"]},
@@ -50,6 +53,37 @@ export const VIDEOS_SECRETS_TOOLS = [
       scene_index:{type:"integer",minimum:0,maximum:11},
       confirm_render:{type:"boolean",const:true}
     },required:["project_id","confirm_render"]}
+  },
+
+  {
+    name:"upload_editor_asset",
+    description:"Importa uma imagem PNG, WEBP ou SVG segura (max 2 MB) como asset privado de um projeto editável. A imagem fica disponível para mockups screen e card-grid na prévia e renderização. Requer anexação à cena via edit_editor_project. Sem download arbitrário de URLs externas.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
+      filename:{type:"string",maxLength:90},
+      base64:{type:"string",maxLength:3000000}
+    },required:["project_id","filename","base64"]}
+  },
+  {
+    name:"apply_editor_style_preset",
+    description:"Aplica preset nomeado às cenas do Editor Visual sem apagar textos e assets. Cria nova revisão e invalida aprovação de prévia anterior.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
+      expected_revision:{type:"integer",minimum:0},
+      style_preset:{type:"string",enum:["apple-clean","spotify-dark-glow","motivational-bw"]}
+    },required:["project_id","expected_revision","style_preset"]}
+  },
+  {
+    name:"get_editor_style_dna",
+    description:"Exporta o DNA reutilizável de um projeto Editor 3D: paleta, energia, ritmo em frames, câmeras, transições, formas, glow e layout. Não inclui assets com direitos de terceiros.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"}
+    },required:["project_id"]}
+  },
+  {
+    name:"list_editor_style_presets",
+    description:"Lista presets nativos do Editor Visual: apple-clean, spotify-dark-glow e motivational-bw.",
+    inputSchema:{type:"object",additionalProperties:false}
   },
   {
     name:"get_editor_project",
@@ -89,6 +123,24 @@ export const VIDEOS_SECRETS_TOOLS = [
           detail:{type:"string",maxLength:150},shape:{type:"string"},camera:{type:"string"},
           transition:{type:"string"},accent:{type:"string"},energy:{type:"number"},depth:{type:"number"},
           textScale:{type:"number",minimum:0.5,maximum:1.5},
+          motionBlur:{type:"number",minimum:0,maximum:1,description:"Intensidade registrada; render global ainda não implementado por cena"},
+          glow:{type:["object","null"],additionalProperties:false,properties:{
+            color:{type:"string",pattern:"^#[a-fA-F0-9]{6}$"},intensity:{type:"number",minimum:0,maximum:1},
+            speed:{type:"number",minimum:0,maximum:3},x:{type:"number",minimum:-1,maximum:1},
+            y:{type:"number",minimum:-1,maximum:1}
+          },required:["color","intensity","speed","x","y"]},
+          visual:{type:["object","null"],additionalProperties:false,properties:{
+            type:{type:"string",enum:["screen","card-grid"]},
+            assetId:{type:"string",pattern:"^[a-f0-9]{32}$"},
+            assetIds:{type:"array",minItems:1,maxItems:12,items:{type:"string",pattern:"^[a-f0-9]{32}$"}},
+            position:{type:"array",minItems:3,maxItems:3,items:{type:"number",minimum:-8,maximum:8}},
+            rotation:{type:"array",minItems:3,maxItems:3,items:{type:"number",minimum:-180,maximum:180}},
+            scale:{type:"number",minimum:0.2,maximum:4},
+            depth:{type:"number",minimum:0,maximum:1},
+            columns:{type:"integer",minimum:1,maximum:4},
+            rows:{type:"integer",minimum:1,maximum:4},
+            scroll:{type:"number",minimum:-2,maximum:2}
+          },required:["type","assetId","position","rotation","scale","depth"]},
           duration_seconds:{type:"number",minimum:1,maximum:60}
         }}
       },required:["scene_id","changes"]}}
@@ -470,6 +522,33 @@ export async function handleVideosSecretsMcp({
         editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
         message:"Render HyperFrames iniciado a partir do projeto editável; o projeto original foi preservado."},false,version),version);
     }
+
+    if(name==="list_editor_style_presets"){
+      if(!auth.scopes.includes("videos:read"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      return writeResult(response,id,textResult({styles:listEditorStylePresets()},false,version),version);
+    }
+    if(name==="get_editor_style_dna"){
+      if(!auth.scopes.includes("videos:read"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const project=await loadEditorProject(args.project_id);
+      return writeResult(response,id,textResult({ok:true,dna:buildEditorStyleDna(project)},false,version),version);
+    }
+    if(name==="apply_editor_style_preset"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const old=await loadEditorProject(args.project_id);
+      if(args.expected_revision!==old.revision)return writeError(response,id,-32602,"EDITOR_REVISION_CONFLICT",409,version);
+      const updated=applyEditorStylePreset(old,args.style_preset);
+      validateEditorProject(updated);
+      const project=await saveEditorProject(updated,{expectedRevision:old.revision});
+      return writeResult(response,id,textResult({ok:true,project,previewReview:await readEditorPreviewReview(project)},false,version),version);
+    }
+    if(name==="upload_editor_asset"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const old=await loadEditorProject(args.project_id);
+      const {project,asset}=await storeEditorVisualAsset(old,args);
+      return writeResult(response,id,textResult({ok:true,asset,revision:project.revision,
+        nextStep:"Use edit_editor_project com visual.assetId para posicionar a imagem numa cena.",
+        editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id},false,version),version);
+    }
     if(name==="get_editor_project"){
       if(!auth.scopes.includes("videos:read"))return writeError(response,id,-32003,"Insufficient scope",403,version);
       const project=await loadEditorProject(args.project_id);
@@ -501,7 +580,7 @@ export async function handleVideosSecretsMcp({
         const index=copy.scenes.findIndex(s=>s.id===edit.scene_id);
         if(index<0)return writeError(response,id,-32602,"Scene not found",422,version);
         const patch=edit.changes||{},scene=copy.scenes[index];
-        const allowed=["headline","kicker","detail","shape","camera","transition","accent","energy","depth","textScale"];
+        const allowed=["headline","kicker","detail","shape","camera","transition","accent","energy","depth","textScale","visual","glow","motionBlur"];
         if(Object.keys(patch).some(k=>![...allowed,"duration_seconds"].includes(k)))
           return writeError(response,id,-32602,"Unsupported property",422,version);
         if(patch.duration_seconds!==undefined){
@@ -513,7 +592,10 @@ export async function handleVideosSecretsMcp({
             return writeError(response,id,-32602,"Duration would overlap neighboring scene",422,version);
           scene.endFrame=scene.startFrame+frames;next.startFrame=scene.endFrame;
         }
-        for(const k of allowed)if(Object.hasOwn(patch,k))scene[k]=patch[k];
+        for(const k of allowed)if(Object.hasOwn(patch,k)){
+          if((k==="visual"||k==="glow")&&patch[k]===null)delete scene[k];
+          else scene[k]=patch[k];
+        }
       }
       validateEditorProject(copy);
       const project=await saveEditorProject(copy,{expectedRevision:old.revision});

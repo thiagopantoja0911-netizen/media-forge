@@ -1,0 +1,25 @@
+name: MediaForge premium editor WebGL smoke
+on:
+  pull_request:
+    branches: [feature/unific-media-20261116]
+  workflow_dispatch:
+jobs:
+  premium-webgl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+      - name: Validate premium scene generator and live WebGL snapshots
+        env:
+          HYPERFRAMES_VERSION: 0.9.31
+        run: node scripts/check-editor-premium-webgl.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: premium-editor-samples
+          path: ${{ runner.temp }}/mediaforge-editor-premium-samples
+          if-no-files-found: ignore

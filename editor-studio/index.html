@@ -20,6 +20,16 @@
   <div class="meta-line"><span>Duração</span><b id="infoDuration">00:30</b></div>
   <div class="meta-line"><span>Cenas</span><b id="infoScenes">—</b></div>
   <div class="thin-divider"></div>
+  <div class="panel-heading"><span>STYLE PRESET</span></div>
+  <select id="stylePreset"><option value="">Escolher estilo...</option><option value="apple-clean">Apple Clean</option><option value="spotify-dark-glow">Spotify Dark Glow</option><option value="motivational-bw">Motivational P&B</option></select>
+  <button class="ghost" id="applyPreset">Aplicar preset às cenas</button>
+  <button class="ghost" id="downloadDna">Exportar DNA (.json)</button>
+  <div class="thin-divider"></div>
+  <div class="panel-heading"><span>ASSETS VISUAIS</span></div>
+  <p class="aside-help">PNG, WEBP ou SVG seguro até 2 MB para telas e grids 3D.</p>
+  <label class="upload-action">+ Importar imagem<input id="imageUpload" type="file" accept=".png,.webp,.svg,image/png,image/webp,image/svg+xml" hidden></label>
+  <div id="imageList" class="audio-list"><span class="muted">Nenhum asset.</span></div>
+  <div class="thin-divider"></div>
   <div class="panel-heading"><span>TRILHAS SONORAS</span></div>
   <p class="aside-help">Adicione voz, música e efeitos. Todos entram na timeline e seguem junto ao projeto renderizado.</p>
   <select id="audioRole"><option value="voice">Locução</option><option value="music">Música</option><option value="sfx">Efeito sonoro</option></select>
@@ -66,6 +76,21 @@
    <label class="range-label">Energia do movimento <output id="energyNumber">72%</output><input id="editEnergy" type="range" min="0" max="100"></label>
    <label class="range-label">Profundidade 3D <output id="depthNumber">85%</output><input id="editDepth" type="range" min="0" max="100"></label>
    <label class="range-label">Escala da tipografia <output id="textScaleNumber">100%</output><input id="editTextScale" type="range" min="50" max="150"></label>
+   <div class="thin-divider"></div>
+   <div class="panel-heading"><span>GLOW ORGÂNICO</span></div>
+   <label>Modo<select id="editGlowMode"><option value="off">Desligado</option><option value="on">Aurora / Liquid Glow</option></select></label>
+   <div class="fieldrow"><label>Cor do glow<input id="editGlowColor" type="color"></label><label>Intensidade (0–100)<input id="editGlowIntensity" type="number" min="0" max="100" step="1"></label></div>
+   <div class="fieldrow"><label>Velocidade<input id="editGlowSpeed" type="number" min="0" max="3" step=".1"></label><label>Posição X<input id="editGlowX" type="number" min="-1" max="1" step=".1"></label></div>
+   <label>Posição Y<input id="editGlowY" type="number" min="-1" max="1" step=".1"></label>
+   <div class="thin-divider"></div>
+   <div class="panel-heading"><span>MOCKUP / GRID 3D</span></div>
+   <label>Tipo visual<select id="editVisualType"><option value="">Objeto geométrico</option><option value="screen">Tela / Card 3D</option><option value="card-grid">Grid animado de cards</option></select></label>
+   <label>Asset da cena<select id="editVisualAsset"><option value="">Selecione uma imagem...</option></select></label>
+   <div class="fieldrow"><label>Escala<input id="editVisualScale" type="number" min=".2" max="4" step=".1"></label><label>Profundidade<input id="editVisualDepth" type="number" min="0" max="1" step=".1"></label></div>
+   <div class="fieldrow"><label>Posição X<input id="editVisualX" type="number" min="-8" max="8" step=".1"></label><label>Posição Y<input id="editVisualY" type="number" min="-8" max="8" step=".1"></label></div>
+   <div class="fieldrow"><label>Posição Z<input id="editVisualZ" type="number" min="-8" max="8" step=".1"></label><label>Rotação Y (°)<input id="editVisualRY" type="number" min="-180" max="180" step="5"></label></div>
+   <div class="fieldrow"><label>Colunas<input id="editGridColumns" type="number" min="1" max="4" step="1"></label><label>Linhas<input id="editGridRows" type="number" min="1" max="4" step="1"></label></div>
+   <label>Deslocamento diagonal do grid<input id="editGridScroll" type="number" min="-2" max="2" step=".1"></label>
    <p class="property-tip">Todos os parâmetros afetam a prévia WebGL e o projeto enviado ao HyperFrames. O fluxo temporário exige que o GPT verifique e aprove as prévias de todas as cenas antes da renderização. Toda edição invalida a aprovação anterior.</p>
   </div>
   <div class="inspect-footer"><span class="statusdot"></span><span id="workerState">Verificando renderizador…</span></div>
@@ -78,6 +103,7 @@
  <p>O MediaForge criará o storyboard e abrirá cada cena na timeline para você editar.</p>
  <label>Ideia do vídeo<textarea id="newIdea" required minlength="8" maxlength="400" rows="4" placeholder="Ex.: Explique como o marketing digital transforma a atenção de um cliente em uma venda."></textarea></label>
  <div class="fieldrow"><label>Marca / projeto<input id="newBrand" maxlength="80" value="MediaForge"></label><label>Duração<select id="newDuration"><option value="15">15 segundos</option><option value="20">20 segundos</option><option value="30" selected>30 segundos</option><option value="40">40 segundos</option><option value="60">60 segundos</option></select></label></div>
+ <label>Preset de estilo<select id="newPreset"><option value="">Cinematic 3D padrão</option><option value="apple-clean">Apple Clean</option><option value="spotify-dark-glow">Spotify Dark Glow</option><option value="motivational-bw">Motivational P&B</option></select></label>
  <div class="fieldrow"><label>Formato<select id="newRatio"><option value="9:16">9:16 — Reels</option><option value="16:9">16:9 — Horizontal</option><option value="1:1">1:1 — Quadrado</option></select></label><label>FPS<select id="newFps"><option value="30">30 FPS</option><option value="60">60 FPS</option></select></label></div>
  <div class="modal-actions"><button type="button" class="ghost" id="cancelModal2">Cancelar</button><button type="submit" class="primary" id="submitIdea">Criar storyboard 3D</button></div>
 </form></div>

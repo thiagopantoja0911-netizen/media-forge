@@ -73,7 +73,7 @@ function playScene(){
     const range=$("sceneSeek");range.value=String(clamp(Math.floor(state.frame/sceneLength(state.selected)*1000),0,1000));
     out("timeCurrent",longFmt(state.frame));
     if(state.frame>=sceneLength(state.selected))pauseScene();
-    else requestAnimationFrame(advance);
+    else {previewAudio(true);requestAnimationFrame(advance);}
   }
   requestAnimationFrame(advance);
 }
@@ -90,8 +90,12 @@ function previewAudio(play){
     const relative=global-a.startFrame/state.project.fps;
     const duration=(a.endFrame-a.startFrame)/state.project.fps;
     if(relative>=0&&relative<duration){
-      try{element.currentTime=relative;element.volume=a.volume;element.play().catch(()=>{});}catch{}
-    }
+      try{
+        if(element.paused||Math.abs(element.currentTime-relative)>.2)element.currentTime=Math.max(0,relative);
+        element.volume=a.volume;
+        if(element.paused)element.play().catch(()=>{});
+      }catch{}
+    }else if(!element.paused)element.pause();
   }
 }
 function refreshAudioPlayers(){
@@ -182,12 +186,34 @@ function fillInspector(){
  const p=state.project;if(!p)return;
  $("inspectorEmpty").hidden=true;$("inspectorFields").hidden=false;
  const s=p.scenes[state.selected];out("inspectorIndex",pad(state.selected+1)+" / "+pad(p.scenes.length));
- const fields={editKicker:s.kicker,editHeadline:s.headline,editDetail:s.detail,editShape:s.shape,editCamera:s.camera,
+ const assetSelect=$("editVisualAsset");assetSelect.replaceChildren();
+ const none=document.createElement("option");none.value="";none.textContent="Selecione uma imagem...";assetSelect.append(none);
+ for(const a of (p.assets??[])){
+   const el=document.createElement("option");el.value=a.id;el.textContent=a.name;assetSelect.append(el);
+ }
+ const g=s.glow??{color:s.accent,intensity:.55,speed:.7,x:0,y:0};
+ const v=s.visual??{type:"",assetId:"",position:[0,0,0],rotation:[0,0,0],
+   scale:1,depth:.7,columns:3,rows:4,scroll:1};
+ const fields={editGlowMode:s.glow?"on":"off",editGlowColor:g.color,
+  editGlowIntensity:Math.round(g.intensity*100),editGlowSpeed:g.speed,editGlowX:g.x,editGlowY:g.y,
+  editVisualType:v.type,editVisualAsset:v.assetId,editVisualScale:v.scale,
+  editVisualDepth:v.depth,editVisualX:v.position[0],editVisualY:v.position[1],
+  editVisualZ:v.position[2],editVisualRY:v.rotation[1],
+  editGridColumns:v.columns??3,editGridRows:v.rows??4,editGridScroll:v.scroll??1,
+  editKicker:s.kicker,editHeadline:s.headline,editDetail:s.detail,editShape:s.shape,editCamera:s.camera,
   editTransition:s.transition,editAccent:s.accent,editDuration:sceneLength(state.selected).toFixed(1),
   editEnergy:Math.round(s.energy*100),editDepth:Math.round(s.depth*100),editTextScale:Math.round(s.textScale*100)};
  for(const [id,value] of Object.entries(fields))$(id).value=value;
  out("energyNumber",fields.editEnergy+"%");out("depthNumber",fields.editDepth+"%");out("textScaleNumber",fields.editTextScale+"%");
  $("editDuration").disabled=state.selected===p.scenes.length-1;
+}
+function renderImageList(){
+ const container=$("imageList");container.replaceChildren();
+ const assets=state.project?.assets??[];
+ if(!assets.length){const el=document.createElement("span");el.className="muted";el.textContent="Nenhum asset.";container.append(el);return;}
+ for(const a of assets){
+   const el=document.createElement("span");el.className="muted";el.textContent=a.name+" · "+Math.round(a.size/1024)+" KB";container.append(el);
+ }
 }
 function renderAudioList(){
  const container=$("audioList");container.replaceChildren();
@@ -241,7 +267,8 @@ async function loadProject(id){
  state.project=r.project;state.selected=0;state.dirty=false;
  history.replaceState(null,"","/editor?project="+r.project.id);
  $("previewNotice").hidden=false;
- updateMetadata();renderAudioList();refreshAudioPlayers();openScene(0);
+ updateMetadata();renderImageList();renderAudioList();refreshAudioPlayers();openScene(0);
+ $("stylePreset").value=r.project.stylePreset??"";
  await refreshReviewStatus();
 }
 function presentModal(){pauseScene();$("newModal").hidden=false;$("newIdea").focus();}
@@ -251,7 +278,7 @@ async function createFromIdea(event){
  const submit=$("submitIdea");submit.disabled=true;submit.textContent="Criando…";
  try{
    const fields={idea:$("newIdea").value.trim(),brand:$("newBrand").value.trim(),duration_seconds:Number($("newDuration").value),
-     aspect_ratio:$("newRatio").value,fps:Number($("newFps").value)};
+     aspect_ratio:$("newRatio").value,fps:Number($("newFps").value),style_preset:$("newPreset").value||undefined};
    const r=await post("/api/editor/projects",fields);
    $("newModal").hidden=true;
    await loadProject(r.project.id);
@@ -278,6 +305,82 @@ function connectProperties(){
   });
  }
  $("editDuration").addEventListener("change",()=>editSceneDuration(state.selected,Number($("editDuration").value)*state.project.fps));
+}
+function connectPremiumProperties(){
+ for(const id of ["editGlowMode","editGlowColor","editGlowIntensity","editGlowSpeed","editGlowX","editGlowY"])
+   $(id).addEventListener("change",()=>{
+     if(!state.project)return;
+     const s=state.project.scenes[state.selected];
+     if($("editGlowMode").value==="off")delete s.glow;
+     else s.glow={color:$("editGlowColor").value,
+       intensity:clamp(Number($("editGlowIntensity").value)/100,0,1),
+       speed:clamp(Number($("editGlowSpeed").value),0,3),
+       x:clamp(Number($("editGlowX").value),-1,1),y:clamp(Number($("editGlowY").value),-1,1)};
+     afterChange();
+   });
+ const keys=["editVisualType","editVisualAsset","editVisualScale","editVisualDepth","editVisualX",
+   "editVisualY","editVisualZ","editVisualRY","editGridColumns","editGridRows","editGridScroll"];
+ for(const id of keys)$(id).addEventListener("change",()=>{
+   if(!state.project)return;
+   const type=$("editVisualType").value,assetId=$("editVisualAsset").value;
+   const s=state.project.scenes[state.selected];
+   if(!type){delete s.visual;afterChange();return;}
+   if(!assetId||!(state.project.assets??[]).some(a=>a.id===assetId)){
+     toast("Importe e selecione uma imagem antes de criar o mockup.");
+     $("editVisualType").value=s.visual?.type??"";return;
+   }
+   const columns=clamp(Math.round(Number($("editGridColumns").value)),1,4);
+   const rows=clamp(Math.round(Number($("editGridRows").value)),1,Math.floor(12/columns));
+   s.visual={type,assetId,
+     position:["editVisualX","editVisualY","editVisualZ"].map(k=>clamp(Number($(k).value),-8,8)),
+     rotation:[0,clamp(Number($("editVisualRY").value),-180,180),0],
+     scale:clamp(Number($("editVisualScale").value),.2,4),
+     depth:clamp(Number($("editVisualDepth").value),0,1),columns,rows,
+     ...(s.visual?.assetIds?{assetIds:s.visual.assetIds}:{}),
+     scroll:clamp(Number($("editGridScroll").value),-2,2)};
+   afterChange();fillInspector();
+ });
+}
+async function uploadImage(file){
+ if(!state.project||!file)return;
+ if(file.size>2*1024*1024)return toast("Imagem acima de 2 MB.");
+ await saveProject(false);
+ const base64=await new Promise((resolve,reject)=>{
+   const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);
+   reader.onerror=()=>reject(new Error("Falha ao ler imagem."));reader.readAsDataURL(file);
+ });
+ try{
+   out("saveStatus","Importando asset…");
+   const r=await post(src("assets"),{filename:file.name,base64});
+   state.project=r.project;state.dirty=false;renderImageList();
+   const s=state.project.scenes[state.selected];
+   if(!s.visual)s.visual={type:"screen",assetId:r.asset.id,position:[0,0,0],rotation:[0,0,0],
+     scale:1,depth:.7,columns:3,rows:4,scroll:1};
+   afterChange(true);toast("Asset importado e ligado à cena.");
+ }catch(error){out("saveStatus","Erro no asset");toast(error.message);}
+}
+async function applySelectedStyle(){
+ if(!state.project)return;
+ const style_preset=$("stylePreset").value;
+ if(!style_preset)return toast("Escolha um preset.");
+ await saveProject(false);
+ try{
+   const r=await post(src("style"),{style_preset});
+   state.project=r.project;state.dirty=false;showReviewStatus("stale");
+   updateMetadata();buildTracks();openScene(state.selected);await refreshReviewStatus();
+   toast("Preset aplicado. Revise a prévia novamente.");
+ }catch(error){toast("Preset: "+error.message);}
+}
+async function downloadStyleDna(){
+ if(!state.project)return;
+ await saveProject(false);
+ try{
+   const r=await request(src("style-dna"));
+   const blob=new Blob([JSON.stringify(r.dna,null,2)],{type:"application/json"});
+   const url=URL.createObjectURL(blob),a=document.createElement("a");
+   a.href=url;a.download="mediaforge-style-dna-"+state.project.id+".json";a.click();
+   setTimeout(()=>URL.revokeObjectURL(url),1500);
+ }catch(error){toast("DNA: "+error.message);}
 }
 function awaitStatus(jobId){
  let count=0;const timer=setInterval(async()=>{
@@ -340,7 +443,12 @@ window.addEventListener("message",event=>{
    state.ready=true;out("previewState","Pronta");
    $("previewNotice").hidden=true;configureViewport();
  }
- if(event.data?.mediaforge==="ended")pauseScene();
+ if(event.data?.mediaforge==="error"){
+ state.ready=false;out("previewState","Erro na cena");
+ $("previewNotice").hidden=false;$("previewNotice").textContent="Falha ao carregar asset ou renderizar a prévia.";
+ return;
+}
+if(event.data?.mediaforge==="ended")pauseScene();
 });
 window.addEventListener("resize",configureViewport);
 $("newProject").addEventListener("click",presentModal);
@@ -361,7 +469,12 @@ $("sceneSeek").addEventListener("input",event=>{
 $("audioUpload").addEventListener("change",async event=>{
  const file=event.target.files?.[0];if(file)await uploadAudio(file);event.target.value="";
 });
-connectProperties();
+connectProperties();connectPremiumProperties();
+$("applyPreset").addEventListener("click",applySelectedStyle);
+$("downloadDna").addEventListener("click",downloadStyleDna);
+$("imageUpload").addEventListener("change",async event=>{
+ const file=event.target.files?.[0];if(file)await uploadImage(file);event.target.value="";
+});
 workerHealth();setInterval(workerHealth,12000);
 // Keep the editor in sync when GPT approves/rejects the visual preview through MCP.
 setInterval(()=>{if(state.project&&!state.dirty)refreshReviewStatus().catch(()=>{});},6000);
