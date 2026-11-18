@@ -22,7 +22,7 @@ const run=(args,timeout=220000)=>new Promise((resolve,reject)=>{
  const timer=setTimeout(()=>proc.kill("SIGTERM"),timeout);
  proc.on("error",e=>{clearTimeout(timer);reject(e);});
  proc.on("close",code=>{clearTimeout(timer);if(code===0)resolve(out);
-   else reject(new Error("HyperFrames "+args[0]+" exit="+code+"\n"+err.slice(-8000)+"\n"+out.slice(-3000)));
+   else reject(new Error("HyperFrames "+args[0]+" exit="+code+"\n"+err.slice(-8000)+"\n"+out.slice(0,13000)));
  });
 });
 try{
