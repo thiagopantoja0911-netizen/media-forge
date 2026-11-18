@@ -97,6 +97,8 @@ export function isRecoverableRenderFailure(error) {
   if (!error || error.retryable === false) return false;
   const code = String(error.code ?? "");
   const message = String(error.message ?? error);
+  if(code==="RENDER_HARD_TIMEOUT"||code==="HYPERFRAMES_CHECK_TIMEOUT")return false;
+  if(code==="RENDER_FIRST_FRAME_TIMEOUT"||code==="RENDER_CAPTURE_STALLED")return true;
   if (/HYPERFRAMES_PREFLIGHT_FAILED|VIDEO_TECHNICAL_QA_FAILED|AUDIO_MIX_QA_FAILED/.test(code)) return false;
   if (/missing_timeline_registry|gsap_css_transform_conflict|outside_frame|invalid composition|unknown option/i.test(message)) return false;
   return /capture stalled|chrome stopped answering|target closed|target crashed|session closed|browser.*disconnected|protocol error|timed? ?out|ETIMEDOUT|ECONNRESET|EPIPE|out of memory|heap.*exhaust|memory exhaustion|allocation failed/i.test(message);

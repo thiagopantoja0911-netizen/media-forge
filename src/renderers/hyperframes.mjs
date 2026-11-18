@@ -1,6 +1,7 @@
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir } from "node:fs/promises";
 import { inspectMotionProject } from "../motion/preflight.mjs";
-import { spawn } from "node:child_process";
+import { runSupervisedCommand } from "../supervised-command.mjs";
+import {percentageFromFrames} from "../render-watchdog.mjs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import {
   buildHyperFramesRenderEnvironment,
@@ -53,45 +54,8 @@ export function summarizeCheck(stdout) {
   } catch { return ""; }
 }
 
-function run(command, args, cwd, diagnosticBase, { env = process.env } = {}) {
-  return new Promise((resolvePromise, reject) => {
-    const isWindowsCmd = process.platform === "win32" && command.toLowerCase().endsWith(".cmd");
-    const spawnCommand = isWindowsCmd ? (process.env.ComSpec ?? "cmd.exe") : command;
-    const spawnArgs = isWindowsCmd
-      ? ["/d", "/s", "/c", [command, ...args].map(quoteWindowsArg).join(" ")]
-      : args;
-    const child = spawn(spawnCommand, spawnArgs, {
-      cwd,
-      shell: false,
-      windowsHide: true,
-      env: { ...env, CI: "1" }
-    });
-
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (chunk) => { stdout += chunk; });
-    child.stderr.on("data", (chunk) => { stderr += chunk; });
-
-    child.on("error", reject);
-    child.on("close", async (code, signal) => {
-      try {
-      // Preserve the complete reports, including stdout JSON, not just the stderr tail.
-      await writeFile(diagnosticBase + ".stdout.log", stdout);
-      await writeFile(diagnosticBase + ".stderr.log", stderr);
-      if (code === 0) return resolvePromise({ stdout, stderr });
-      const summary = summarizeCheck(stdout);
-      const error = new Error(
-        "HyperFrames exited with " + (signal ? "signal " + signal : "code " + code)
-        + (summary ? ": " + summary : stderr.trim() ? ": " + stderr.trim().slice(-2000) : "")
-        + ". Full diagnostics: " + diagnosticBase
-      );
-      error.code = "HYPERFRAMES_FAILED";
-      error.exitCode = code;
-      error.diagnostics = { stdout: diagnosticBase + ".stdout.log", stderr: diagnosticBase + ".stderr.log" };
-      reject(error);
-      } catch (error) { reject(error); }
-    });
-  });
+function run(command,args,cwd,diagnosticBase,options={}){
+  return runSupervisedCommand(command,args,cwd,diagnosticBase,{...options,summarizeCheck});
 }
 
 function cliArgs(command, action, ...args) {
@@ -185,11 +149,23 @@ export async function renderWithHyperFrames(job, { onProgress = async () => {} }
       diagnosticsDir,
       attempt === 1 ? "render" : "render-attempt-" + attempt
     );
+    const totalFrames=Math.max(1,Math.ceil(Number(job.project.durationSeconds||15)*Number(job.project.fps||60)));
+    let lastPublishedAt=0,lastPublishedPct=-1;
+    const onVerifiedFrame=({framesCompleted,totalFrames:observedTotal})=>{
+      const progress=percentageFromFrames(framesCompleted,observedTotal);
+      const now=Date.now();
+      if(progress===lastPublishedPct && now-lastPublishedAt<5000)return;
+      lastPublishedAt=now;lastPublishedPct=progress;
+      return onProgress(progress,"HyperFrames: "+framesCompleted+"/"+observedTotal+" quadros capturados",{
+        phase:"capturing",renderAttempt:attempt,framesCompleted,totalFrames:observedTotal
+      });
+    };
     await onProgress(
       40,
       attempt === 1
-        ? "Renderizando com captura segmentada e recuperação habilitada"
-        : "Nova tentativa " + attempt + "/" + maxAttempts + " em perfil de baixa memória"
+        ? "Captura iniciada; aguardando telemetria de quadros reais"
+        : "Nova tentativa " + attempt + "/" + maxAttempts + " com segmentos menores",
+      {phase:"capturing",renderAttempt:attempt,framesCompleted:0,totalFrames}
     );
 
     try {
@@ -198,7 +174,7 @@ export async function renderWithHyperFrames(job, { onProgress = async () => {} }
         cliArgs(command, ...renderArgs(job, outputPath, { resume: segmented })),
         projectDir,
         attemptDiagnostics,
-        { env: renderEnv }
+        {env:renderEnv,phase:"render",totalFrames,onVerifiedFrame}
       );
       break;
     } catch (error) {
