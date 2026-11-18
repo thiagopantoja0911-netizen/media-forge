@@ -9,6 +9,7 @@ import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditor
 import { storeEditorVisualAsset, loadEditorVisualAsset } from "./editor-visual-assets.mjs";
 import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } from "./editor-style-presets.mjs";
 import { decodeAudioToPcm, analyzePcmForBeats, synchronizeSceneCutsToBeats } from "./editor-beat-sync.mjs";
+import { demoProject as remotionDemoProject } from "../remotion/project.mjs";
 
 const idReg=/^[a-f0-9]{32}$/;
 const contentTypes={mp3:"audio/mpeg",m4a:"audio/mp4",wav:"audio/wav",ogg:"audio/ogg"};
@@ -16,12 +17,17 @@ const staticFiles=new Map([
   ["/editor","../editor-studio/index.html"],
   ["/editor/","../editor-studio/index.html"],
   ["/editor/app.js","../editor-studio/app.js"],
+  ["/editor/remotion-player.html","../editor-studio/remotion-player.html"],
+  ["/editor/remotion-player.js","../editor-studio/remotion-player.js"],
+  ["/editor/remotion-toggle.js","../editor-studio/remotion-toggle.js"],
+  ["/editor/remotion-assets/background.mp4","../remotion-public/remotion-assets/background.mp4"],
+  ["/editor/remotion-assets/badge.png","../remotion-public/remotion-assets/badge.png"],
   ["/editor/style.css","../editor-studio/style.css"],
   ["/editor/vendor/three.module.js","../node_modules/three/build/three.module.js"],
   ["/editor/vendor/three.core.js","../node_modules/three/build/three.core.js"],
   ["/editor/vendor/gsap.min.js","../assets/gsap.min.js"]
 ]);
-const textType=path=>path.endsWith(".css")?"text/css; charset=utf-8":path.endsWith(".js")||path.endsWith(".mjs")?"text/javascript; charset=utf-8":"text/html; charset=utf-8";
+const textType=path=>path.endsWith(".mp4")?"video/mp4":path.endsWith(".png")?"image/png":path.endsWith(".css")?"text/css; charset=utf-8":path.endsWith(".js")||path.endsWith(".mjs")?"text/javascript; charset=utf-8":"text/html; charset=utf-8";
 const headers={"cache-control":"no-store","x-content-type-options":"nosniff","referrer-policy":"no-referrer"};
 function json(res,status,data){res.writeHead(status,{"content-type":"application/json; charset=utf-8",...headers});res.end(JSON.stringify(data));}
 function replyText(res,status,type,body,extra={}){
@@ -94,6 +100,9 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
   if(!path.startsWith("/api/editor/")){json(response,404,{error:"NOT_FOUND"});return true;}
   const pieces=path.split("/").filter(Boolean);
   try{
+    if(pieces.length===4&&pieces[2]==="remotion"&&pieces[3]==="demo"&&request.method==="GET"){
+      json(response,200,{ok:true,project:remotionDemoProject,engine:"remotion",editor:"MediaForge"});return true;
+    }
     if(pieces.length===3&&pieces[2]==="styles"&&request.method==="GET"){
       json(response,200,{ok:true,styles:listEditorStylePresets()});return true;
     }
