@@ -15,6 +15,7 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm run remotion:build-player
+      - run: node --check src/editor-studio-http.mjs && node --check remotion/hyperframes-html.mjs && node --check editor-studio/remotion-toggle.js
       - run: node --test test/remotion-layer.test.mjs test/remotion-hyperframes-adapter.test.mjs
       - name: Render 12s MP4 with three simultaneous layers
         run: npm run remotion:render-demo
