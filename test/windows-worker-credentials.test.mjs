@@ -41,3 +41,15 @@ test("runner does not terminate PowerShell 5.1 when Node writes to stderr",()=>{
  assert.match(run,/\$nativeErrorActionPreference\s*=\s*\$ErrorActionPreference/);
  assert.match(run,/\$ErrorActionPreference\s*=\s*"Continue"[\s\S]*?& node "\.\\src\\remote-worker-client\.mjs" \*>> \$logFile[\s\S]*?\$exitCode\s*=\s*\$LASTEXITCODE[\s\S]*?finally[\s\S]*?\$ErrorActionPreference\s*=\s*\$nativeErrorActionPreference/);
 });
+
+test("worker diagnosis checks HTTPS authentication, deployed branch and health without revealing credentials",()=>{
+ const diag=file("diagnose-worker.ps1");
+ assert.match(diag,/v1\/worker\/auth-check/);
+ assert.match(diag,/worker-token\.dpapi/);
+ assert.match(diag,/\/health/);
+ assert.match(diag,/feature\/unific-media-20261116/);
+ assert.match(diag,/ZeroFreeBSTR/);
+ assert.match(diag,/-Repair/);
+ assert.doesNotMatch(diag,/Write-Output\s+\$token/);
+ assert.doesNotMatch(diag,/Write-Output\s+\$env:MEDIAFORGE_WORKER_TOKEN/);
+});
