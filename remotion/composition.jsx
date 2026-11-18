@@ -17,7 +17,7 @@ export const LayeredComposition=({project})=>{
     {[...project.layers].sort((a,b)=>a.zIndex-b.zIndex).map(layer=>{
       if(frame<layer.startFrame||frame>=layer.endFrame)return null;
       const x=animated(layer,frame,"x"),y=animated(layer,frame,"y"),opacity=animated(layer,frame,"opacity");
-      const transform=\`translate(\${x}px,\${y}px) rotate(\${animated(layer,frame,"rotation")||0}deg) scale(\${animated(layer,frame,"scale")||1})\`;
+      const transform="translate("+x+"px, "+y+"px) rotate("+(animated(layer,frame,"rotation")||0)+"deg) scale("+(animated(layer,frame,"scale")||1)+")";
       const base={position:"absolute",left:0,top:0,width:layer.width,height:layer.height,transform,transformOrigin:"top left",opacity,zIndex:layer.zIndex};
       if(layer.type==="video")return <div key={layer.id} style={{...base,overflow:"hidden"}}><OffthreadVideo src={urlFor(layer.src)} muted loop={layer.loop} style={{width:"100%",height:"100%",objectFit:"cover"}} /></div>;
       if(layer.type==="image")return <Img key={layer.id} src={urlFor(layer.src)} style={{...base,objectFit:"contain"}}/>;
