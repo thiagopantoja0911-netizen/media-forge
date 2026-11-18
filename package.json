@@ -20,7 +20,8 @@
     "test:integrated": "node --test --test-concurrency=1 test/*.test.mjs frame-lab/tests/*.test.mjs",
     "remotion:build-player": "node scripts/build-remotion-player.mjs",
     "remotion:prepare": "node scripts/build-remotion-player.mjs && node scripts/prepare-remotion-assets.mjs",
-    "remotion:render-demo": "node scripts/remotion-demo.mjs"
+    "remotion:render-demo": "node scripts/remotion-demo.mjs",
+    "prestart": "npm run remotion:prepare"
   },
   "dependencies": {
     "three": "0.180.0",
