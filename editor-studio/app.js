@@ -182,12 +182,34 @@ function fillInspector(){
  const p=state.project;if(!p)return;
  $("inspectorEmpty").hidden=true;$("inspectorFields").hidden=false;
  const s=p.scenes[state.selected];out("inspectorIndex",pad(state.selected+1)+" / "+pad(p.scenes.length));
- const fields={editKicker:s.kicker,editHeadline:s.headline,editDetail:s.detail,editShape:s.shape,editCamera:s.camera,
+ const assetSelect=$("editVisualAsset");assetSelect.replaceChildren();
+ const none=document.createElement("option");none.value="";none.textContent="Selecione uma imagem...";assetSelect.append(none);
+ for(const a of (p.assets??[])){
+   const el=document.createElement("option");el.value=a.id;el.textContent=a.name;assetSelect.append(el);
+ }
+ const g=s.glow??{color:s.accent,intensity:.55,speed:.7,x:0,y:0};
+ const v=s.visual??{type:"",assetId:"",position:[0,0,0],rotation:[0,0,0],
+   scale:1,depth:.7,columns:3,rows:4,scroll:1};
+ const fields={editGlowMode:s.glow?"on":"off",editGlowColor:g.color,
+  editGlowIntensity:Math.round(g.intensity*100),editGlowSpeed:g.speed,editGlowX:g.x,editGlowY:g.y,
+  editVisualType:v.type,editVisualAsset:v.assetId,editVisualScale:v.scale,
+  editVisualDepth:v.depth,editVisualX:v.position[0],editVisualY:v.position[1],
+  editVisualZ:v.position[2],editVisualRY:v.rotation[1],
+  editGridColumns:v.columns??3,editGridRows:v.rows??4,editGridScroll:v.scroll??1,
+  editKicker:s.kicker,editHeadline:s.headline,editDetail:s.detail,editShape:s.shape,editCamera:s.camera,
   editTransition:s.transition,editAccent:s.accent,editDuration:sceneLength(state.selected).toFixed(1),
   editEnergy:Math.round(s.energy*100),editDepth:Math.round(s.depth*100),editTextScale:Math.round(s.textScale*100)};
  for(const [id,value] of Object.entries(fields))$(id).value=value;
  out("energyNumber",fields.editEnergy+"%");out("depthNumber",fields.editDepth+"%");out("textScaleNumber",fields.editTextScale+"%");
  $("editDuration").disabled=state.selected===p.scenes.length-1;
+}
+function renderImageList(){
+ const container=$("imageList");container.replaceChildren();
+ const assets=state.project?.assets??[];
+ if(!assets.length){const el=document.createElement("span");el.className="muted";el.textContent="Nenhum asset.";container.append(el);return;}
+ for(const a of assets){
+   const el=document.createElement("span");el.className="muted";el.textContent=a.name+" · "+Math.round(a.size/1024)+" KB";container.append(el);
+ }
 }
 function renderAudioList(){
  const container=$("audioList");container.replaceChildren();
@@ -241,7 +263,8 @@ async function loadProject(id){
  state.project=r.project;state.selected=0;state.dirty=false;
  history.replaceState(null,"","/editor?project="+r.project.id);
  $("previewNotice").hidden=false;
- updateMetadata();renderAudioList();refreshAudioPlayers();openScene(0);
+ updateMetadata();renderImageList();renderAudioList();refreshAudioPlayers();openScene(0);
+ $("stylePreset").value=r.project.stylePreset??"";
  await refreshReviewStatus();
 }
 function presentModal(){pauseScene();$("newModal").hidden=false;$("newIdea").focus();}
