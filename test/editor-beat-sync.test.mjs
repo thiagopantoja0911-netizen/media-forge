@@ -56,6 +56,6 @@ test("scene cuts snap to the detected beat grid while preserving total duration 
 test("beat sync rejects a grid that cannot align any cut without changing the scene structure",()=>{
  const project=makeEditorProject({idea,duration_seconds:15,fps:30});
  const analysis={bpm:120,confidence:.7,beatIntervalSeconds:.5,beatTimes:[.1,.6,1.1,1.6]};
- const track={id:"a".repeat(32),assetId:"b".repeat(32),startFrame:0,endFrame:120};
+ const track={id:"a".repeat(32),assetId:"b".repeat(32),startFrame:0,endFrame:30};
  assert.throws(()=>synchronizeSceneCutsToBeats(project,analysis,track),e=>e.code==="BEAT_SYNC_NO_CUTS");
 });
