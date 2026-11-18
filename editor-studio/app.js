@@ -110,6 +110,7 @@ function refreshAudioPlayers(){
 function editSceneDuration(index,newFrames){
   const p=state.project,one=p.scenes[index],two=p.scenes[index+1];
   if(!two)return toast("A última cena fecha a duração total. Ajuste as cenas anteriores.");
+  delete p.beatSync;
   const budget=two.endFrame-one.startFrame;
   const amount=clamp(Math.round(newFrames),p.fps,budget-p.fps);
   one.endFrame=one.startFrame+amount;
