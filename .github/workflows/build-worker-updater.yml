@@ -1,0 +1,37 @@
+name: MediaForge Worker Updater (Windows x64)
+
+on:
+  pull_request:
+    branches: [feature/unific-media-20261116]
+    paths:
+      - 'desktop/MediaForgeWorkerUpdater/**'
+      - '.github/workflows/build-worker-updater.yml'
+  push:
+    branches: [feat/mediaforge-worker-updater-exe-20261118, feature/unific-media-20261116]
+    paths:
+      - 'desktop/MediaForgeWorkerUpdater/**'
+      - '.github/workflows/build-worker-updater.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish self-contained Windows updater
+        shell: pwsh
+        run: dotnet publish desktop/MediaForgeWorkerUpdater/MediaForgeWorkerUpdater.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:DebugSymbols=false --output out/MediaForgeWorkerUpdater
+      - name: Include instructions
+        shell: pwsh
+        run: Copy-Item desktop/MediaForgeWorkerUpdater/README.txt out/MediaForgeWorkerUpdater/README.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MediaForge-Worker-Updater-Windows-x64
+          path: out/MediaForgeWorkerUpdater/*
+          if-no-files-found: error
+          retention-days: 14
