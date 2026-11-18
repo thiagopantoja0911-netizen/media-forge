@@ -2,7 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { validateEditorProject } from "./editor-studio-core.mjs";
 import { buildEditorVisualAssets } from "./editor-visual-assets.mjs";
-import { buildEditorStyleDna } from "./editor-style-presets.mjs";
+import { buildEditorStyleDna, getEditorStylePreset } from "./editor-style-presets.mjs";
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dims=ratio=>ratio==="16:9"?[1920,1080]:ratio==="1:1"?[1080,1080]:[1080,1920];
 function selectScenes(p,index){
@@ -30,14 +30,17 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
   const gsap=preview?"/editor/vendor/gsap.min.js":"./assets/gsap.min.js";
   const script=preview?"/api/editor/projects/"+projectId+"/scene.mjs"+(sceneIndex===undefined?"":"?scene="+sceneIndex):"./assets/scene.mjs";
   const titleSize=w>h?96:110,detailSize=w>h?35:32;
+  const colorMode=p.stylePreset==="apple-clean"?"light":"dark";
+  const ink=colorMode==="light"?"#131b1b":"#f7f8fb";
+  const supporting=colorMode==="light"?"#324242":"#dddde6";
   const style=[
     "*{box-sizing:border-box}html,body{margin:0;background:#070912}",
-    "#root{position:relative;width:"+w+"px;height:"+h+"px;overflow:hidden;background:#070912;font-family:Arial,Helvetica,sans-serif;color:#f7f8fb;isolation:isolate}",
+    "#root{position:relative;width:"+w+"px;height:"+h+"px;overflow:hidden;background:#070912;font-family:Arial,Helvetica,sans-serif;color:"+ink+";isolation:isolate}",
     "#world{position:absolute;inset:0;width:100%;height:100%;z-index:0;display:block}",
     ".caption{position:absolute;top:14%;left:10%;width:80%;z-index:3;pointer-events:none;transform-origin:15% 50%;will-change:transform,opacity}",
     ".eyebrow{display:inline-block;padding:13px 25px;border:2px solid #ffffff66;border-radius:100px;letter-spacing:.19em;font-size:28px;font-weight:800;background:#03030688}",
     ".hero-title{margin:47px 0 0;font-size:"+titleSize+"px;line-height:1.02;letter-spacing:-.06em;font-weight:900;overflow-wrap:anywhere;text-shadow:0 14px 34px #000c}",
-    ".detail{margin:33px 0 0;max-width:88%;font-size:"+detailSize+"px;font-weight:600;line-height:1.35;color:#dddde6;text-shadow:0 8px 22px #000d}",
+    ".detail{margin:33px 0 0;max-width:88%;font-size:"+detailSize+"px;font-weight:600;line-height:1.35;color:"+supporting+";text-shadow:0 8px 22px #0005}",
     ".chapter{display:block;margin-top:32px;font-size:20px;letter-spacing:.2em;color:#a5afca;font-weight:800}"
   ].join("");
   return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
@@ -59,8 +62,8 @@ function editorRuntime(){
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.18;
   const world=new THREE.Scene();
-  world.background=new THREE.Color("#060810");
-  world.fog=new THREE.Fog("#060810",7,21);
+  world.background=new THREE.Color(baseBackground);
+  world.fog=new THREE.Fog(baseBackground,7,21);
   const camera=new THREE.PerspectiveCamera(W>H?40:46,W/H,.1,60);
   const ambient=new THREE.AmbientLight(0xffffff,.55);world.add(ambient);
   const key=new THREE.SpotLight(0xffffff,96,30,Math.PI/3,.45,1.3);
@@ -129,6 +132,7 @@ function editorRuntime(){
     return group;
   }
     const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshStandardMaterial({color:0x080c16,roughness:.38,metalness:.64}));
+  if(baseBackground==="#e9f0ed")floor.material.color.set("#cfd9d6");
   floor.rotation.x=-Math.PI/2;floor.position.y=-2.6;world.add(floor);
   const grid=new THREE.GridHelper(36,32,0x374963,0x202941);grid.position.y=-2.58;
   grid.material.transparent=true;grid.material.opacity=.35;world.add(grid);
@@ -269,11 +273,13 @@ function editorRuntime(){
 }
 export function buildEditorSceneModule(p,{sceneIndex,preview=false}={}){
   const shots=selectScenes(p,sceneIndex),[w,h]=dims(p.aspectRatio),d=shots.at(-1).endFrame/p.fps;
+  const baseBackground=getEditorStylePreset(p.stylePreset)?.background??"#060810";
   const assets=Object.fromEntries((p.assets??[]).map(a=>[a.id,preview
     ?"/api/editor/projects/"+p.id+"/assets/"+a.id
     :"./assets/images/"+a.id+"."+a.extension]));
   return 'import * as THREE from "three";\nconst shots='+JSON.stringify(shots)+';\n'+
     'const assets='+JSON.stringify(assets)+';\n'+
+    'const baseBackground='+JSON.stringify(baseBackground)+';\n'+
     'const W='+w+',H='+h+',FPS='+p.fps+',D='+d+',preview='+Boolean(preview)+';\n('+
     editorRuntime.toString()+')();\n';
 }
