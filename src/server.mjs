@@ -14,8 +14,8 @@ import { authenticateBearer, handleOAuth } from "./oauth.mjs";
 import { handlePanel, isAdminSession } from "./panel.mjs";
 import { handleStudio } from "./studio.mjs";
 import { handleStudioApi } from "./studio-api.mjs";
-import { handleEditorStudioHttp, handleEditorJobStatus } from "./editor-studio-http.mjs";
-import { handleRemoteWorker } from "./remote-worker-server.mjs";
+import { handleEditorStudioHttp, handleEditorJobStatus, handleEditorQueueManagementHttp } from "./editor-studio-http.mjs";
+import { handleRemoteWorker, requestCancelJob } from "./remote-worker-server.mjs";
 import {handleSignedVideoDownload,signedVideoDownload} from "./video-artifact-delivery.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
@@ -251,6 +251,7 @@ const server = createServer(async (request, response) => {
     if(await handleSignedVideoDownload({request,response,url,getJob:async id=>{try{return await loadJob(id)}catch(e){if(e.code==="ENOENT"||e.code==="INVALID_JOB_ID")return null;throw e;}}}))return;
 
     const editorLookup=async id=>{try{return await loadJob(id)}catch(e){if(e.code==="ENOENT"||e.code==="INVALID_JOB_ID")return null;throw e;}};
+    if(await handleEditorQueueManagementHttp({request,response,url,isAdminSession,listJobs,cancelJob:id=>requestCancelJob(jobsDir,id)}))return;
     if(await handleEditorJobStatus({request,response,url,isAdminSession,getJob:editorLookup}))return;
     if(await handleEditorStudioHttp({request,response,url,isAdminSession,parseBody,createJob,getJob:editorLookup}))return;
 
@@ -356,6 +357,13 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/v1/jobs") {
       if(!(await requireApiScope(request,response,"videos:read")))return;
       return send(response, 200, { ok: true, jobs: await listJobs(100) });
+    }
+
+    if(request.method==="POST"&&/^\/v1\/jobs\/[a-f0-9]{32}\/cancel$/.test(url.pathname)){
+      if(!(await requireApiScope(request,response,"videos:write")))return;
+      const id=url.pathname.split("/")[3];
+      const job=await requestCancelJob(jobsDir,id);
+      return send(response,200,{ok:true,id:job.id,status:job.status,cancelRequested:!!(job.cancelRequestedAt&&job.status==="processing")});
     }
 
     if (request.method === "GET" && parts[0] === "v1" && parts[1] === "jobs" && parts[2]) {
