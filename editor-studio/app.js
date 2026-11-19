@@ -1,6 +1,6 @@
 (()=>{"use strict";
 const $=id=>document.getElementById(id);
-const state={project:null,selected:0,ready:false,playing:false,dragFrom:null,saveTimer:null,saveQueue:Promise.resolve(),lastPreviewUrl:"",frame:0,previewApproved:false,dirty:false};
+const state={project:null,selected:0,ready:false,playing:false,dragFrom:null,saveTimer:null,saveQueue:Promise.resolve(),lastPreviewUrl:"",frame:0,previewApproved:false,dirty:false,selectedLayerId:null,selectedCaptionId:null};
 const pad=n=>String(n).padStart(2,"0");
 const fmt=t=>pad(Math.floor(t/60))+":"+pad(Math.floor(t%60));
 const longFmt=t=>fmt(t)+"."+(Math.floor(t*10)%10);
@@ -122,7 +122,7 @@ function updateMetadata(){
  out("projectName",p.title);out("infoRatio",p.aspectRatio+(p.aspectRatio==="9:16"?" · Reels":""));
  out("infoFps",p.fps+" FPS");out("infoDuration",fmt(p.totalFrames/p.fps));
  out("infoScenes",p.scenes.length);out("lastRuler",fmt(p.totalFrames/p.fps));
- out("timelineMeta",p.scenes.length+" cenas · "+fmt(p.totalFrames/p.fps)+" · "+p.mode);
+ out("timelineMeta",p.scenes.length+" cenas · "+(p.layers??[]).length+" camadas · "+(p.captions??[]).length+" legendas · "+fmt(p.totalFrames/p.fps));
  const ticks=$("rulerTicks");ticks.replaceChildren();
  for(let i=0;i<=10;i++)ticks.append(document.createElement("i"));
 }
@@ -133,8 +133,8 @@ function trackBlock(kind,s,width){
 }
 function buildTracks(){
  const p=state.project;if(!p)return;
- const scenes=$("sceneTrack"),texts=$("textTrack"),motions=$("motionTrack"),audios=$("audioTrack");
- scenes.replaceChildren();texts.replaceChildren();motions.replaceChildren();audios.replaceChildren();
+ const scenes=$("sceneTrack"),texts=$("textTrack"),motions=$("motionTrack"),layers=$("layerTrack"),captions=$("captionTrack"),audios=$("audioTrack");
+ scenes.replaceChildren();texts.replaceChildren();motions.replaceChildren();layers.replaceChildren();captions.replaceChildren();audios.replaceChildren();
  p.scenes.forEach((s,i)=>{
    const width=(s.endFrame-s.startFrame)/p.totalFrames*100;
    const item=document.createElement("div");
@@ -176,12 +176,147 @@ function buildTracks(){
    texts.append(trackBlock("text",s,width));
    motions.append(trackBlock("motion",s,width));
  });
+ for(const layer of (p.layers??[])){
+   const el=document.createElement("div");el.className="small-clip layer-clip"+(state.selectedLayerId===layer.id?" selected":"");
+   el.style.left=(layer.startFrame/p.totalFrames*100)+"%";el.style.width=((layer.endFrame-layer.startFrame)/p.totalFrames*100)+"%";
+   el.textContent=(layer.type==="video"?"▶ ":layer.type==="image"?"▧ ":layer.type==="shape"?"◇ ":"T ")+layer.name;
+   el.title=layer.name+" · "+layer.type;el.addEventListener("click",()=>selectTimelineItem("layer",layer.id));layers.append(el);
+ }
+ for(const caption of (p.captions??[])){
+   const el=document.createElement("div");el.className="small-clip caption-clip"+(state.selectedCaptionId===caption.id?" selected":"");
+   el.style.left=(caption.startFrame/p.totalFrames*100)+"%";el.style.width=((caption.endFrame-caption.startFrame)/p.totalFrames*100)+"%";
+   el.textContent="CC "+caption.text.slice(0,42);el.title=caption.text;el.addEventListener("click",()=>selectTimelineItem("caption",caption.id));captions.append(el);
+ }
+ const layerList=$("layerList");layerList.replaceChildren();
+ for(const layer of (p.layers??[])){
+   const row=document.createElement("div");row.className="audio-row";
+   const label=document.createElement("b");label.textContent=layer.name+" · "+layer.type;
+   const remove=document.createElement("button");remove.type="button";remove.textContent="×";remove.title="Remover camada";
+   remove.addEventListener("click",event=>{event.stopPropagation();p.layers=p.layers.filter(item=>item.id!==layer.id);if(state.selectedLayerId===layer.id)state.selectedLayerId=null;afterChange(true);});
+   row.append(label,remove);row.addEventListener("click",()=>selectTimelineItem("layer",layer.id));layerList.append(row);
+ }
  for(const a of p.audio){
    const el=document.createElement("div");el.className="audio-clip";
    el.style.left=(a.startFrame/p.totalFrames*100)+"%";el.style.width=((a.endFrame-a.startFrame)/p.totalFrames*100)+"%";
    el.textContent=(a.role==="voice"?"● ":a.role==="music"?"♫ ":"✦ ")+a.name;
    el.title=a.role+" · "+a.name;audios.append(el);
  }
+ fillTimelineItemInspector();
+}
+function selectTimelineItem(kind,id){
+ state.selectedLayerId=kind==="layer"?id:null;state.selectedCaptionId=kind==="caption"?id:null;
+ buildTracks();
+}
+function fillTimelineItemInspector(){
+ const panel=$("timelineItemInspector"),captionFields=$("captionItemFields"),easingField=$("layerEasingField"),button=$("addLayerKeyframe");
+ if(!panel)return;
+ const layer=state.project?.layers?.find(item=>item.id===state.selectedLayerId);
+ const caption=state.project?.captions?.find(item=>item.id===state.selectedCaptionId);
+ const item=layer||caption;
+ if(!item){panel.hidden=true;return;}
+ panel.hidden=false;
+ out("timelineItemHeading",layer?"PROPRIEDADES DA CAMADA":"PROPRIEDADES DA LEGENDA");
+ out("timelineItemType",layer?layer.type.toUpperCase():"CAPTION");
+ $("timelineItemText").value=caption?caption.text:(layer.text??"");
+ $("timelineItemStart").value=sec(item.startFrame).toFixed(2);
+ $("timelineItemEnd").value=sec(item.endFrame).toFixed(2);
+ $("timelineItemX").value=item.x??0;$("timelineItemY").value=item.y??0;
+ $("timelineItemScale").value=layer?.scale??1;$("timelineItemRotation").value=layer?.rotationZ??0;
+ $("timelineItemZ").value=layer?.z??0;$("timelineItemRotationX").value=layer?.rotationX??0;$("timelineItemRotationY").value=layer?.rotationY??0;
+ $("timelineItemOpacity").value=layer?.opacity??1;
+ $("timelineItemColor").value=caption?.color??layer?.color??"#ffffff";
+ $("timelineVideoTrim").value=layer?.trimStartSeconds??0;$("timelineVideoSpeed").value=layer?.speed??1;$("timelineVideoLoop").checked=Boolean(layer?.loop);
+ $("videoItemFields").hidden=layer?.type!=="video";
+ captionFields.hidden=!caption;easingField.hidden=!layer;button.hidden=!layer;
+ if(caption){$("timelineCaptionStyle").value=caption.style;$("timelineCaptionAnimation").value=caption.animation;}
+}
+function addTimelineLayer(type,assetId){
+ if(!state.project)return toast("Crie um projeto antes de adicionar camadas.");
+ const p=state.project,vertical=p.aspectRatio==="9:16",width=p.aspectRatio==="16:9"?1920:1080,height=vertical?1920: p.aspectRatio==="16:9"?1080:1080;
+ if(type==="image"&&!assetId)assetId=p.assets?.[0]?.id;
+ if(type==="video"&&!assetId)assetId=p.layerAssets?.[0]?.id;
+ if(["image","video"].includes(type)&&!assetId)return toast(type==="image"?"Importe uma imagem primeiro.":"Importe um vídeo MP4 ou WebM primeiro.");
+ const start=Math.round((p.scenes[state.selected]?.startFrame??0)+state.frame*p.fps);
+ const id=crypto.randomUUID().replaceAll("-","");
+ const layer={id,name:type==="text"?"Texto "+((p.layers?.length??0)+1):type==="shape"?"Forma de fundo":type==="image"?"Imagem":"Vídeo",
+  type,assetId,startFrame:start,endFrame:p.totalFrames,x:type==="text"?80:0,y:type==="text"?height*.62:0,z:0,
+  width:type==="text"?width-160:width,height:type==="text"?230:height,
+  rotationX:0,rotationY:0,rotationZ:0,scale:1,opacity:1,zIndex:type==="video"?-1:type==="shape"?-1:type==="image"?15:25,
+  blendMode:"normal",keyframes:[],...(type==="text"?{text:"Sua mensagem aqui",color:"#ffffff",fontFamily:"sans",fontSize:76,fontWeight:800,textAlign:"left"}:{}),
+  ...(type==="shape"?{color:"#152a5a",background:"linear-gradient(135deg, #111b42, #36246f, #075c78)"}:{})};
+ p.layers??=[];p.layers.push(layer);state.selectedLayerId=id;state.selectedCaptionId=null;afterChange(true);
+ toast("Camada independente adicionada à timeline.");
+}
+function addTimelineCaption(){
+ if(!state.project)return toast("Crie um projeto antes de adicionar legendas.");
+ const p=state.project,start=Math.round((p.scenes[state.selected]?.startFrame??0)+state.frame*p.fps);
+ const id=crypto.randomUUID().replaceAll("-","");
+ p.captions??=[];p.captions.push({id,text:"Sua legenda dinâmica aparece aqui.",startFrame:start,endFrame:Math.min(p.totalFrames,start+p.fps*3),
+  style:"karaoke",animation:"rise",x:54,y:p.aspectRatio==="9:16"?1480:760,width:972,fontSize:48,color:"#ffffff",
+  highlightColor:"#72f2d0",backgroundColor:"#07111f",backgroundOpacity:.82,zIndex:80,align:"center"});
+ state.selectedCaptionId=id;state.selectedLayerId=null;afterChange(true);toast("Legenda dinâmica adicionada.");
+}
+function updateTimelineItem(field,value){
+ const layer=state.project?.layers?.find(item=>item.id===state.selectedLayerId);
+ const caption=state.project?.captions?.find(item=>item.id===state.selectedCaptionId);
+ const item=layer||caption;if(!item)return;
+ if(field==="text"){item.text=value;if(caption)delete caption.wordTimings;}
+ else if(field==="startFrame"||field==="endFrame")item[field]=value;
+ else if(field==="color"){if(caption)item.color=value;else item.color=value;}
+ else if(field==="style"||field==="animation")item[field]=value;
+ else if(layer&&["x","y","z","scale","rotationX","rotationY","rotationZ","opacity","trimStartSeconds","speed","loop"].includes(field))item[field]=value;
+ afterChange();fillTimelineItemInspector();
+}
+function connectTimelineItemInspector(){
+ const text=$("timelineItemText");
+ text.addEventListener("change",()=>updateTimelineItem("text",text.value));
+ for(const [id,key] of [["timelineItemStart","startFrame"],["timelineItemEnd","endFrame"]]){
+  $(id).addEventListener("change",()=>{
+   if(!state.project)return;const value=Math.round(Number($(id).value)*state.project.fps);
+   const item=state.project.layers?.find(x=>x.id===state.selectedLayerId)||state.project.captions?.find(x=>x.id===state.selectedCaptionId);
+   if(!item)return;const other=key==="startFrame"?item.endFrame:item.startFrame;
+   item[key]=key==="startFrame"?clamp(value,0,other-1):clamp(value,other+1,state.project.totalFrames);
+   afterChange();fillTimelineItemInspector();
+  });
+ }
+ for(const [id,key] of [["timelineItemX","x"],["timelineItemY","y"],["timelineItemScale","scale"],["timelineItemRotation","rotationZ"],["timelineItemZ","z"],["timelineItemRotationX","rotationX"],["timelineItemRotationY","rotationY"],["timelineItemOpacity","opacity"],["timelineVideoTrim","trimStartSeconds"],["timelineVideoSpeed","speed"]]){
+  $(id).addEventListener("change",()=>updateTimelineItem(key,Number($(id).value)));
+ }
+ $("timelineItemColor").addEventListener("change",()=>updateTimelineItem("color",$("timelineItemColor").value));
+ $("timelineVideoLoop").addEventListener("change",()=>updateTimelineItem("loop",$("timelineVideoLoop").checked));
+ $("timelineCaptionStyle").addEventListener("change",()=>updateTimelineItem("style",$("timelineCaptionStyle").value));
+ $("timelineCaptionAnimation").addEventListener("change",()=>updateTimelineItem("animation",$("timelineCaptionAnimation").value));
+ $("addLayerKeyframe").addEventListener("click",()=>{
+  const layer=state.project?.layers?.find(item=>item.id===state.selectedLayerId);if(!layer)return;
+  const frame=clamp(Math.round((state.project.scenes[state.selected].startFrame/state.project.fps+state.frame)*state.project.fps),0,state.project.totalFrames);
+  layer.keyframes??=[];const existing=layer.keyframes.find(key=>key.frame===frame);
+  const keyframe={frame,easing:$("timelineKeyframeEasing").value,x:layer.x,y:layer.y,z:layer.z,scale:layer.scale,
+   rotationX:layer.rotationX,rotationY:layer.rotationY,rotationZ:layer.rotationZ,opacity:layer.opacity};
+  if(existing)Object.assign(existing,keyframe);else layer.keyframes.push(keyframe);
+  layer.keyframes.sort((a,b)=>a.frame-b.frame);afterChange();toast("Keyframe gravado no frame "+frame+".");
+ });
+}
+function clearWorkspace(){
+ pauseScene();state.project=null;state.selected=0;state.selectedLayerId=null;state.selectedCaptionId=null;state.ready=false;state.dirty=false;
+ document.body.classList.add("empty-workspace");history.replaceState(null,"","/editor");
+ out("projectName","Nenhum projeto aberto");out("saveStatus","—");out("infoRatio","9:16 · Reels");out("infoFps","30 FPS");out("infoDuration","00:15");out("infoScenes","—");
+ out("sceneDescription","Comece com uma ideia. O editor não carregará projetos ou prévias antigos automaticamente.");
+ out("previewState","Aguardando");out("timelineMeta","Timeline vazia · pronta para criar");
+ $("scenePreview").removeAttribute("src");$("previewNotice").hidden=false;$("previewNotice").textContent="Seu espaço de edição está limpo. Clique em + Nova ideia para começar uma produção.";
+ $("playerViewport").className="player-viewport vertical";$("inspectorFields").hidden=true;$("inspectorEmpty").hidden=false;$("timelineItemInspector").hidden=true;
+ for(const id of ["sceneTrack","textTrack","motionTrack","layerTrack","captionTrack","audioTrack","rulerTicks","imageList","audioList","layerList"]){$(id)?.replaceChildren();}
+ $("saveButton").disabled=true;$("renderButton").disabled=true;$("renderSceneButton").disabled=true;
+ showReviewStatus("not-reviewed");
+}
+async function refreshProjectIfChanged(){
+ if(!state.project||state.dirty)return;
+ const id=state.project.id,revision=state.project.revision;
+ const result=await request("/api/editor/projects/"+id);
+ if(state.project?.id!==id||result.project.revision<=revision||state.dirty)return;
+ const selected=Math.min(state.selected,result.project.scenes.length-1),seek=state.frame;
+ state.project=result.project;state.selectedLayerId=null;state.selectedCaptionId=null;
+ updateMetadata();renderImageList();renderAudioList();refreshAudioPlayers();openScene(selected,{seek});await refreshReviewStatus();
+ toast("Projeto sincronizado com as alterações do GPT.");
 }
 function fillInspector(){
  const p=state.project;if(!p)return;
@@ -271,17 +406,19 @@ function saveProject(refreshPreview=false){
  return state.saveQueue;
 }
 async function loadProject(id){
- const r=await request(id?"/api/editor/projects/"+id:"/api/editor/latest");
- if(!r.project){$("newModal").hidden=false;return;}
- state.project=r.project;state.selected=0;state.dirty=false;
+ if(!id){clearWorkspace();return;}
+ const r=await request("/api/editor/projects/"+id);
+ if(!r.project){clearWorkspace();return;}
+ state.project=r.project;state.selected=0;state.selectedLayerId=null;state.selectedCaptionId=null;state.dirty=false;
+ document.body.classList.remove("empty-workspace");
  history.replaceState(null,"","/editor?project="+r.project.id);
- $("previewNotice").hidden=false;
+ $("previewNotice").hidden=false;$("saveButton").disabled=false;
  updateMetadata();renderImageList();renderAudioList();refreshAudioPlayers();openScene(0);
  $("stylePreset").value=r.project.stylePreset??"";
  await refreshReviewStatus();
 }
 function presentModal(){pauseScene();$("newModal").hidden=false;$("newIdea").focus();}
-function closeModal(){if(state.project)$("newModal").hidden=true;}
+function closeModal(){$("newModal").hidden=true;}
 async function createFromIdea(event){
  event.preventDefault();
  const submit=$("submitIdea");submit.disabled=true;submit.textContent="Criando…";
@@ -385,11 +522,25 @@ async function uploadImage(file){
    out("saveStatus","Importando asset…");
    const r=await post(src("assets"),{filename:file.name,base64});
    state.project=r.project;state.dirty=false;renderImageList();
-   const s=state.project.scenes[state.selected];
-   if(!s.visual)s.visual={type:"screen",assetId:r.asset.id,position:[0,0,0],rotation:[0,0,0],
-     scale:1,depth:.7,columns:3,rows:4,scroll:1};
-   afterChange(true);toast("Asset importado e ligado à cena.");
+   addTimelineLayer("image",r.asset.id);
+   toast("Imagem importada como camada independente.");
  }catch(error){out("saveStatus","Erro no asset");toast(error.message);}
+}
+async function uploadVideo(file){
+ if(!state.project||!file)return;
+ if(file.size>16*1024*1024)return toast("Vídeo acima de 16 MB. Use MP4 ou WebM otimizado.");
+ await saveProject(false);
+ const base64=await new Promise((resolve,reject)=>{
+  const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(",")[1]);
+  reader.onerror=()=>reject(new Error("Falha ao ler vídeo."));reader.readAsDataURL(file);
+ });
+ try{
+  out("saveStatus","Importando vídeo…");
+  const r=await post(src("layer-assets"),{filename:file.name,base64});
+  state.project=r.project;state.dirty=false;
+  addTimelineLayer("video",r.asset.id);
+  toast("Vídeo importado como camada independente.");
+ }catch(error){out("saveStatus","Erro no vídeo");toast(error.message);}
 }
 async function applySelectedStyle(){
  if(!state.project)return;
@@ -508,6 +659,11 @@ $("createHomologation").addEventListener("click",async()=>{
  finally{button.disabled=false;button.textContent="Gerar teste completo · 24s";}
 });
 $("newProject").addEventListener("click",presentModal);
+$("addTextLayer").addEventListener("click",()=>addTimelineLayer("text"));
+$("addShapeLayer").addEventListener("click",()=>addTimelineLayer("shape"));
+$("addCaption").addEventListener("click",addTimelineCaption);
+$("videoUpload").addEventListener("change",async event=>{const file=event.target.files?.[0];if(file)await uploadVideo(file);event.target.value="";});
+connectTimelineItemInspector();
 $("cancelModal").addEventListener("click",closeModal);
 $("cancelModal2").addEventListener("click",closeModal);
 $("ideaForm").addEventListener("submit",createFromIdea);
@@ -533,7 +689,8 @@ $("imageUpload").addEventListener("change",async event=>{
  const file=event.target.files?.[0];if(file)await uploadImage(file);event.target.value="";
 });
 workerHealth();setInterval(workerHealth,12000);
-// Keep the editor in sync when GPT approves/rejects the visual preview through MCP.
+// Atualiza projetos editados pelo GPT via MCP sem exigir recarregar a aba.
+setInterval(()=>{if(state.project&&!state.dirty)refreshProjectIfChanged().catch(()=>{});},3500);
 setInterval(()=>{if(state.project&&!state.dirty)refreshReviewStatus().catch(()=>{});},6000);
 const param=new URLSearchParams(location.search).get("project");
 loadProject(/^[a-f0-9]{32}$/.test(param||"")?param:null).catch(e=>toast("Falha ao abrir: "+e.message));

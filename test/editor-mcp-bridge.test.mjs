@@ -13,6 +13,8 @@ const editorCommands = [
   "create_editor_project",
   "get_editor_project",
   "edit_editor_project",
+  "edit_editor_timeline",
+  "upload_editor_layer_asset",
   "review_editor_preview",
   "render_editor_project",
   "upload_editor_asset",
@@ -47,6 +49,15 @@ test("Editor project render still requires an explicit confirmation and preview 
   assert.ok(review.inputSchema.required.includes("checks"));
   assert.equal(review.inputSchema.properties.checks.minItems,1);
   assert.equal(review.inputSchema.properties.checks.items.properties.samples_seconds.minItems,2);
+});
+
+test("AI timeline tools expose independent layers, keyframes and captions",()=>{
+  const edit=VIDEOS_SECRETS_TOOLS.find(t=>t.name==="edit_editor_timeline");
+  const upload=VIDEOS_SECRETS_TOOLS.find(t=>t.name==="upload_editor_layer_asset");
+  assert.ok(edit.inputSchema.properties.layer_operations);
+  assert.ok(edit.inputSchema.properties.caption_operations);
+  assert.equal(edit.inputSchema.required.includes("project_id"),true);
+  assert.ok(upload.inputSchema.properties.base64.maxLength>=22000000);
 });
 
 test("Browser commands cannot be shadowed by MediaForge or duplicate themselves", () => {

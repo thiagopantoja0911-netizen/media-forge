@@ -31,6 +31,15 @@
   <label class="upload-action">+ Importar imagem<input id="imageUpload" type="file" accept=".png,.webp,.svg,image/png,image/webp,image/svg+xml" hidden></label>
   <div id="imageList" class="audio-list"><span class="muted">Nenhum asset.</span></div>
   <div class="thin-divider"></div>
+  <div class="panel-heading"><span>CAMADAS INDEPENDENTES</span><small>EDITOR MULTITRACK</small></div>
+  <div class="layer-actions">
+   <button class="ghost" id="addTextLayer" type="button">+ Texto</button>
+   <button class="ghost" id="addShapeLayer" type="button">+ Forma</button>
+   <button class="ghost" id="addCaption" type="button">+ Legenda</button>
+  </div>
+  <label class="upload-action">+ Importar vídeo MP4 / WebM<input id="videoUpload" type="file" accept=".mp4,.webm,video/mp4,video/webm" hidden></label>
+  <div id="layerList" class="audio-list"><span class="muted">Nenhuma camada.</span></div>
+  <div class="thin-divider"></div>
   <div class="panel-heading"><span>TRILHAS SONORAS</span></div>
   <p class="aside-help">Adicione voz, música e efeitos. Todos entram na timeline e seguem junto ao projeto renderizado.</p>
   <select id="audioRole"><option value="voice">Locução</option><option value="music">Música</option><option value="sfx">Efeito sonoro</option></select>
@@ -65,6 +74,8 @@
    <div class="tracks"><div class="track-name">◩ CENAS</div><div id="sceneTrack" class="track-content scene-track"></div>
     <div class="track-name">T TEXTOS</div><div id="textTrack" class="track-content text-track"></div>
     <div class="track-name">◇ MOVIMENTO</div><div id="motionTrack" class="track-content motion-track"></div>
+    <div class="track-name">▣ CAMADAS</div><div id="layerTrack" class="track-content layer-track"></div>
+    <div class="track-name">CC LEGENDAS</div><div id="captionTrack" class="track-content caption-track"></div>
     <div class="track-name">♫ ÁUDIO</div><div id="audioTrack" class="track-content audio-track"></div>
    </div>
   </section>
@@ -116,6 +127,26 @@
    <label>Deslocamento diagonal do grid<input id="editGridScroll" type="number" min="-2" max="2" step=".1"></label>
    <p class="property-tip">Todos os parâmetros afetam a prévia WebGL e o projeto enviado ao HyperFrames. O fluxo temporário exige que o GPT verifique e aprove as prévias de todas as cenas antes da renderização. Toda edição invalida a aprovação anterior.</p>
   </div>
+  <section id="timelineItemInspector" class="timeline-item-inspector" hidden>
+   <div class="inspector-heading"><span id="timelineItemHeading">ITEM DA TIMELINE</span><span id="timelineItemType" class="inspector-index"></span></div>
+   <label>Texto / conteúdo<textarea id="timelineItemText" rows="3" maxlength="1200"></textarea></label>
+   <div class="fieldrow"><label>Início (s)<input id="timelineItemStart" type="number" min="0" step=".01"></label><label>Fim (s)<input id="timelineItemEnd" type="number" min=".01" step=".01"></label></div>
+   <div class="fieldrow"><label>Posição X<input id="timelineItemX" type="number" step="1"></label><label>Posição Y<input id="timelineItemY" type="number" step="1"></label></div>
+   <div class="fieldrow"><label>Escala<input id="timelineItemScale" type="number" min=".01" max="20" step=".05"></label><label>Rotação Z<input id="timelineItemRotation" type="number" step="1"></label></div>
+   <div class="fieldrow"><label>Profundidade Z<input id="timelineItemZ" type="number" step="1"></label><label>Rotação X<input id="timelineItemRotationX" type="number" step="1"></label></div>
+   <div class="fieldrow"><label>Rotação Y<input id="timelineItemRotationY" type="number" step="1"></label><label>Opacidade<input id="timelineItemOpacity" type="number" min="0" max="1" step=".05"></label></div>
+   <label>Cor<input id="timelineItemColor" type="color"></label>
+   <div id="videoItemFields" hidden>
+    <div class="fieldrow"><label>Trim inicial (s)<input id="timelineVideoTrim" type="number" min="0" step=".05"></label><label>Velocidade<input id="timelineVideoSpeed" type="number" min=".1" max="4" step=".1"></label></div>
+    <label><input id="timelineVideoLoop" type="checkbox" style="width:auto"> Repetir vídeo (loop)</label>
+   </div>
+   <div id="captionItemFields" hidden>
+    <label>Estilo da legenda<select id="timelineCaptionStyle"><option value="karaoke">Karaoke / palavra ativa</option><option value="boxed">Caixa</option><option value="minimal">Minimalista</option><option value="outline">Contorno</option></select></label>
+    <label>Animação<select id="timelineCaptionAnimation"><option value="rise">Subida suave</option><option value="fade">Fade</option><option value="typewriter">Palavra por palavra</option><option value="none">Sem animação</option></select></label>
+   </div>
+   <label id="layerEasingField">Easing do próximo keyframe<select id="timelineKeyframeEasing"><option value="ease-in-out">Ease in-out</option><option value="linear">Linear</option><option value="ease-in">Ease in</option><option value="ease-out">Ease out</option><option value="spring">Spring</option></select></label>
+   <button id="addLayerKeyframe" class="ghost" type="button">+ Keyframe no playhead</button>
+  </section>
   <div class="inspect-footer"><span class="statusdot"></span><span id="workerState">Verificando renderizador…</span></div>
  </aside>
 </main>
@@ -125,7 +156,7 @@
  <h2>Transforme sua ideia em <em>motion 3D.</em></h2>
  <p>O MediaForge criará o storyboard e abrirá cada cena na timeline para você editar.</p>
  <label>Ideia do vídeo<textarea id="newIdea" required minlength="8" maxlength="400" rows="4" placeholder="Ex.: Explique como o marketing digital transforma a atenção de um cliente em uma venda."></textarea></label>
- <div class="fieldrow"><label>Marca / projeto<input id="newBrand" maxlength="80" value="MediaForge"></label><label>Duração<select id="newDuration"><option value="15">15 segundos</option><option value="20">20 segundos</option><option value="30" selected>30 segundos</option><option value="40">40 segundos</option><option value="60">60 segundos</option></select></label></div>
+ <div class="fieldrow"><label>Marca / projeto<input id="newBrand" maxlength="80" value="MediaForge"></label><label>Duração<select id="newDuration"><option value="15">15 segundos</option><option value="20">20 segundos</option><option value="15" selected>15 segundos</option><option value="20">20 segundos</option><option value="30">30 segundos</option><option value="40">40 segundos</option><option value="60">60 segundos</option></select></label></div>
  <label>Preset de estilo<select id="newPreset"><option value="">Cinematic 3D padrão</option><option value="apple-clean">Apple Clean</option><option value="spotify-dark-glow">Spotify Dark Glow</option><option value="motivational-bw">Motivational P&B</option></select></label>
  <div class="fieldrow"><label>Formato<select id="newRatio"><option value="9:16">9:16 — Reels</option><option value="16:9">16:9 — Horizontal</option><option value="1:1">1:1 — Quadrado</option></select></label><label>FPS<select id="newFps"><option value="30">30 FPS</option><option value="60">60 FPS</option></select></label></div>
  <div class="modal-actions"><button type="button" class="ghost" id="cancelModal2">Cancelar</button><button type="submit" class="primary" id="submitIdea">Criar storyboard 3D</button></div>
