@@ -73,7 +73,7 @@ export const VIDEOS_SECRETS_TOOLS = [
       project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
       scene_index:{type:"integer",minimum:0,maximum:11},
       confirm_render:{type:"boolean",const:true},allow_silent:{type:"boolean"}
-    },required:["project_id","confirm_render"]
+    },required:["project_id","confirm_render"]}
   },
 
   {
