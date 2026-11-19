@@ -202,6 +202,7 @@ function buildTracks(){
    el.title=a.role+" · "+a.name;audios.append(el);
  }
  fillTimelineItemInspector();
+ if(window.MediaForgeProTimeline?.refresh)window.MediaForgeProTimeline.refresh();
 }
 function selectTimelineItem(kind,id){
  state.selectedLayerId=kind==="layer"?id:null;state.selectedCaptionId=kind==="caption"?id:null;
@@ -690,6 +691,30 @@ $("applyPreset").addEventListener("click",applySelectedStyle);
 $("downloadDna").addEventListener("click",downloadStyleDna);
 $("imageUpload").addEventListener("change",async event=>{
  const file=event.target.files?.[0];if(file)await uploadImage(file);event.target.value="";
+});
+
+window.MediaForgeTimelineAPI=Object.freeze({
+ getProject:()=>state.project,
+ getSelection:()=>({kind:state.selectedLayerId?"layer":state.selectedCaptionId?"caption":null,id:state.selectedLayerId||state.selectedCaptionId}),
+ currentFrame:()=>state.project?state.project.scenes[state.selected].startFrame+Math.round(state.frame*state.project.fps):0,
+ seekFrame:(frame)=>{
+  const p=state.project;if(!p)return;
+  const n=clamp(Math.round(frame),0,p.totalFrames-1);
+  const i=p.scenes.findIndex(s=>n>=s.startFrame&&n<s.endFrame);
+  if(i<0)return;
+  const seconds=(n-p.scenes[i].startFrame)/p.fps;
+  pauseScene();
+  if(i!==state.selected)openScene(i,{seek:seconds});
+  else{
+   state.frame=seconds;
+   $("sceneSeek").value=String(clamp(Math.round(seconds/sceneLength(i)*1000),0,1000));
+   out("timeCurrent",longFmt(seconds));
+   playbackMessage({mediaforge:"seek",time:seconds});
+  }
+ },
+ selectItem:selectTimelineItem,
+ commit:()=>afterChange(true),
+ notify:toast
 });
 workerHealth();setInterval(workerHealth,12000);
 // Atualiza projetos editados pelo GPT via MCP sem exigir recarregar a aba.
