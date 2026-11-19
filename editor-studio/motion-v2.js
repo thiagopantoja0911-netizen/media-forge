@@ -95,38 +95,87 @@ function addArc(){
 function autoCompose(){
  const p=P();if(!p)return notify("Abra um projeto para preparar o motion.");
  const m=init(p);m.enabled=true;
- const colors=[["#f9fafb","#bdd2f4"],["#eef4fa","#f9d6e2"],["#161d2c","#596aa2"],["#fbf2ea","#f1a3be"],["#f0f6f2","#8dd9bd"],["#101826","#53648e"]];
- if(!p.layers?.length){
-   const canvas=p.aspectRatio==="16:9"?[1920,1080]:p.aspectRatio==="1:1"?[1080,1080]:[1080,1920];
-   p.layers=[];
-   for(const [i,scene] of p.scenes.entries()){
-     const width=Math.round(canvas[0]*.80),height=Math.round(canvas[1]*.22);
-     const light=i%6!==2&&i%6!==5;
-     p.layers.push({
-       id:crypto.randomUUID().replaceAll("-",""),name:"Título editável "+(i+1),
-       type:"text",text:scene.headline,startFrame:scene.startFrame,endFrame:scene.endFrame,
-       x:Math.round(canvas[0]*.10),y:Math.round(canvas[1]*.39),
-       z:0,width,height,rotationX:0,rotationY:0,rotationZ:0,scale:1,opacity:1,
-       color:light?"#111827":"#f9fafb",fontFamily:"sans",fontSize:Math.max(36,Math.round(canvas[0]*.087)),
-       fontWeight:900,textAlign:"center",zIndex:25,blendMode:"normal",keyframes:[]
-     });
+ const palette=[
+  ["#0B1220","#38D6C8","gradient"],["#0E1B2E","#F05AA6","rings"],
+  ["#12182C","#8A6CFF","grid"],["#F4F7FB","#F4A340","gradient"],
+  ["#0B1824","#36A9FF","rings"],["#1D1820","#FF6C50","grid"],
+  ["#F8F7FC","#C78BFF","gradient"],["#071B18","#48D1A0","rings"],
+  ["#1B1020","#F15C91","grid"],["#101A36","#6E8BFF","gradient"],
+  ["#1A1B1D","#F0B45B","rings"],["#071B22","#38D6C8","grid"]
+ ];
+ const canvas=p.aspectRatio==="16:9"?[1920,1080]:p.aspectRatio==="1:1"?[1080,1080]:[1080,1920];
+ const existing=p.layers??[];
+ const titleLayers=existing.filter(l=>l.type==="text"&&/^Título editável \d+$/.test(l.name))
+   .sort((a,b)=>Number(a.name.match(/\d+/)?.[0]||0)-Number(b.name.match(/\d+/)?.[0]||0));
+ const makeLayer=(name,text,start,end,kind,index)=>{
+   const title=kind==="title",kicker=kind==="kicker";
+   const width=title?Math.round(canvas[0]*.87):Math.round(canvas[0]*.80);
+   const height=title?Math.round(canvas[1]*.22):Math.round(canvas[1]*(kicker?.075:.12));
+   const light=index===3||index===6;
+   return {
+    id:crypto.randomUUID().replaceAll("-",""),name,type:"text",text,startFrame:start,endFrame:end,
+    x:Math.round((canvas[0]-width)/2),
+    y:title?Math.round(canvas[1]*.39):kicker?Math.round(canvas[1]*.29):Math.round(canvas[1]*.62),
+    z:0,width,height,rotationX:0,rotationY:0,rotationZ:0,scale:1,opacity:1,
+    color:title?(light?"#111827":"#F9FAFB"):kicker?palette[index%palette.length][1]:(light?"#334155":"#DCE7F4"),
+    fontFamily:"sans",fontSize:title?Math.max(58,Math.min(112,Math.floor(canvas[0]*.55/Math.max(5,text.length)))):kicker?30:40,
+    fontWeight:title?900:kicker?800:500,textAlign:"center",zIndex:title?30:kicker?32:28,
+    blendMode:"normal",keyframes:[]
+   };
+ };
+ const validMotionIds=new Set();
+ const mainFrames=Math.max(1,Math.min(Math.round(p.fps*.9),120));
+ const auxFrames=Math.max(1,Math.min(Math.round(p.fps*.9),120));
+ p.scenes.forEach((scene,i)=>{
+   const start=scene.startFrame,end=scene.endFrame,len=end-start;
+   let title=titleLayers[i];
+   if(!title){
+     title=makeLayer("Título editável "+(i+1),scene.headline,start,end,"title",i);
+     p.layers.push(title);titleLayers[i]=title;
    }
- }
+   title.text=scene.headline;title.startFrame=start;title.endFrame=end;
+   title.fontSize=Math.max(58,Math.min(112,Math.floor(canvas[0]*.55/Math.max(5,scene.headline.length))));
+   title.color=(i===3||i===6)?"#111827":"#F9FAFB";
+   const kickerName="Kicker editável "+(i+1);
+   let kicker=p.layers.find(l=>l.type==="text"&&l.name===kickerName);
+   if(!kicker){kicker=makeLayer(kickerName,scene.kicker||"PARK CRIATIVO",start+3,end-2,"kicker",i);p.layers.push(kicker);}
+   kicker.text=scene.kicker||"PARK CRIATIVO";kicker.startFrame=start+3;kicker.endFrame=end-2;
+   const detailName="Apoio editável "+(i+1);
+   let detail=p.layers.find(l=>l.type==="text"&&l.name===detailName);
+   if(!detail){detail=makeLayer(detailName,scene.detail||"",start+7,end-4,"detail",i);p.layers.push(detail);}
+   detail.text=scene.detail||"";detail.startFrame=start+7;detail.endFrame=end-4;
+   const direction=i%2?"right":"left";
+   const opposite=i%2?"left":"right";
+   const mask=i%3===0?"wipe":"none";
+   const mid=start+Math.round(len*.5);
+   const configure=(layer,from,to,frames,arc)=>{
+     const fr=Math.max(1,Math.min(frames,Math.floor((layer.endFrame-layer.startFrame)*.38),120));
+     const move={enter:{from,frames:fr,ease:"cubic-out",mask},
+       exit:{to,frames:fr,ease:"cubic-in",mask}};
+     if(arc){
+       move.path=[
+        {frame:layer.startFrame,x:0,y:0,out:[18,-14]},
+        {frame:layer.startFrame+Math.round((layer.endFrame-layer.startFrame)*.5),
+         x:i%2?-28:28,y:-18,in:[-16,10],out:[16,-8],ease:[.42,0,.58,1]},
+        {frame:layer.endFrame,x:0,y:0,in:[-18,12],ease:"ease-in-out"}
+       ];
+     }
+     m.moves[layer.id]=move;validMotionIds.add(layer.id);
+   };
+   configure(title,direction,opposite,mainFrames,true);
+   configure(kicker,"top","top",auxFrames,false);
+   configure(detail,"bottom","bottom",auxFrames,false);
+ });
+ for(const id of Object.keys(m.moves))if(!validMotionIds.has(id)&&!p.layers.some(l=>l.id===id))delete m.moves[id];
  m.hideSceneTitles=true;
- m.background.keyframes=p.scenes.slice(0,60).map((s,i)=>({frame:s.startFrame,
-  color:colors[i%colors.length][0],accent:colors[i%colors.length][1],
-  pattern:i%4===2?"rings":i%4===3?"grid":"gradient",
-  panX:i%2===0?-6:6,panY:i%3===0?-4:4,zoom:1.04,
-  ease:[.22,1,.36,1]}));
- for(const [i,l] of (p.layers||[]).entries()){
-   const len=l.endFrame-l.startFrame,fr=Math.max(1,Math.min(Math.round(p.fps*.45),Math.floor(len*.4),120));
-   m.moves[l.id]??={};
-   m.moves[l.id].enter={from:i%2?"right":"left",frames:fr,ease:[.22,1,.36,1],mask:"none"};
-   m.moves[l.id].exit={to:i%2?"left":"right",frames:fr,ease:"cubic-in",mask:"none"};
- }
+ m.background.keyframes=p.scenes.slice(0,60).map((scene,i)=>{
+   const c=palette[i%palette.length];
+   return {frame:scene.startFrame,color:c[0],accent:c[1],pattern:c[2],
+    panX:i%2===0?-8:8,panY:i%3===0?-5:5,zoom:1.06,ease:[.22,1,.36,1]};
+ });
  $("motionV2Enabled").checked=true;
  $("motionV2HideTitles").checked=true;
- commit("Composição V2 preparada: "+m.background.keyframes.length+" fundos e "+Object.keys(m.moves).length+" camadas com trajetória.");
+ commit("Motion V2 nativo preparado: "+p.layers.length+" camadas (título, kicker e apoio), entradas suaves, curvas Bézier e "+m.background.keyframes.length+" fundos.");
 }
 async function audit(){
  const p=P();if(!p)return notify("Abra um projeto para executar QA.");
