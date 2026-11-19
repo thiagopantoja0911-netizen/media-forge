@@ -115,7 +115,7 @@ test("connected AI can create and edit scene-free projects through native MCP sc
  assert.deepEqual(create.inputSchema.properties.timeline_mode.enum,["free","cinematic"]);
  assert.equal(create.inputSchema.properties.duration_seconds.maximum,600);
  assert.equal(edit.inputSchema.properties.duration_seconds.maximum,600);
- assert.match(edit.inputSchema.properties.canvas_color.pattern,/#[a-fA-F0-9]/);
+ assert.equal(edit.inputSchema.properties.canvas_color.pattern,"^#[a-fA-F0-9]{6}$");
  const layer=edit.inputSchema.properties.layer_operations.items.properties.layer.properties;
  assert.ok(layer.transitionIn);assert.ok(layer.transitionOut);
  assert.ok(layer.fontFamily.enum.includes("impact"));
