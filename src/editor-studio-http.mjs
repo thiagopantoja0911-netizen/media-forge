@@ -274,6 +274,12 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       const raw=await parseBody(request);
       if(raw.confirm!==true){json(response,428,{ok:false,error:"RENDER_CONFIRMATION_REQUIRED"});return true;}
       const sceneIndex=raw.sceneIndex===undefined?undefined:validIndex(raw.sceneIndex,p);
+      const frameLabReferenceProjectId=p.motionV2?.enabled?p.motionV2.frameLabProjectId??null:null;
+      if(frameLabReferenceProjectId){
+        const {statusOf}=await import("../frame-lab/handler.mjs");
+        const ref=await statusOf(frameLabReferenceProjectId);
+        if(!ref.hasReference)throw Object.assign(new Error("O Frame Lab ainda não tem o vídeo original desta referência."),{status:422});
+      }
       const previewReview=await requireApprovedEditorPreview(p);
       const files=await buildEditorRenderFiles(p,{sceneIndex});
       if(sceneIndex===undefined)for(const a of p.audio){
@@ -292,7 +298,8 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
         metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",
           editorProjectId:p.id,editorSceneIndex:sceneIndex??null,expectsAudio:sceneIndex===undefined&&p.audio.length>0,
           productionMode:"cinematic-3d",artisticQA:"pending-user-review",
-          previewReviewRevision:previewReview.revision,previewReviewStatus:previewReview.status}
+          previewReviewRevision:previewReview.revision,previewReviewStatus:previewReview.status,
+          frameLabReferenceProjectId}
       });
       json(response,202,{ok:true,jobId:job.id,status:job.status,message:"Render enviado ao HyperFrames; o projeto editável foi preservado."});
       return true;
@@ -315,7 +322,11 @@ export async function handleEditorJobStatus({request,response,url,isAdminSession
   const job=await getJob(m[1]);
   if(!job||job.metadata?.source!=="mediaforge-visual-editor"){json(response,404,{error:"NOT_FOUND"});return true;}
   json(response,200,{ok:true,status:job.status,progress:job.progress,error:job.error||null,
-    artifact:job.status==="completed"?await signedVideoDownload(job):null});
+    artifact:job.status==="completed"?await signedVideoDownload(job):null,
+    motionQA:{status:job.metadata?.motionV2FrameLabStatus??(job.metadata?.frameLabReferenceProjectId?"waiting":"not-configured"),
+      comparisonProjectId:job.metadata?.motionV2FrameLabProjectId??null,
+      referenceProjectId:job.metadata?.frameLabReferenceProjectId??null,
+      url:job.metadata?.motionV2FrameLabProjectId?"/frame-lab":null}});
   return true;
 }
 
