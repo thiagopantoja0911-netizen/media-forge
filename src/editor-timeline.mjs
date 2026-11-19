@@ -34,7 +34,7 @@ export function validateEditorTimeline(project){
     if(layer.type==="image"&&!imageIds.has(layer.assetId))throw fail("EDITOR_LAYER_ASSET_INVALID","Camada de imagem precisa apontar para um asset importado.");
     if(layer.type==="video"&&!videoIds.has(layer.assetId))throw fail("EDITOR_LAYER_ASSET_INVALID","Camada de vídeo precisa apontar para um vídeo importado.");
     if(layer.type==="text"&&(typeof layer.text!=="string"||layer.text.length>1200))throw fail("EDITOR_LAYER_TEXT_INVALID","Texto da camada excede 1.200 caracteres.");
-    if(layer.fontFamily!==undefined&&!["sans","serif","mono"].includes(layer.fontFamily))throw fail("EDITOR_LAYER_FONT_INVALID","Família tipográfica inválida.");
+    if(layer.fontFamily!==undefined&&!["sans","serif","mono","impact","verdana","trebuchet","tahoma","times"].includes(layer.fontFamily))throw fail("EDITOR_LAYER_FONT_INVALID","Família tipográfica inválida.");
     if(layer.fontSize!==undefined&&!num(layer.fontSize,8,360))throw fail("EDITOR_LAYER_FONT_INVALID","Tamanho tipográfico inválido.");
     if(layer.fontWeight!==undefined&&!int(layer.fontWeight,100,900))throw fail("EDITOR_LAYER_FONT_INVALID","Peso tipográfico inválido.");
     if(layer.textAlign!==undefined&&!["left","center","right"].includes(layer.textAlign))throw fail("EDITOR_LAYER_ALIGN_INVALID","Alinhamento inválido.");
