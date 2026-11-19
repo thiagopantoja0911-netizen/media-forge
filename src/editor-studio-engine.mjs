@@ -71,7 +71,7 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
   const supporting=colorMode==="light"?"#324242":"#dddde6";
   const style=[
     "*{box-sizing:border-box}html,body{margin:0;background:#070912}",
-    "#root{position:relative;width:"+w+"px;height:"+h+"px;overflow:hidden;background:#070912;font-family:Arial,Helvetica,sans-serif;color:"+ink+";isolation:isolate}",
+    "#root{position:relative;width:"+w+"px;height:"+h+"px;overflow:hidden;background:#070912;font-family:Arial,Helvetica,sans-serif;color:"+ink+";isolation:isolate;perspective:1300px;perspective-origin:50% 50%}",
     "#world{position:absolute;inset:0;width:100%;height:100%;z-index:0;display:block}",
     ".caption{position:absolute;top:14%;left:10%;width:80%;z-index:3;pointer-events:none;transform-origin:15% 50%;will-change:transform,opacity}",
     ".editor-layer{position:absolute;pointer-events:none;will-change:transform,opacity;backface-visibility:visible}",

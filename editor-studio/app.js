@@ -223,7 +223,8 @@ function fillTimelineItemInspector(){
  $("timelineItemX").value=item.x??0;$("timelineItemY").value=item.y??0;
  $("timelineItemScale").value=layer?.scale??1;$("timelineItemRotation").value=layer?.rotationZ??0;
  $("timelineItemZ").value=layer?.z??0;$("timelineItemRotationX").value=layer?.rotationX??0;$("timelineItemRotationY").value=layer?.rotationY??0;
- $("timelineItemOpacity").value=layer?.opacity??1;
+ $("timelineItemOpacity").value=layer?.opacity??caption?.backgroundOpacity??1;
+ for(const id of ["timelineItemScale","timelineItemRotation","timelineItemZ","timelineItemRotationX","timelineItemRotationY"])$(id).disabled=Boolean(caption);
  $("timelineItemColor").value=caption?.color??layer?.color??"#ffffff";
  $("timelineVideoTrim").value=layer?.trimStartSeconds??0;$("timelineVideoSpeed").value=layer?.speed??1;$("timelineVideoLoop").checked=Boolean(layer?.loop);
  $("videoItemFields").hidden=layer?.type!=="video";
@@ -264,6 +265,8 @@ function updateTimelineItem(field,value){
  else if(field==="startFrame"||field==="endFrame")item[field]=value;
  else if(field==="color"){if(caption)item.color=value;else{item.color=value;if(item.type==="shape")delete item.background;}}
  else if(field==="style"||field==="animation")item[field]=value;
+ else if(caption&&["x","y"].includes(field))item[field]=clamp(value,0,field==="x"?1080:1920);
+ else if(caption&&field==="opacity")item.backgroundOpacity=clamp(value,0,1);
  else if(layer&&["x","y","z","scale","rotationX","rotationY","rotationZ","opacity","trimStartSeconds","speed","loop"].includes(field))item[field]=value;
  afterChange();fillTimelineItemInspector();
 }
