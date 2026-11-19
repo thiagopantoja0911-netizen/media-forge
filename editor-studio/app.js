@@ -203,6 +203,7 @@ function buildTracks(){
  }
  fillTimelineItemInspector();
  if(window.MediaForgeProTimeline?.refresh)window.MediaForgeProTimeline.refresh();
+ if(window.MediaForgeMotionV2?.refresh)window.MediaForgeMotionV2.refresh();
 }
 function selectTimelineItem(kind,id){
  state.selectedLayerId=kind==="layer"?id:null;state.selectedCaptionId=kind==="caption"?id:null;
