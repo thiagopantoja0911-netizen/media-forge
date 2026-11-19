@@ -24,6 +24,8 @@ const staticFiles=new Map([
   ["/editor/remotion-assets/background.mp4","../remotion-public/remotion-assets/background.mp4"],
   ["/editor/remotion-assets/badge.png","../remotion-public/remotion-assets/badge.png"],
   ["/editor/style.css","../editor-studio/style.css"],
+  ["/editor/workspace-layout.css","../editor-studio/workspace-layout.css"],
+  ["/editor/workspace-layout.js","../editor-studio/workspace-layout.js"],
   ["/editor/vendor/three.module.js","../node_modules/three/build/three.module.js"],
   ["/editor/vendor/three.core.js","../node_modules/three/build/three.core.js"],
   ["/editor/vendor/gsap.min.js","../assets/gsap.min.js"]
