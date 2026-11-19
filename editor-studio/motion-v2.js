@@ -42,6 +42,7 @@ function init(project){
  project.motionV2.version=1;
  project.motionV2.moves??={};
  project.motionV2.background??={keyframes:[]};
+ if(!project.motionV2.background.keyframes.length)project.motionV2.background.keyframes.push({frame:0,color:"#f9fafb",accent:"#bed3ef",pattern:"gradient",panX:0,panY:0,zoom:1,ease:"ease-in-out"});
  return project.motionV2;
 }
 function notify(msg){$("motionV2Status").textContent=msg;api()?.notify(msg);}
