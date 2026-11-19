@@ -25,6 +25,8 @@ export function validateMotionV2(project){
  if(m===undefined)return project;
  if(!m||typeof m!=="object"||m.version!==1||typeof m.enabled!=="boolean")
    throw err("MOTION_V2_INVALID","Motion V2 precisa de version:1 e enabled boolean.");
+ if(m.hideSceneTitles!==undefined&&typeof m.hideSceneTitles!=="boolean")
+   throw err("MOTION_TITLES_INVALID","hideSceneTitles precisa ser boolean.");
  if(m.background!==undefined){
    const k=m.background?.keyframes;
    if(!Array.isArray(k)||k.length<1||k.length>120)throw err("MOTION_BACKGROUND_INVALID","Informe de 1 a 120 keyframes de fundo.");
