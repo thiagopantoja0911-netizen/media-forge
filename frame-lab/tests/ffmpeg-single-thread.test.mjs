@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { Script } from "node:vm";
+import { execFileSync } from "node:child_process";
 
 const analyzer=readFileSync(new URL("../analyze-node.mjs",import.meta.url),"utf8");
 
@@ -13,5 +13,5 @@ test("Frame Lab streams native frames with a strict FFmpeg thread budget",()=>{
  assert.match(analyzer,/await onFrame\(buf,count\+\+\)/);
 });
 test("Frame Lab analyzer parses as modern Node ESM",()=>{
- assert.doesNotThrow(()=>new Script(analyzer.replace(/^import[^;]*;\s*$/gm,"").replace(/^export\s+/gm,""),{filename:"analyze-node.mjs"}));
+ assert.doesNotThrow(()=>execFileSync(process.execPath,["--check",new URL("../analyze-node.mjs",import.meta.url).pathname]));
 });
