@@ -96,7 +96,8 @@ export function renderArgs(job, outputPath, { resume = false } = {}) {
   return args;
 }
 
-export async function renderWithHyperFrames(job, { onProgress = async () => {} } = {}) {
+export async function renderWithHyperFrames(job, { onProgress = async () => {},signal=null } = {}) {
+  if(signal?.aborted)throw Object.assign(new Error("Render cancelado"),{code:"JOB_CANCELLED",retryable:false});
   const sourceDir = job.project.sourceDir;
   if (!sourceDir || isAbsolute(sourceDir) || sourceDir.split(/[\\/]/).includes("..")) {
     const error = new Error("project.sourceDir is required and must be relative to MEDIAFORGE_PROJECTS_DIR");
@@ -131,7 +132,7 @@ export async function renderWithHyperFrames(job, { onProgress = async () => {} }
   if (job.project.preflight !== false || motionReview) {
     try {
       await onProgress(24, "Executando auditoria completa HyperFrames, incluindo craft pass");
-      preflight = await run(command, cliArgs(command, "check", projectDir, "--json"), projectDir, join(diagnosticsDir, "check"));
+      preflight = await run(command, cliArgs(command, "check", projectDir, "--json"), projectDir, join(diagnosticsDir, "check"),{signal});
       await onProgress(36, "Auditoria HyperFrames aprovada");
     } catch (error) {
       error.code = "HYPERFRAMES_PREFLIGHT_FAILED";
@@ -144,6 +145,7 @@ export async function renderWithHyperFrames(job, { onProgress = async () => {} }
   let render = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    if(signal?.aborted)throw Object.assign(new Error("Render cancelado"),{code:"JOB_CANCELLED",retryable:false});
     const renderEnv = buildHyperFramesRenderEnvironment(process.env, attempt);
     const attemptDiagnostics = join(
       diagnosticsDir,
@@ -174,7 +176,7 @@ export async function renderWithHyperFrames(job, { onProgress = async () => {} }
         cliArgs(command, ...renderArgs(job, outputPath, { resume: segmented })),
         projectDir,
         attemptDiagnostics,
-        {env:renderEnv,phase:"render",totalFrames,onVerifiedFrame}
+        {env:renderEnv,phase:"render",totalFrames,onVerifiedFrame,signal}
       );
       break;
     } catch (error) {
