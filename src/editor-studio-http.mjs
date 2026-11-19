@@ -321,11 +321,21 @@ export async function handleEditorJobStatus({request,response,url,isAdminSession
   if(!(await isAdminSession(request))){json(response,401,{error:"AUTH_REQUIRED"});return true;}
   const job=await getJob(m[1]);
   if(!job||job.metadata?.source!=="mediaforge-visual-editor"){json(response,404,{error:"NOT_FOUND"});return true;}
+  let liveFrameLabStatus=null;
+  if(job.metadata?.motionV2FrameLabProjectId){
+    try{
+      const {statusOf}=await import("../frame-lab/handler.mjs");
+      const current=await statusOf(job.metadata.motionV2FrameLabProjectId);
+      liveFrameLabStatus={status:current.progress?.status??null,referenceFrames:current.referenceFrames,
+        renderedFrames:current.renderedFrames,hasReport:current.hasReport};
+    }catch{}
+  }
   json(response,200,{ok:true,status:job.status,progress:job.progress,error:job.error||null,
     artifact:job.status==="completed"?await signedVideoDownload(job):null,
     motionQA:{status:job.metadata?.motionV2FrameLabStatus??(job.metadata?.frameLabReferenceProjectId?"waiting":"not-configured"),
       comparisonProjectId:job.metadata?.motionV2FrameLabProjectId??null,
       referenceProjectId:job.metadata?.frameLabReferenceProjectId??null,
+      analysis:liveFrameLabStatus,
       url:job.metadata?.motionV2FrameLabProjectId?"/frame-lab":null}});
   return true;
 }
