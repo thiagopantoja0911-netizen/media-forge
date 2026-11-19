@@ -1,6 +1,6 @@
 (()=>{"use strict";
 const $=id=>document.getElementById(id);
-const state={project:null,selected:0,ready:false,playing:false,dragFrom:null,saveTimer:null,saveQueue:Promise.resolve(),lastPreviewUrl:"",frame:0,previewApproved:false,dirty:false,selectedLayerId:null,selectedCaptionId:null};
+const state={project:null,selected:0,ready:false,playing:false,dragFrom:null,saveTimer:null,saveQueue:Promise.resolve(),lastPreviewUrl:"",frame:0,previewApproved:false,previewSamples:[],dirty:false,selectedLayerId:null,selectedCaptionId:null};
 const pad=n=>String(n).padStart(2,"0");
 const fmt=t=>pad(Math.floor(t/60))+":"+pad(Math.floor(t%60));
 const longFmt=t=>fmt(t)+"."+(Math.floor(t*10)%10);
@@ -60,6 +60,7 @@ function openScene(i,{seek=0}={}){
   configureViewport();
   $("scenePreview").src=src("preview")+(free?"?v=":"?scene="+i+"&v=")+state.project.revision;
   $("renderSceneButton").hidden=free;
+  $("freeReviewButton").hidden=!free;
   document.body.classList.toggle("timeline-free",free);
   buildTracks();fillInspector();
 }
@@ -338,7 +339,7 @@ function connectTimelineItemInspector(){
  });
 }
 function clearWorkspace(){
- pauseScene();state.project=null;state.selected=0;state.selectedLayerId=null;state.selectedCaptionId=null;state.ready=false;state.dirty=false;
+ pauseScene();state.project=null;state.selected=0;state.selectedLayerId=null;state.selectedCaptionId=null;state.ready=false;state.dirty=false;state.previewSamples=[];
  document.body.classList.add("empty-workspace");history.replaceState(null,"","/editor");
  out("projectName","Nenhum projeto aberto");out("saveStatus","—");out("infoRatio","9:16 · Reels");out("infoFps","30 FPS");out("infoDuration","00:15");out("infoScenes","—");
  out("sceneDescription","Comece com uma ideia. O editor não carregará projetos ou prévias antigos automaticamente.");
@@ -347,7 +348,7 @@ function clearWorkspace(){
  $("playerViewport").className="player-viewport vertical";$("inspectorFields").hidden=true;$("inspectorEmpty").hidden=false;$("timelineItemInspector").hidden=true;
  for(const id of ["sceneTrack","textTrack","motionTrack","layerTrack","captionTrack","audioTrack","rulerTicks","imageList","audioList","layerList"]){$(id)?.replaceChildren();}
  $("saveButton").disabled=true;$("renderButton").disabled=true;$("renderSceneButton").disabled=true;
- showReviewStatus("not-reviewed");document.body.classList.remove("timeline-free");
+ showReviewStatus("not-reviewed");document.body.classList.remove("timeline-free");$("freeReviewButton").hidden=true;
 }
 async function refreshProjectIfChanged(){
  if(!state.project||state.dirty)return;
@@ -441,7 +442,7 @@ function sanitizeMotionV2(){
 function afterChange(reselect=false){
  if(!state.project)return;
  sanitizeMotionV2();
- state.dirty=true;
+ state.dirty=true;state.previewSamples=[];
  showReviewStatus("stale");
  updateMetadata();buildTracks();if(reselect)fillInspector();
  clearTimeout(state.saveTimer);
@@ -469,7 +470,7 @@ async function loadProject(id){
  if(!id){clearWorkspace();return;}
  const r=await request("/api/editor/projects/"+id);
  if(!r.project){clearWorkspace();return;}
- state.project=r.project;state.selected=0;state.selectedLayerId=null;state.selectedCaptionId=null;state.dirty=false;
+ state.project=r.project;state.selected=0;state.selectedLayerId=null;state.selectedCaptionId=null;state.dirty=false;state.previewSamples=[];
  document.body.classList.remove("empty-workspace");
  history.replaceState(null,"","/editor?project="+r.project.id);
  $("previewNotice").hidden=false;$("saveButton").disabled=false;
@@ -725,6 +726,30 @@ $("createHomologation").addEventListener("click",async()=>{
  finally{button.disabled=false;button.textContent="Gerar teste completo · 24s";}
 });
 $("newProject").addEventListener("click",presentModal);
+$("newEditorMode").addEventListener("change",()=>{
+ const free=$("newEditorMode").value==="free";
+ $("newDuration").min=free?"1":"10";$("newDuration").max=free?"600":"60";
+ $("newDuration").value=String(clamp(Number($("newDuration").value)||30,free?1:10,free?600:60));
+ $("newPreset").disabled=free;
+});
+$("newPreset").disabled=true;
+$("freeReviewButton").addEventListener("click",async()=>{
+ if(!state.project||state.project.mode!=="timeline-free"||!state.ready)return toast("Abra a prévia da timeline livre primeiro.");
+ const samples=[...state.previewSamples].sort((a,b)=>a-b);
+ if(samples.length<2||samples.at(-1)-samples[0]<.25)
+   return toast("Veja a prévia em pelo menos dois tempos diferentes da timeline antes de aprovar.");
+ if(!window.confirm("Você verificou a composição nos tempos indicados? Confirme a revisão visual desta versão para liberar o render."))return;
+ try{
+   await saveProject(false);
+   const points=[samples[0],samples.at(-1)].map(t=>clamp(t,0,state.project.totalFrames/state.project.fps));
+   const result=await post(src("review"),{expected_revision:state.project.revision,decision:"pass",checks:[{
+     scene_id:"timeline",samples_seconds:points,preview_ready:true,text_legible:true,motion_ok:true,visual_ok:true,
+     notes:"O operador confirmou manualmente que revisou a timeline nativa em pelo menos dois instantes diferentes."
+   }],summary:"Revisão manual da timeline livre confirmada pelo usuário no editor."});
+   showReviewStatus(result.status);
+   toast("Prévia da revisão atual aprovada. Renderização liberada.");
+ }catch(error){toast("Não foi possível aprovar a prévia: "+error.message);}
+});
 $("addTextLayer").addEventListener("click",()=>addTimelineLayer("text"));
 $("addShapeLayer").addEventListener("click",()=>addTimelineLayer("shape"));
 $("addCaption").addEventListener("click",addTimelineCaption);
@@ -742,6 +767,11 @@ $("sceneSeek").addEventListener("input",event=>{
  if(!state.project)return;
  pauseScene();state.frame=sceneLength(state.selected)*Number(event.target.value)/1000;
  out("timeCurrent",longFmt(state.frame));playbackMessage({mediaforge:"seek",time:state.frame});
+ if(state.project.mode==="timeline-free"&&state.ready){
+   const sample=Number(state.frame.toFixed(3));
+   if(!state.previewSamples.some(x=>Math.abs(x-sample)<.2))state.previewSamples.push(sample);
+   state.previewSamples=state.previewSamples.slice(-20);
+ }
  previewAudio(false);
 });
 $("beatSyncButton").addEventListener("click",synchronizeBeats);
