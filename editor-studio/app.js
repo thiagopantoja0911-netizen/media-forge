@@ -649,6 +649,7 @@ async function render(selectedOnly){
  toast("Enviando "+desc+" ao HyperFrames…");
  try{
   const payload={confirm:true};
+  if(state.project.mode==="timeline-free"&&!state.project.audio.length)payload.allowSilent=true;
   if(selectedOnly)payload.sceneIndex=state.selected;
   const r=await post(src("render"),payload);
   toast("Render "+r.jobId.slice(0,9)+" enviado ao HyperFrames.");
