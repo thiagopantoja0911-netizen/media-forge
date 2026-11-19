@@ -6,7 +6,7 @@ import { validateSceneTypography } from "./editor-typography.mjs";
 import { validateMotionV2 } from "./editor-motion-v2.mjs";
 import { validateEditorTimeline } from "./editor-timeline.mjs";
 
-const TITLE_MAX=100, MAX_AUDIO=10, MAX_SCENES=12, MAX_VISUAL_ASSETS=8;
+const TITLE_MAX=100, MAX_AUDIO=24, MAX_SCENES=12, MAX_VISUAL_ASSETS=8;
 export const EDITOR_VISUAL_TYPES=["screen","card-grid"];
 export const EDITOR_ASSET_EXTENSIONS=["png","webp","svg"];
 export const EDITOR_SHAPES=["torus-knot","icosahedron","sphere","torus","cube","cone","rings"];
@@ -31,7 +31,8 @@ export function makeEditorProject(input={}){
   const brand=compact(input.brand||"MediaForge",80);
   const title=compact(input.title||idea.slice(0,80),TITLE_MAX);
   const fps=([30,60].includes(input.fps)?input.fps:30);
-  const duration=integer(input.duration_seconds,10,60)?input.duration_seconds:30;
+  const free=input.timeline_mode==="free"||input.mode==="timeline-free";
+  const duration=integer(input.duration_seconds,free?1:10,free?600:60)?input.duration_seconds:30;
   const aspectRatio=ALLOWED_RATIOS.includes(input.aspect_ratio)?input.aspect_ratio:"9:16";
   const concept=idea.replace(/[.!?]+$/,"");
   const preferred=Array.isArray(input.scenes)&&input.scenes.length>=3&&input.scenes.length<=MAX_SCENES?input.scenes:null;
@@ -44,7 +45,7 @@ export function makeEditorProject(input={}){
     {kicker:"A TRANSFORMAÇÃO",headline:"Cada detalhe faz diferença.",detail:"Evolução visual, ritmo e profundidade.",shape:"torus",camera:"orbit"},
     {kicker:"PRÓXIMO PASSO",headline:"Transforme a ideia em movimento.",detail:brand+" · explore o próximo passo.",shape:"cone",camera:"dolly"}
   ];
-  const shots=preferred??defaults;
+  const shots=free?[]:(preferred??defaults);
   const weights=shots.map((s,i)=>Math.max(1,Number(s.weight)||Number(s.duration_seconds)|| (i===0||i===shots.length-1?3.2:4.4)));
   const totalWeight=weights.reduce((a,b)=>a+b,0);
   const totalFrames=duration*fps;
@@ -79,9 +80,10 @@ export function makeEditorProject(input={}){
   }
   const project={version:1,id:randomUUID().replaceAll("-",""),revision:0,brand,title,idea,
     fps,aspectRatio,totalFrames,
-    mode:"cinematic-3d",preset:compact(input.preset||"cinematic-3d-editor-v1",80),
+    mode:free?"timeline-free":"cinematic-3d",preset:compact(input.preset||(free?"native-free-timeline-v1":"cinematic-3d-editor-v1"),80),
+    ...(free?{canvasColor:"#0b1018"}:{}),
     scenes,audio:[],assets:[],layerAssets:[],layers:[],captions:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
-  const prepared=input.style_preset?applyEditorStylePreset(project,input.style_preset):project;
+  const prepared=input.style_preset&&!free?applyEditorStylePreset(project,input.style_preset):project;
   validateEditorProject(prepared);
   return prepared;
 }
@@ -92,9 +94,11 @@ export function validateEditorProject(p){
   if(typeof p.title!=="string"||!p.title.trim()||p.title.length>TITLE_MAX||typeof p.idea!=="string"||p.idea.length>400||p.idea.length<8)
     throw failure("PROJECT_TITLE_INVALID","Título ou ideia inválidos.");
   if(typeof p.brand!=="string"||p.brand.length>80)throw failure("PROJECT_BRAND_INVALID","Marca inválida.");
-  if(![30,60].includes(p.fps)||!ALLOWED_RATIOS.includes(p.aspectRatio)||!integer(p.totalFrames,p.fps*10,p.fps*60))
+  const free=p.mode==="timeline-free";
+  if(![30,60].includes(p.fps)||!ALLOWED_RATIOS.includes(p.aspectRatio)||!integer(p.totalFrames,p.fps*(free?1:10),p.fps*(free?600:60)))
     throw failure("PROJECT_FORMAT_INVALID","FPS, proporção ou duração não suportados.");
-  if(p.mode!=="cinematic-3d")throw failure("PROJECT_MODE_INVALID","Somente cinematic-3d é suportado nesta versão.");
+  if(!["cinematic-3d","timeline-free"].includes(p.mode))throw failure("PROJECT_MODE_INVALID","Modo de timeline inválido.");
+  if(free&&p.canvasColor!==undefined&&!rgb(p.canvasColor))throw failure("EDITOR_CANVAS_COLOR_INVALID","Cor do fundo da timeline inválida.");
   if(p.stylePreset!==undefined)getEditorStylePreset(p.stylePreset);
   if(p.assets!==undefined&&(!Array.isArray(p.assets)||p.assets.length>MAX_VISUAL_ASSETS))
     throw failure("VISUAL_ASSETS_INVALID","Máximo de oito assets visuais.");
@@ -107,7 +111,8 @@ export function validateEditorProject(p){
     assetIds.add(a.id);assetBytes+=a.size;
   }
   if(assetBytes>8*1024*1024)throw failure("VISUAL_ASSETS_TOO_LARGE","Assets visuais ultrapassam 8 MB.");
-  if(!Array.isArray(p.scenes)||p.scenes.length<3||p.scenes.length>MAX_SCENES)throw failure("SCENES_INVALID","O projeto precisa de 3 a 12 cenas.");
+  if(!Array.isArray(p.scenes)||(free?p.scenes.length!==0:p.scenes.length<3||p.scenes.length>MAX_SCENES))
+    throw failure("SCENES_INVALID",free?"A timeline livre não exige blocos de cena.":"O projeto precisa de 3 a 12 cenas.");
   let cursor=0; const names=new Set();
   for(const [i,s] of p.scenes.entries()){
     if(!s||!/^scene-[1-9][0-9]?$/.test(s.id)||names.has(s.id))throw failure("SCENE_ID_INVALID","ID de cena duplicado ou inválido.");
@@ -146,7 +151,7 @@ export function validateEditorProject(p){
         throw failure("SCENE_VISUAL_INVALID","Asset, mockup ou grid inválido na cena "+(i+1));
     }
   }
-  if(cursor!==p.totalFrames)throw failure("SCENES_GAP","A timeline não termina no último frame.");
+  if(!free&&cursor!==p.totalFrames)throw failure("SCENES_GAP","A timeline não termina no último frame.");
   if(p.layerAssets!==undefined&&(!Array.isArray(p.layerAssets)||p.layerAssets.length>8))throw failure("EDITOR_LAYER_ASSETS_INVALID","Máximo de oito vídeos importados.");
   const videoIds=new Set();let videoBytes=0;
   for(const asset of p.layerAssets??[]){

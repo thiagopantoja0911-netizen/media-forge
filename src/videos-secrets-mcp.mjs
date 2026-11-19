@@ -40,7 +40,8 @@ export const VIDEOS_SECRETS_TOOLS = [
     inputSchema:{type:"object",additionalProperties:false,properties:{
       idea:{type:"string",minLength:8,maxLength:400},
       brand:{type:"string",maxLength:80},title:{type:"string",maxLength:100},
-      duration_seconds:{type:"integer",minimum:10,maximum:60},fps:{type:"integer",enum:[30,60]},
+      timeline_mode:{type:"string",enum:["free","cinematic"]},
+      duration_seconds:{type:"integer",minimum:1,maximum:600},fps:{type:"integer",enum:[30,60]},
       aspect_ratio:{type:"string",enum:["9:16","16:9","1:1"]},
       style_preset:{type:"string",enum:["apple-clean","spotify-dark-glow","motivational-bw"]},
       scenes:{type:"array",minItems:3,maxItems:12,items:{type:"object",additionalProperties:false,properties:{
@@ -71,7 +72,7 @@ export const VIDEOS_SECRETS_TOOLS = [
     inputSchema:{type:"object",additionalProperties:false,properties:{
       project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
       scene_index:{type:"integer",minimum:0,maximum:11},
-      confirm_render:{type:"boolean",const:true}
+      confirm_render:{type:"boolean",const:true},allow_silent:{type:"boolean"}
     },required:["project_id","confirm_render"]}
   },
 
@@ -190,6 +191,7 @@ export const VIDEOS_SECRETS_TOOLS = [
     inputSchema:{type:"object",additionalProperties:false,properties:{
       project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
       expected_revision:{type:"integer",minimum:0},
+      duration_seconds:{type:"integer",minimum:1,maximum:600},canvas_color:{type:"string",pattern:"^#[a-fA-F0-9]{6}$"},
 
       motion_v2:{type:"object",description:"Objeto completo motionV2; omitir preserva o atual. Validado pelo motor nativo.",additionalProperties:false,properties:{
         version:{type:"integer",enum:[1]},enabled:{type:"boolean"},hideSceneTitles:{type:"boolean"},
@@ -231,7 +233,7 @@ export const VIDEOS_SECRETS_TOOLS = [
           id:{type:"string",pattern:"^[a-f0-9]{32}$"},name:{type:"string",maxLength:90},
           type:{type:"string",enum:["video","image","text","shape"]},assetId:{type:"string",pattern:"^[a-f0-9]{32}$"},
           text:{type:"string",maxLength:1200},color:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},
-          background:{type:"string",maxLength:240},fontFamily:{type:"string",enum:["sans","serif","mono"]},
+          background:{type:"string",maxLength:240},fontFamily:{type:"string",enum:["sans","serif","mono","impact","verdana","trebuchet","tahoma","times"]},
           fontSize:{type:"number",minimum:8,maximum:360},fontWeight:{type:"integer",minimum:100,maximum:900},
           textAlign:{type:"string",enum:["left","center","right"]},
           x:{type:"number",minimum:-4320,maximum:4320},y:{type:"number",minimum:-4320,maximum:4320},
@@ -242,6 +244,8 @@ export const VIDEOS_SECRETS_TOOLS = [
           zIndex:{type:"integer",minimum:-100,maximum:200},startFrame:{type:"integer",minimum:0},
           endFrame:{type:"integer",minimum:1},blendMode:{type:"string",enum:["normal","screen","multiply","overlay","lighten","darken"]},
           trimStartSeconds:{type:"number",minimum:0},speed:{type:"number",minimum:0.1,maximum:4},loop:{type:"boolean"},
+          transitionIn:{type:"object",additionalProperties:false,properties:{type:{type:"string",enum:["fade","slide-left","slide-right","wipe"]},frames:{type:"integer",minimum:1,maximum:180}},required:["type","frames"]},
+          transitionOut:{type:"object",additionalProperties:false,properties:{type:{type:"string",enum:["fade","slide-left","slide-right","wipe"]},frames:{type:"integer",minimum:1,maximum:180}},required:["type","frames"]},
           keyframes:{type:"array",maxItems:120,items:{type:"object",additionalProperties:false,properties:{
             frame:{type:"integer",minimum:0},easing:{type:"string",enum:["linear","ease-in","ease-out","ease-in-out","spring"]},
             x:{type:"number"},y:{type:"number"},z:{type:"number"},width:{type:"number"},height:{type:"number"},
@@ -252,7 +256,7 @@ export const VIDEOS_SECRETS_TOOLS = [
           name:{type:"string",maxLength:90},type:{type:"string",enum:["video","image","text","shape"]},
           assetId:{type:"string",pattern:"^[a-f0-9]{32}$"},text:{type:"string",maxLength:1200},
           color:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},background:{type:"string",maxLength:240},
-          fontFamily:{type:"string",enum:["sans","serif","mono"]},fontSize:{type:"number",minimum:8,maximum:360},
+          fontFamily:{type:"string",enum:["sans","serif","mono","impact","verdana","trebuchet","tahoma","times"]},fontSize:{type:"number",minimum:8,maximum:360},
           fontWeight:{type:"integer",minimum:100,maximum:900},textAlign:{type:"string",enum:["left","center","right"]},
           x:{type:"number"},y:{type:"number"},z:{type:"number"},width:{type:"number"},height:{type:"number"},
           rotationX:{type:"number"},rotationY:{type:"number"},rotationZ:{type:"number"},scale:{type:"number"},
@@ -260,6 +264,8 @@ export const VIDEOS_SECRETS_TOOLS = [
           startFrame:{type:"integer",minimum:0},endFrame:{type:"integer",minimum:1},
           blendMode:{type:"string",enum:["normal","screen","multiply","overlay","lighten","darken"]},
           trimStartSeconds:{type:"number",minimum:0},speed:{type:"number",minimum:0.1,maximum:4},loop:{type:"boolean"},
+          transitionIn:{type:"object",additionalProperties:false,properties:{type:{type:"string",enum:["fade","slide-left","slide-right","wipe"]},frames:{type:"integer",minimum:1,maximum:180}},required:["type","frames"]},
+          transitionOut:{type:"object",additionalProperties:false,properties:{type:{type:"string",enum:["fade","slide-left","slide-right","wipe"]},frames:{type:"integer",minimum:1,maximum:180}},required:["type","frames"]},
           keyframes:{type:"array",maxItems:120,items:{type:"object",additionalProperties:false,properties:{
             frame:{type:"integer",minimum:0},easing:{type:"string",enum:["linear","ease-in","ease-out","ease-in-out","spring"]},
             x:{type:"number"},y:{type:"number"},z:{type:"number"},width:{type:"number"},height:{type:"number"},
@@ -654,13 +660,15 @@ export async function handleVideosSecretsMcp({
     }
     if(name==="create_editor_project"){
       if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      if(args.timeline_mode!=="free"&&args.duration_seconds!==undefined&&(args.duration_seconds<10||args.duration_seconds>60))return writeError(response,id,-32602,"Storyboard 3D suporta 10–60 s; use timeline_mode=free para 1–600 s.",422,version);
       const project=await saveEditorProject(makeEditorProject(args));
       return writeResult(response,id,textResult({
         ok:true,projectId:project.id,revision:project.revision,
         editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
+        timelineMode:project.mode,durationSeconds:project.totalFrames/project.fps,
         scenes:project.scenes.map(s=>({id:s.id,headline:s.headline,durationSeconds:(s.endFrame-s.startFrame)/project.fps,
           shape:s.shape,camera:s.camera})),
-        message:"Projeto editável criado; prévia de cada cena e timeline visual prontas para revisão antes do render."
+        message:project.mode==="timeline-free"?"Timeline livre criada sem cenas: adicione clipes, keyframes e áudio.":"Storyboard 3D editável criado."
       },false,version),version);
     }
     if(name==="render_editor_project"){
@@ -670,6 +678,8 @@ export async function handleVideosSecretsMcp({
       const sceneIndex=args.scene_index===undefined?undefined:Number(args.scene_index);
       if(sceneIndex!==undefined&&(!Number.isInteger(sceneIndex)||sceneIndex<0||sceneIndex>=project.scenes.length))
         return writeError(response,id,-32602,"SCENE_NOT_FOUND",422,version);
+      if(project.mode==="timeline-free"&&!project.audio.length&&args.allow_silent!==true)
+        return writeError(response,id,-32602,"Timeline sem áudio: importe música/voz/SFX ou confirme allow_silent=true.",422,version);
       const previewReview=await requireApprovedEditorPreview(project);
       const files=await buildEditorRenderFiles(project,{sceneIndex});
       if(sceneIndex===undefined)for(const track of project.audio){
@@ -685,7 +695,7 @@ export async function handleVideosSecretsMcp({
           resolution:project.aspectRatio==="9:16"?"portrait":project.aspectRatio==="16:9"?"landscape":"square"},
         projectFiles:files,
         metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",editorProjectId:project.id,
-          editorSceneIndex:sceneIndex??null,productionMode:"cinematic-3d",
+          editorSceneIndex:sceneIndex??null,productionMode:project.mode,
           expectsAudio:sceneIndex===undefined&&project.audio.length>0,artisticQA:"pending-user-review",
           previewReviewRevision:previewReview.revision,previewReviewStatus:previewReview.status}
       });
@@ -770,13 +780,27 @@ export async function handleVideosSecretsMcp({
       if(args.expected_revision!==undefined&&args.expected_revision!==old.revision)
         return writeError(response,id,-32602,"EDITOR_REVISION_CONFLICT",409,version);
       const layers=args.layer_operations??[],captions=args.caption_operations??[];
-      if((!layers.length&&!captions.length&&args.motion_v2===undefined)||layers.length>80||captions.length>120)
+      if((!layers.length&&!captions.length&&args.motion_v2===undefined&&args.duration_seconds===undefined&&args.canvas_color===undefined)||layers.length>80||captions.length>120)
         return writeError(response,id,-32602,"Informe operações de camadas, legendas ou motion_v2.",422,version);
       const next=applyEditorTimelineOperations(old,{layer_operations:layers,caption_operations:captions});
-      if(args.motion_v2!==undefined)next.motionV2=args.motion_v2;
+      if(args.duration_seconds!==undefined||args.canvas_color!==undefined){
+        if(old.mode!=="timeline-free")return writeError(response,id,-32602,"Use timeline_mode=free para duração e tela livres.",422,version);
+        if(args.duration_seconds!==undefined){
+          const end=Math.round(args.duration_seconds*old.fps);
+          if([...next.layers,...next.captions,...next.audio].some(item=>item.endFrame>end))
+            return writeError(response,id,-32602,"Há clipes além da nova duração; mova ou corte antes de encurtar.",422,version);
+          next.totalFrames=end;
+        }
+        if(args.canvas_color!==undefined)next.canvasColor=args.canvas_color;
+      }
+      if(args.motion_v2!==undefined){
+        if(old.mode==="timeline-free")return writeError(response,id,-32602,"Use keyframes das camadas no modo livre; motion_v2 é do editor 3D.",422,version);
+        next.motionV2=args.motion_v2;
+      }
       validateEditorProject(next);
       const project=await saveEditorProject(next,{expectedRevision:old.revision});
       return writeResult(response,id,textResult({ok:true,revision:project.revision,
+        timelineMode:project.mode,durationSeconds:project.totalFrames/project.fps,canvasColor:project.canvasColor??null,
         layers:project.layers,captions:project.captions,
         motionV2:project.motionV2??null,motionQA:auditMotionV2(project),
         previewReview:await readEditorPreviewReview(project),

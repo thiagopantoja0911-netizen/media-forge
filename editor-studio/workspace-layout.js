@@ -157,13 +157,32 @@ const split=button("✂ Cortar","Dividir a camada ou legenda selecionada no curs
 const duplicate=button("Duplicar","Duplicar a camada ou legenda selecionada",duplicateSelection);
 const remove=button("Remover","Remover a camada ou legenda selecionada",removeSelection);
 const exportMap=button("↓ JSON","Exportar mapa de cenas e trilhas para editar com IA",exportTimelineMap);
+const freeRow=doc.createElement("div");freeRow.className="pro-free-tools";freeRow.hidden=true;
+const durationLabel=doc.createElement("label");durationLabel.textContent="Duração (s) ";
+const durationInput=doc.createElement("input");durationInput.type="number";durationInput.min="1";durationInput.max="600";durationInput.step="1";durationInput.value="30";
+durationLabel.append(durationInput);freeRow.append(durationLabel);
+durationInput.addEventListener("change",()=>{if(!api()?.setDuration(durationInput.value))durationInput.value=String(Math.round((getProject()?.totalFrames??900)/(getProject()?.fps??30)));});
+const bgLabel=doc.createElement("label");bgLabel.textContent="Tela ";
+const bgInput=doc.createElement("input");bgInput.type="color";bgInput.value="#0b1018";bgInput.title="Cor da tela — objetos e fundos ficam em camadas opcionais";
+bgInput.addEventListener("change",()=>api()?.setCanvasColor(bgInput.value));
+bgLabel.append(bgInput);freeRow.append(bgLabel);
+for(const [name,desc,fn] of [
+ ["T Texto","Criar clipe de texto na posição do cursor",()=>api()?.addLayer("text")],
+ ["▣ Forma","Adicionar forma ou cartão",()=>api()?.addLayer("shape")],
+ ["CC Legenda","Criar legenda independente",()=>api()?.addCaption()],
+ ["▧ Imagem","Importar imagem para uma camada",()=>api()?.importAsset("image")],
+ ["▶ Vídeo","Importar vídeo para uma camada",()=>api()?.importAsset("video")],
+ ["♫ Áudio","Importar música, voz ou efeito sonoro",()=>api()?.importAsset("audio")]
+])freeRow.append(button(name,desc,fn));
+const audioNotice=doc.createElement("span");audioNotice.className="pro-audio-notice";freeRow.append(audioNotice);
 for(const el of [label,hint,minus,zoomLabel,plus,fit,snap,split,duplicate,remove,exportMap,status])toolbar.append(el);
+toolbar.append(freeRow);
 panel.querySelector(".timeline-header").after(toolbar);
 ruler.classList.add("pro-ruler");
 ruler.title="Clique na régua para posicionar o cursor de reprodução";
 ruler.addEventListener("click",event=>{
  const p=getProject();if(!p)return;
- const rect=doc.getElementById("sceneTrack").getBoundingClientRect();
+ const rect=doc.getElementById(p.mode==="timeline-free"?"layerTrack":"sceneTrack").getBoundingClientRect();
  api().seekFrame(Math.round(clamp((event.clientX-rect.left)/rect.width,0,1)*(p.totalFrames-1)));
 });
 function selection(){
@@ -228,9 +247,11 @@ function magnet(frame,p){
  let result=Math.round(frame);
  if(!state.snap)return result;
  let distance=Math.max(3,Math.round(p.fps*.12));
- for(const scene of p.scenes){for(const target of [scene.startFrame,scene.endFrame]){
-  if(Math.abs(target-frame)<distance){distance=Math.abs(target-frame);result=target;}
- }}
+ const anchors=[0,p.totalFrames,...p.scenes.flatMap(s=>[s.startFrame,s.endFrame]),
+  ...(p.layers??[]).flatMap(l=>[l.startFrame,l.endFrame]),
+  ...(p.captions??[]).flatMap(c=>[c.startFrame,c.endFrame]),
+  ...(p.audio??[]).flatMap(a=>[a.startFrame,a.endFrame])];
+ for(const target of anchors)if(Math.abs(target-frame)<distance){distance=Math.abs(target-frame);result=target;}
  return result;
 }
 function seekMark(localFrame,clipDuration,globalFrame){
@@ -275,6 +296,9 @@ function attachDrag(clip,item,kind,rail){
      if(handle==="move")item.keyframes=(item.keyframes||[]).map(k=>({...k,frame:k.frame+delta}));
      else item.keyframes=(item.keyframes||[]).filter(k=>k.frame>=lastStart&&k.frame<=lastEnd);
      if(item.type==="video"&&handle==="start")item.trimStartSeconds=(item.trimStartSeconds||0)+(lastStart-oldStart)/p.fps*(item.speed||1);
+    }
+    if(kind==="layer")for(const key of ["transitionIn","transitionOut"]){
+      if(item[key])item[key].frames=Math.min(item[key].frames,item.endFrame-item.startFrame);
     }
     if(kind==="audio"&&item.role==="music")delete p.beatSync;
     api().commit();notify("Posição ou duração atualizada com precisão de quadro.");
@@ -342,6 +366,13 @@ function refresh(){
  const p=getProject();
  for(const b of [minus,plus,fit,snap,split,duplicate,remove,exportMap])b.disabled=!p;
  if(!p){status.textContent="Abra um projeto para editar";return;}
+ const free=p.mode==="timeline-free";
+ freeRow.hidden=!free;
+ if(free){
+   durationInput.value=String(Math.round(p.totalFrames/p.fps));
+   bgInput.value=p.canvasColor??"#0b1018";
+   audioNotice.textContent=p.audio.length?"Áudio: "+p.audio.length+" faixa(s)":"Sem áudio — adicione música, voz ou efeitos.";
+ }
  const selected=api().getSelection();
  for(const b of [split,duplicate,remove])b.disabled=!selected?.kind;
  renderRail("layerTrack",p.layers||[],"layer",p,selected);

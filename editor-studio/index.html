@@ -6,7 +6,7 @@
 <header class="topbar">
  <div class="brand"><span class="brandmark"><i></i><i></i><i></i></span><div><b>MEDIAFORGE</b><small>VISUAL EDITOR <span class="version">3D / BETA</span></small></div></div>
  <div class="project-title"><span class="statusdot"></span><span id="projectName">Nenhum projeto aberto</span><span id="saveStatus" class="saved">—</span></div>
- <div class="top-actions"><a href="/dashboard" class="quiet-link">Painel</a><button id="newProject" class="ghost">+ Nova ideia</button><button id="saveButton" class="ghost">Salvar</button><button id="renderButton" class="primary">Renderizar MP4</button></div>
+ <div class="top-actions"><a href="/dashboard" class="quiet-link">Painel</a><button id="newProject" class="ghost">+ Nova ideia</button><button id="saveButton" class="ghost">Salvar</button><button id="freeReviewButton" class="ghost" type="button" hidden>✓ Aprovar prévia</button><button id="renderButton" class="primary">Renderizar MP4</button></div>
 </header>
 <main class="workspace">
  <aside class="leftpanel">
@@ -136,6 +136,29 @@
    <div class="fieldrow"><label>Profundidade Z<input id="timelineItemZ" type="number" step="1"></label><label>Rotação X<input id="timelineItemRotationX" type="number" step="1"></label></div>
    <div class="fieldrow"><label>Rotação Y<input id="timelineItemRotationY" type="number" step="1"></label><label>Opacidade<input id="timelineItemOpacity" type="number" min="0" max="1" step=".05"></label></div>
    <label>Cor<input id="timelineItemColor" type="color"></label>
+   <div id="timelineTypographyFields" hidden>
+    <div class="fieldrow"><label>Fonte<select id="timelineFontFamily">
+     <option value="sans">Arial / Sans</option><option value="impact">Impact</option><option value="verdana">Verdana</option>
+     <option value="trebuchet">Trebuchet</option><option value="tahoma">Tahoma</option><option value="serif">Georgia</option>
+     <option value="times">Times New Roman</option><option value="mono">Courier New</option>
+    </select></label><label>Tamanho<input id="timelineFontSize" type="number" min="8" max="360" step="1"></label></div>
+    <div class="fieldrow"><label>Peso<select id="timelineFontWeight">
+     <option value="300">Leve</option><option value="400">Regular</option><option value="500">Médio</option>
+     <option value="600">Semibold</option><option value="700">Negrito</option><option value="800">Extra negrito</option><option value="900">Black</option>
+    </select></label><label>Alinhamento<select id="timelineTextAlign">
+     <option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option>
+    </select></label></div>
+   </div>
+   <div id="timelineClipTransitions" hidden>
+    <div class="fieldrow"><label>Entrada<select id="timelineTransitionIn">
+     <option value="none">Sem transição</option><option value="fade">Fade</option><option value="slide-left">Vem da esquerda</option>
+     <option value="slide-right">Vem da direita</option><option value="wipe">Revelação / wipe</option>
+    </select></label><label>Duração entrada (quadros)<input id="timelineTransitionInFrames" type="number" min="1" max="180" value="15"></label></div>
+    <div class="fieldrow"><label>Saída<select id="timelineTransitionOut">
+     <option value="none">Sem transição</option><option value="fade">Fade</option><option value="slide-left">Sai à esquerda</option>
+     <option value="slide-right">Sai à direita</option><option value="wipe">Ocultação / wipe</option>
+    </select></label><label>Duração saída (quadros)<input id="timelineTransitionOutFrames" type="number" min="1" max="180" value="15"></label></div>
+   </div>
    <div id="videoItemFields" hidden>
     <div class="fieldrow"><label>Trim inicial (s)<input id="timelineVideoTrim" type="number" min="0" step=".05"></label><label>Velocidade<input id="timelineVideoSpeed" type="number" min=".1" max="4" step=".1"></label></div>
     <label><input id="timelineVideoLoop" type="checkbox" style="width:auto"> Repetir vídeo (loop)</label>
@@ -153,13 +176,14 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal-backdrop" id="newModal" hidden><form id="ideaForm" class="modal">
  <div class="modal-top"><span>01 / NOVA PRODUÇÃO</span><button type="button" id="cancelModal" aria-label="Fechar">×</button></div>
- <h2>Transforme sua ideia em <em>motion 3D.</em></h2>
- <p>O MediaForge criará o storyboard e abrirá cada cena na timeline para você editar.</p>
+ <h2>Crie com uma <em>timeline de verdade.</em></h2>
+ <p>Modo livre: clipes, textos, imagens, legendas e som independentes, sem cenários 3D obrigatórios. O modo 3D antigo continua disponível.</p>
+ <label>Tipo de editor<select id="newEditorMode"><option value="free" selected>Timeline livre multipista (recomendado)</option><option value="cinematic">Storyboard 3D clássico</option></select></label>
  <label>Ideia do vídeo<textarea id="newIdea" required minlength="8" maxlength="400" rows="4" placeholder="Ex.: Explique como o marketing digital transforma a atenção de um cliente em uma venda."></textarea></label>
- <div class="fieldrow"><label>Marca / projeto<input id="newBrand" maxlength="80" value="MediaForge"></label><label>Duração<select id="newDuration"><option value="15">15 segundos</option><option value="20">20 segundos</option><option value="15" selected>15 segundos</option><option value="20">20 segundos</option><option value="30">30 segundos</option><option value="40">40 segundos</option><option value="60">60 segundos</option></select></label></div>
+ <div class="fieldrow"><label>Marca / projeto<input id="newBrand" maxlength="80" value="MediaForge"></label><label>Duração (segundos)<input id="newDuration" type="number" min="1" max="600" step="1" value="30"></label></div>
  <label>Preset de estilo<select id="newPreset"><option value="">Cinematic 3D padrão</option><option value="apple-clean">Apple Clean</option><option value="spotify-dark-glow">Spotify Dark Glow</option><option value="motivational-bw">Motivational P&B</option></select></label>
  <div class="fieldrow"><label>Formato<select id="newRatio"><option value="9:16">9:16 — Reels</option><option value="16:9">16:9 — Horizontal</option><option value="1:1">1:1 — Quadrado</option></select></label><label>FPS<select id="newFps"><option value="30">30 FPS</option><option value="60">60 FPS</option></select></label></div>
- <div class="modal-actions"><button type="button" class="ghost" id="cancelModal2">Cancelar</button><button type="submit" class="primary" id="submitIdea">Criar storyboard 3D</button></div>
+ <div class="modal-actions"><button type="button" class="ghost" id="cancelModal2">Cancelar</button><button type="submit" class="primary" id="submitIdea">Criar projeto</button></div>
 </form></div>
 </div>
 <script src="/editor/app.js" defer></script><script src="/editor/remotion-toggle.js" defer></script><script src="/editor/workspace-layout.js" defer></script><script src="/editor/motion-v2.js" defer></script><script src="/editor/queue-panel.js" defer></script></body></html>

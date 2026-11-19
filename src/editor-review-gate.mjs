@@ -32,15 +32,16 @@ export function validateEditorPreviewReview(project,input){
   if(!["pass","fail"].includes(input.decision))
     throw failure("PREVIEW_DECISION_INVALID","Decisão deve ser pass ou fail.");
   const checks=input.checks;
-  if(!Array.isArray(checks)||checks.length<1||checks.length>project.scenes.length)
+  const free=project.mode==="timeline-free";
+  if(!Array.isArray(checks)||checks.length<1||checks.length>(free?1:project.scenes.length))
     throw failure("PREVIEW_CHECKS_INVALID","Informe as cenas efetivamente verificadas.");
   const sceneIds=new Set();
   const normalized=checks.map(check=>{
-    const index=project.scenes.findIndex(s=>s.id===check?.scene_id);
+    const index=free?(check?.scene_id==="timeline"?0:-1):project.scenes.findIndex(s=>s.id===check?.scene_id);
     if(index<0||sceneIds.has(check.scene_id))
       throw failure("PREVIEW_SCENE_INVALID","Cena de prévia inválida ou repetida.");
     sceneIds.add(check.scene_id);
-    const duration=(project.scenes[index].endFrame-project.scenes[index].startFrame)/project.fps;
+    const duration=free?project.totalFrames/project.fps:(project.scenes[index].endFrame-project.scenes[index].startFrame)/project.fps;
     const samples=check.samples_seconds;
     if(!Array.isArray(samples)||samples.length<2||samples.length>5||
        samples.some(t=>typeof t!=="number"||!Number.isFinite(t)||t<0||t>duration)||
@@ -57,9 +58,9 @@ export function validateEditorPreviewReview(project,input){
       motion_ok:check.motion_ok,visual_ok:check.visual_ok,notes};
   });
   const allPassed=normalized.every(c=>c.preview_ready&&c.text_legible&&c.motion_ok&&c.visual_ok);
-  if(input.decision==="pass"&&(normalized.length!==project.scenes.length||!allPassed))
+  if(input.decision==="pass"&&(normalized.length!==(free?1:project.scenes.length)||!allPassed))
     throw failure("PREVIEW_NOT_APPROVED","Todas as cenas devem estar verificadas e aprovadas para renderizar.");
-  if(input.decision==="fail"&&allPassed&&normalized.length===project.scenes.length)
+  if(input.decision==="fail"&&allPassed&&normalized.length===(free?1:project.scenes.length))
     throw failure("PREVIEW_FAILURE_REASON_REQUIRED","Indique qual verificação falhou antes de voltar ao editor.");
   return {
     version:1,projectId:project.id,revision:project.revision,decision:input.decision,

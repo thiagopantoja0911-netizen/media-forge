@@ -15,8 +15,9 @@ const id=()=>randomUUID().replaceAll("-","");
 
 export function validateEditorTimeline(project){
   const layers=project.layers??[],captions=project.captions??[];
-  if(!Array.isArray(layers)||layers.length>120)throw fail("EDITOR_LAYERS_INVALID","Máximo de 120 camadas independentes.");
-  if(!Array.isArray(captions)||captions.length>120)throw fail("EDITOR_CAPTIONS_INVALID","Máximo de 120 blocos de legenda.");
+  const free=project.mode==="timeline-free";
+  if(!Array.isArray(layers)||layers.length>(free?240:120))throw fail("EDITOR_LAYERS_INVALID","Limite de camadas independentes excedido.");
+  if(!Array.isArray(captions)||captions.length>(free?600:120))throw fail("EDITOR_CAPTIONS_INVALID","Limite de blocos de legenda excedido.");
   const imageIds=new Set((project.assets??[]).map(a=>a.id));
   const videoIds=new Set((project.layerAssets??[]).map(a=>a.id));
   const layerIds=new Set();
@@ -33,10 +34,17 @@ export function validateEditorTimeline(project){
     if(layer.type==="image"&&!imageIds.has(layer.assetId))throw fail("EDITOR_LAYER_ASSET_INVALID","Camada de imagem precisa apontar para um asset importado.");
     if(layer.type==="video"&&!videoIds.has(layer.assetId))throw fail("EDITOR_LAYER_ASSET_INVALID","Camada de vídeo precisa apontar para um vídeo importado.");
     if(layer.type==="text"&&(typeof layer.text!=="string"||layer.text.length>1200))throw fail("EDITOR_LAYER_TEXT_INVALID","Texto da camada excede 1.200 caracteres.");
-    if(layer.fontFamily!==undefined&&!["sans","serif","mono"].includes(layer.fontFamily))throw fail("EDITOR_LAYER_FONT_INVALID","Família tipográfica inválida.");
+    if(layer.fontFamily!==undefined&&!["sans","serif","mono","impact","verdana","trebuchet","tahoma","times"].includes(layer.fontFamily))throw fail("EDITOR_LAYER_FONT_INVALID","Família tipográfica inválida.");
     if(layer.fontSize!==undefined&&!num(layer.fontSize,8,360))throw fail("EDITOR_LAYER_FONT_INVALID","Tamanho tipográfico inválido.");
     if(layer.fontWeight!==undefined&&!int(layer.fontWeight,100,900))throw fail("EDITOR_LAYER_FONT_INVALID","Peso tipográfico inválido.");
     if(layer.textAlign!==undefined&&!["left","center","right"].includes(layer.textAlign))throw fail("EDITOR_LAYER_ALIGN_INVALID","Alinhamento inválido.");
+    if(free){
+      for(const transition of [layer.transitionIn,layer.transitionOut])if(transition!==undefined){
+        if(!transition||!["fade","slide-left","slide-right","wipe"].includes(transition.type)||
+          !int(transition.frames,1,Math.min(180,layer.endFrame-layer.startFrame)))
+          throw fail("EDITOR_CLIP_TRANSITION_INVALID","Transição por clipe inválida.");
+      }
+    }
     if(layer.type==="video"){
       if(!num(layer.trimStartSeconds??0,0,3600)||!num(layer.speed??1,.1,4)||typeof (layer.loop??false)!=="boolean")
         throw fail("EDITOR_VIDEO_PLAYBACK_INVALID","Trim, velocidade ou loop de vídeo inválido.");
@@ -82,7 +90,7 @@ export function validateEditorTimeline(project){
   return project;
 }
 
-const layerFields=["name","type","assetId","text","color","background","fontFamily","fontSize","fontWeight","textAlign","x","y","z","width","height","rotationX","rotationY","rotationZ","scale","opacity","zIndex","startFrame","endFrame","blendMode","trimStartSeconds","speed","loop","keyframes"];
+const layerFields=["name","type","assetId","text","color","background","fontFamily","fontSize","fontWeight","textAlign","x","y","z","width","height","rotationX","rotationY","rotationZ","scale","opacity","zIndex","startFrame","endFrame","blendMode","trimStartSeconds","speed","loop","keyframes","transitionIn","transitionOut"];
 const captionFields=["text","startFrame","endFrame","style","animation","x","y","width","fontSize","color","highlightColor","backgroundColor","backgroundOpacity","zIndex","align","wordTimings"];
 function copyFields(target,source,fields){
   if(!source||typeof source!=="object"||Array.isArray(source))throw fail("EDITOR_OPERATION_INVALID","Operação sem objeto de propriedades.");
@@ -104,6 +112,7 @@ function makeLayer(project,input={}){
     rotationX:input.rotationX??0,rotationY:input.rotationY??0,rotationZ:input.rotationZ??0,
     scale:input.scale??1,opacity:input.opacity??1,zIndex:input.zIndex??(type==="video"?-1:type==="shape"?0:type==="image"?12:20),
     blendMode:input.blendMode??"normal",keyframes:input.keyframes??[],
+    ...(input.transitionIn?{transitionIn:input.transitionIn}:{}),...(input.transitionOut?{transitionOut:input.transitionOut}:{}),
     ...(input.color!==undefined?{color:input.color}:{}),
     ...(input.background!==undefined?{background:input.background}:{}),
     ...(input.text!==undefined?{text:input.text}:{}),
