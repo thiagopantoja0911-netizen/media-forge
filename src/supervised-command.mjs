@@ -82,7 +82,7 @@ export function runSupervisedCommand(command,args,cwd,diagnosticBase,{
     child.stdout.on("data",chunk=>consume(chunk,false));
     child.stderr.on("data",chunk=>consume(chunk,true));
     child.on("error",error=>{spawnError=error;});
-    child.on("close",async(code,signal)=>{
+    child.on("close",async(code,terminationSignal)=>{
       closed=true;clearInterval(interval);if(forceKill)clearTimeout(forceKill);
       signal?.removeEventListener("abort",onAbort);
       await Promise.allSettled([finished(stdoutLog),finished(stderrLog)]);
@@ -90,7 +90,7 @@ export function runSupervisedCommand(command,args,cwd,diagnosticBase,{
       if(spawnError){reject(spawnError);return;}
       if(code===0){resolve({stdout,stderr,framesCompleted:tracker?.state.framesCompleted??null});return;}
       const summary=summarizeCheck(stdout);
-      const error=new Error("HyperFrames exited with "+(signal?"signal "+signal:"code "+code)+
+      const error=new Error("HyperFrames exited with "+(terminationSignal?"signal "+terminationSignal:"code "+code)+
         (summary?": "+summary:stderr.trim()?": "+stderr.trim().slice(-2000):"")+". Full diagnostics: "+diagnosticBase);
       error.code="HYPERFRAMES_FAILED";
       error.exitCode=code;
