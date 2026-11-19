@@ -27,6 +27,8 @@ const staticFiles=new Map([
   ["/editor/remotion-assets/badge.png","../remotion-public/remotion-assets/badge.png"],
   ["/editor/style.css","../editor-studio/style.css"],
   ["/editor/workspace-layout.css","../editor-studio/workspace-layout.css"],
+  ["/editor/motion-v2.css","../editor-studio/motion-v2.css"],
+  ["/editor/motion-v2.js","../editor-studio/motion-v2.js"],
   ["/editor/workspace-layout.js","../editor-studio/workspace-layout.js"],
   ["/editor/queue-panel.js","../editor-studio/queue-panel.js"],
   ["/editor/vendor/three.module.js","../node_modules/three/build/three.module.js"],
