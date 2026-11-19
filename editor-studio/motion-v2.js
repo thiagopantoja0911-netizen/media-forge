@@ -24,11 +24,13 @@ panel.innerHTML='<summary>Motion Engine V2 · 2D/2.5D</summary>'+
 '<label>Easing<select id="motionV2Ease"><option value="cubic-out">Cubic out</option><option value="ease-in-out">Ease in-out</option><option value="spring">Spring</option><option value="bezier">Bézier (0.22,1,0.36,1)</option></select></label>'+
 '<label>Entrada (frames)<input id="motionV2InFrames" type="number" min="1" max="120" value="16"></label>'+
 '<label>Saída (frames)<input id="motionV2OutFrames" type="number" min="1" max="120" value="13"></label></div>'+
+'<label class="motion-v2-reference">Frame Lab · ID da referência<input id="motionV2FrameLabReference" maxlength="32" placeholder="ID de 32 caracteres" type="text"></label>'+
 '<div class="motion-v2-actions">'+
 '<button type="button" id="motionV2ApplyBackground">＋ Keyframe de fundo no cursor</button>'+
 '<button type="button" id="motionV2ApplyLayer">Aplicar à camada selecionada</button>'+
 '<button type="button" id="motionV2Bezier">＋ Trajetória Bézier em arco</button>'+
 '<button type="button" id="motionV2AutoCompose">Preparar todas as camadas</button>'+
+'<button type="button" id="motionV2AttachReference">Vincular referência Frame Lab</button>'+
 '<button type="button" id="motionV2QA">Executar QA de movimento</button></div>'+
 '<div id="motionV2Status" class="motion-v2-result" role="status" aria-live="polite">Selecione um projeto para editar.</div>'+
 '</div>';
@@ -145,6 +147,8 @@ function refresh(){
  $("motionV2Enabled").checked=Boolean(m?.enabled);
  $("motionV2HideTitles").checked=Boolean(m?.hideSceneTitles);
  $("motionV2HideTitles").disabled=!p;
+ $("motionV2AttachReference").disabled=!p;
+ if(document.activeElement!==$("motionV2FrameLabReference"))$("motionV2FrameLabReference").value=m?.frameLabProjectId||"";
  for(const id of ["motionV2ApplyBackground","motionV2AutoCompose","motionV2QA"]){$(id).disabled=!p;}
  for(const id of ["motionV2ApplyLayer","motionV2Bezier"]){$(id).disabled=!selectedLayer();}
  bgRail.replaceChildren();
@@ -171,6 +175,14 @@ $("motionV2HideTitles").addEventListener("change",e=>{
  const p=P();if(!p)return;
  const m=init(p);m.hideSceneTitles=e.target.checked;
  commit("Títulos 3D "+(m.hideSceneTitles?"ocultados":"visíveis")+".");
+});
+$("motionV2AttachReference").addEventListener("click",()=>{
+ const p=P();if(!p)return notify("Abra um projeto primeiro.");
+ const value=$("motionV2FrameLabReference").value.trim();
+ if(value&&!/^[a-f0-9]{32}$/.test(value))return notify("Informe um ID Frame Lab válido de 32 caracteres.");
+ const m=init(p);
+ if(value)m.frameLabProjectId=value;else delete m.frameLabProjectId;
+ commit(value?"Referência vinculada; próximos renders gerarão comparação no Frame Lab.":"Referência desvinculada.");
 });
 $("motionV2ApplyBackground").addEventListener("click",updateBackground);
 $("motionV2ApplyLayer").addEventListener("click",layerMove);
