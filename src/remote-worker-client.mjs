@@ -93,6 +93,10 @@ async function hashFile(path) {
 }
 async function processRemote(job,leaseId) {
   const active={id:job.id,leaseId};
+  const renderAbort=new AbortController();
+  const throwIfCancelled=()=>{
+    if(renderAbort.signal.aborted)throw Object.assign(new Error("Render cancelado pelo usuario"),{code:"JOB_CANCELLED",retryable:false});
+  };
   let lastReportAt=0,lastReportPct=-1;
   const report=async (progress,message,detail={})=>{
     const now=Date.now();
@@ -105,16 +109,20 @@ async function processRemote(job,leaseId) {
       });
     }catch(error){console.warn("Could not report render progress:",error.message);}
   };
-  const interval=setInterval(()=>sendHeartbeat(active).catch((error)=>
-    console.error("Heartbeat failed:",error.message)),15000);
+  const interval=setInterval(()=>
+    sendHeartbeat(active).then(result=>{
+      if(result.cancelRequested)renderAbort.abort();
+    }).catch(error=>console.error("Heartbeat failed:",error.message)),15000);
   try{
     await report(12,"Baixando projeto no computador Windows",{phase:"downloading"});
     await downloadProject(job.id,leaseId);
+    throwIfCancelled();
     const configured={...job,project:{...job.project,sourceDir:job.id}};
     if(!["hyperframes","remotion"].includes(configured.project.renderer))throw new Error("Unsupported renderer for remote worker");
     const rendered=configured.project.renderer==="remotion"
       ?await renderWithRemotion(configured)
-      :await renderWithHyperFrames(configured,{onProgress:report});
+      :await renderWithHyperFrames(configured,{onProgress:report,signal:renderAbort.signal});
+    throwIfCancelled();
     await report(93,"Render concluído; validando arquivo MP4",{phase:"technical-qa"});
     const info=await stat(rendered.outputPath);
     if(!info.isFile()||info.size===0)throw new Error("Video artifact missing or empty");
@@ -140,6 +148,7 @@ async function processRemote(job,leaseId) {
     // A failed upload fails the job instead of falsely marking the pipeline completed.
     // Every completed video must be retrievable in ChatGPT, not stranded on Windows.
     // A failed upload fails the job, instead of falsely reporting completed.
+    throwIfCancelled();
     await report(96,"Enviando MP4 validado para o MediaForge",{phase:"uploading"});
     const artifactUploaded=Boolean((await uploadDeliveredArtifact(job.id,leaseId,rendered.outputPath)).ok);
     await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
