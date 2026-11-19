@@ -61,7 +61,8 @@ export async function loadEditorVisualAsset(project,assetId){
 }
 export async function buildEditorVisualAssets(project,{sceneIndex}={}){
   const scenes=sceneIndex===undefined?project.scenes:[project.scenes[sceneIndex]];
-  const assetIds=new Set(scenes.flatMap(s=>s.visual?[s.visual.assetId,...(s.visual.assetIds??[])]:[]).filter(Boolean));
+  const assetIds=new Set([...scenes.flatMap(s=>s?.visual?[s.visual.assetId,...(s.visual.assetIds??[])]:[]),
+    ...(project.layers??[]).filter(layer=>layer.type==="image").map(layer=>layer.assetId)].filter(Boolean));
   const files=[];
   for(const id of assetIds){
     const {asset,bytes}=await loadEditorVisualAsset(project,id);
