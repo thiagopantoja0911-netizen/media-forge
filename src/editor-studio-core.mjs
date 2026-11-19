@@ -3,6 +3,7 @@ import { readFile, readdir, mkdir, writeFile, rename, stat } from "node:fs/promi
 import { join, resolve } from "node:path";
 import { getEditorStylePreset, applyEditorStylePreset } from "./editor-style-presets.mjs";
 import { validateSceneTypography } from "./editor-typography.mjs";
+import { validateMotionV2 } from "./editor-motion-v2.mjs";
 import { validateEditorTimeline } from "./editor-timeline.mjs";
 
 const TITLE_MAX=100, MAX_AUDIO=10, MAX_SCENES=12, MAX_VISUAL_ASSETS=8;
@@ -167,6 +168,7 @@ export function validateEditorProject(p){
     audioNames.add(a.id);
   }
   validateEditorTimeline(p);
+  validateMotionV2(p);
   return p;
 }
 export const editorStoreDir=()=>resolve(process.env.MEDIAFORGE_DATA_DIR??".mediaforge","editor-projects");
