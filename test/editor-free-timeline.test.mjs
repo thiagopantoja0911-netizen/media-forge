@@ -7,6 +7,7 @@ import { applyEditorTimelineOperations } from "../src/editor-timeline.mjs";
 import { buildEditorIndex,buildEditorSceneModule,buildEditorRenderFiles } from "../src/editor-studio-engine.mjs";
 import { validateEditorPreviewReview } from "../src/editor-review-gate.mjs";
 import { freeTimelineRuntime } from "../src/editor-free-timeline.mjs";
+import { VIDEOS_SECRETS_TOOLS } from "../src/videos-secrets-mcp.mjs";
 
 const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 const free=(duration=36)=>makeEditorProject({idea:"Timeline multipista profissional sem cenas obrigatórias",title:"Timeline livre",brand:"MediaForge",timeline_mode:"free",duration_seconds:duration,fps:30,aspect_ratio:"9:16"});
@@ -105,4 +106,18 @@ test("editor UI exposes full duration, audio import, typography, real clip trans
  assert.match(app,/allowSilent=true/);
  assert.doesNotThrow(()=>new Script(app));
  assert.doesNotThrow(()=>new Script(tools));
+});
+
+test("connected AI can create and edit scene-free projects through native MCP schema",()=>{
+ const byName=name=>VIDEOS_SECRETS_TOOLS.find(x=>x.name===name);
+ const create=byName("create_editor_project"),edit=byName("edit_editor_timeline"),render=byName("render_editor_project");
+ assert.ok(create&&edit&&render);
+ assert.deepEqual(create.inputSchema.properties.timeline_mode.enum,["free","cinematic"]);
+ assert.equal(create.inputSchema.properties.duration_seconds.maximum,600);
+ assert.equal(edit.inputSchema.properties.duration_seconds.maximum,600);
+ assert.match(edit.inputSchema.properties.canvas_color.pattern,/#[a-fA-F0-9]/);
+ const layer=edit.inputSchema.properties.layer_operations.items.properties.layer.properties;
+ assert.ok(layer.transitionIn);assert.ok(layer.transitionOut);
+ assert.ok(layer.fontFamily.enum.includes("impact"));
+ assert.ok(render.inputSchema.properties.allow_silent);
 });
