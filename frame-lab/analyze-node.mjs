@@ -85,8 +85,12 @@ async function probeVideo(path){
 }
 async function iterateRGB(path,meta,onFrame){
   const frameSize=meta.width*meta.height*3;
+  // Shared hosting may refuse the automatic per-core frame/filter threads.
+  // Keep decoding and rawvideo encoding single-threaded for predictable limits.
   const args=["-nostdin","-hide_banner","-loglevel","error",
-    "-i",path,"-map","0:v:0","-vsync","0","-f","rawvideo","-pix_fmt","rgb24","pipe:1"];
+    "-threads","1","-filter_threads","1","-filter_complex_threads","1",
+    "-i",path,"-map","0:v:0","-vsync","0",
+    "-threads:v","1","-f","rawvideo","-pix_fmt","rgb24","pipe:1"];
   const proc=spawn(ffmpeg,args,{stdio:["ignore","pipe","pipe"]});
   let stderr="", count=0;
   proc.stderr.on("data",chunk=>{stderr=(stderr+String(chunk)).slice(-1000)});
