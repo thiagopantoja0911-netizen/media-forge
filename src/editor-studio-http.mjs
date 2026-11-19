@@ -275,6 +275,8 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       if(raw.confirm!==true){json(response,428,{ok:false,error:"RENDER_CONFIRMATION_REQUIRED"});return true;}
       if(p.mode==="timeline-free"&&raw.sceneIndex!==undefined)
         throw Object.assign(new Error("Timeline livre é renderizada por inteiro, sem depender de cenas."),{status:422});
+      if(p.mode==="timeline-free"&&!p.audio.length&&raw.allowSilent!==true)
+        throw Object.assign(new Error("Projeto sem áudio. Adicione música, voz ou efeitos; para render silencioso confirme explicitamente no editor."),{status:422,code:"SILENT_RENDER_CONFIRMATION_REQUIRED"});
       const sceneIndex=raw.sceneIndex===undefined?undefined:validIndex(raw.sceneIndex,p);
       const frameLabReferenceProjectId=p.motionV2?.enabled?p.motionV2.frameLabProjectId??null:null;
       if(frameLabReferenceProjectId){
