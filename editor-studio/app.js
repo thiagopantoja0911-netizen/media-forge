@@ -232,6 +232,20 @@ function fillTimelineItemInspector(){
  $("timelineItemOpacity").value=layer?.opacity??caption?.backgroundOpacity??1;
  for(const id of ["timelineItemScale","timelineItemRotation","timelineItemZ","timelineItemRotationX","timelineItemRotationY"])$(id).disabled=Boolean(caption);
  $("timelineItemColor").value=caption?.color??layer?.color??"#ffffff";
+ $("timelineTypographyFields").hidden=layer?.type!=="text";
+ if(layer?.type==="text"){
+   $("timelineFontFamily").value=layer.fontFamily??"sans";
+   $("timelineFontSize").value=layer.fontSize??64;
+   $("timelineFontWeight").value=String(layer.fontWeight??800);
+   $("timelineTextAlign").value=layer.textAlign??"left";
+ }
+ const free=state.project?.mode==="timeline-free";
+ $("timelineClipTransitions").hidden=!free||!layer;
+ if(free&&layer)for(const side of ["In","Out"]){
+   const conf=layer["transition"+side];
+   $("timelineTransition"+side).value=conf?.type??"none";
+   $("timelineTransition"+side+"Frames").value=conf?.frames??15;
+ }
  $("timelineVideoTrim").value=layer?.trimStartSeconds??0;$("timelineVideoSpeed").value=layer?.speed??1;$("timelineVideoLoop").checked=Boolean(layer?.loop);
  $("videoItemFields").hidden=layer?.type!=="video";
  captionFields.hidden=!caption;easingField.hidden=!layer;button.hidden=!layer;
@@ -273,7 +287,8 @@ function updateTimelineItem(field,value){
  else if(field==="style"||field==="animation")item[field]=value;
  else if(caption&&["x","y"].includes(field))item[field]=clamp(value,0,field==="x"?1080:1920);
  else if(caption&&field==="opacity")item.backgroundOpacity=clamp(value,0,1);
- else if(layer&&["x","y","z","scale","rotationX","rotationY","rotationZ","opacity","trimStartSeconds","speed","loop"].includes(field))item[field]=value;
+ else if(layer&&["x","y","z","scale","rotationX","rotationY","rotationZ","opacity","trimStartSeconds","speed","loop","fontSize","fontWeight"].includes(field))item[field]=value;
+ else if(layer&&["fontFamily","textAlign"].includes(field))item[field]=value;
  afterChange();fillTimelineItemInspector();
 }
 function connectTimelineItemInspector(){
@@ -292,6 +307,23 @@ function connectTimelineItemInspector(){
   $(id).addEventListener("change",()=>updateTimelineItem(key,Number($(id).value)));
  }
  $("timelineItemColor").addEventListener("change",()=>updateTimelineItem("color",$("timelineItemColor").value));
+ for(const [id,key] of [["timelineFontFamily","fontFamily"],["timelineTextAlign","textAlign"]])
+   $(id).addEventListener("change",()=>updateTimelineItem(key,$(id).value));
+ for(const [id,key] of [["timelineFontSize","fontSize"],["timelineFontWeight","fontWeight"]])
+   $(id).addEventListener("change",()=>updateTimelineItem(key,Number($(id).value)));
+ function updateTransition(side){
+   const layer=state.project?.layers?.find(item=>item.id===state.selectedLayerId);
+   if(!layer||state.project.mode!=="timeline-free")return;
+   const type=$("timelineTransition"+side).value;
+   const frames=clamp(Math.round(Number($("timelineTransition"+side+"Frames").value)||15),1,Math.min(180,layer.endFrame-layer.startFrame));
+   if(type==="none")delete layer["transition"+side];
+   else layer["transition"+side]={type,frames};
+   afterChange();fillTimelineItemInspector();
+ }
+ for(const side of ["In","Out"]){
+   $("timelineTransition"+side).addEventListener("change",()=>updateTransition(side));
+   $("timelineTransition"+side+"Frames").addEventListener("change",()=>updateTransition(side));
+ }
  $("timelineVideoLoop").addEventListener("change",()=>updateTimelineItem("loop",$("timelineVideoLoop").checked));
  $("timelineCaptionStyle").addEventListener("change",()=>updateTimelineItem("style",$("timelineCaptionStyle").value));
  $("timelineCaptionAnimation").addEventListener("change",()=>updateTimelineItem("animation",$("timelineCaptionAnimation").value));
@@ -726,6 +758,24 @@ window.MediaForgeTimelineAPI=Object.freeze({
  getProject:()=>state.project,
  getSelection:()=>({kind:state.selectedLayerId?"layer":state.selectedCaptionId?"caption":null,id:state.selectedLayerId||state.selectedCaptionId}),
  currentFrame:()=>state.project?(state.project.mode==="timeline-free"?0:state.project.scenes[state.selected].startFrame)+Math.round(state.frame*state.project.fps):0,
+ addLayer:type=>addTimelineLayer(type),
+ addCaption:addTimelineCaption,
+ importAsset:type=>(type==="video"?$("videoUpload"):type==="image"?$("imageUpload"):$("audioUpload"))?.click(),
+ setDuration:seconds=>{
+   const p=state.project;if(!p||p.mode!=="timeline-free")return false;
+   const duration=Math.round(Number(seconds));
+   if(!Number.isInteger(duration)||duration<1||duration>600){toast("Escolha de 1 a 600 segundos.");return false;}
+   const frames=duration*p.fps;
+   if([...p.layers,...p.captions,...p.audio].some(item=>item.endFrame>frames)){
+     toast("Há clipes além da nova duração. Mova ou corte esses elementos antes de encurtar.");return false;
+   }
+   p.totalFrames=frames;state.frame=Math.min(state.frame,duration);
+   afterChange(true);openScene(0,{seek:state.frame});return true;
+ },
+ setCanvasColor:color=>{
+   const p=state.project;if(!p||p.mode!=="timeline-free"||!/^#[a-fA-F0-9]{6}$/.test(color))return false;
+   p.canvasColor=color;afterChange(true);return true;
+ },
  seekFrame:(frame)=>{
   const p=state.project;if(!p)return;
   const n=clamp(Math.round(frame),0,p.totalFrames-1);
