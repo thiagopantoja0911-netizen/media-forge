@@ -25,6 +25,8 @@ export function validateMotionV2(project){
  if(m===undefined)return project;
  if(!m||typeof m!=="object"||m.version!==1||typeof m.enabled!=="boolean")
    throw err("MOTION_V2_INVALID","Motion V2 precisa de version:1 e enabled boolean.");
+ if(m.frameLabProjectId!==undefined&&!(typeof m.frameLabProjectId==="string"&&/^[a-f0-9]{32}$/.test(m.frameLabProjectId)))
+   throw err("MOTION_FRAME_LAB_INVALID","ID da referência Frame Lab precisa de 32 dígitos hexadecimais.");
  if(m.hideSceneTitles!==undefined&&typeof m.hideSceneTitles!=="boolean")
    throw err("MOTION_TITLES_INVALID","hideSceneTitles precisa ser boolean.");
  if(m.background!==undefined){
