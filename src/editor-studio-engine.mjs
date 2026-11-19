@@ -22,7 +22,7 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
   const frameEnd=frameOffset+shots.at(-1).endFrame;
   const layerMarkup=(p.layers??[]).filter(layer=>layer.endFrame>frameOffset&&layer.startFrame<frameEnd).map(layer=>{
     const localStart=Math.max(0,layer.startFrame-frameOffset),localEnd=Math.min(frameEnd,layer.endFrame)-frameOffset;
-    const common=' id="layer-'+layer.id+'" class="editor-layer clip" data-start="'+localStart/p.fps+'" data-duration="'+(localEnd-localStart)/p.fps+'" data-track-index="'+Math.max(1,layer.zIndex+20)+'"';
+    const common=' id="layer-'+layer.id+'" class="editor-layer clip" data-start="'+localStart/p.fps+'" data-duration="'+(localEnd-localStart)/p.fps+'" data-track-index="'+Math.max(1,layer.zIndex+20)+'" data-layout-allow-overlap';
     const base='position:absolute;left:0;top:0;width:'+layer.width+'px;height:'+layer.height+'px;z-index:'+layer.zIndex+';opacity:'+layer.opacity+';mix-blend-mode:'+layer.blendMode+';transform:translate3d('+layer.x+'px,'+layer.y+'px,'+layer.z+'px) rotateX('+layer.rotationX+'deg) rotateY('+layer.rotationY+'deg) rotateZ('+layer.rotationZ+'deg) scale('+layer.scale+');transform-origin:top left;transform-style:preserve-3d;';
     if(layer.type==="video"){
       const asset=(p.layerAssets??[]).find(item=>item.id===layer.assetId);
@@ -49,7 +49,7 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
     const rgb=caption.backgroundColor.match(/[0-9a-fA-F]{2}/g).map(value=>parseInt(value,16));
     const bg='rgba('+rgb.join(",")+','+caption.backgroundOpacity+')';
     const style='left:'+caption.x+'px;top:'+caption.y+'px;width:'+caption.width+'px;font-size:'+caption.fontSize+'px;color:'+caption.color+';background:'+(caption.style==="minimal"||caption.style==="outline"?"transparent":bg)+';text-align:'+caption.align+';z-index:'+(caption.zIndex+50)+';';
-    return '<div id="caption-layer-'+caption.id+'" class="editor-caption clip" data-animation="'+caption.animation+'" data-style="'+caption.style+'" data-start="'+localStart/p.fps+'" data-duration="'+(localEnd-localStart)/p.fps+'" data-track-index="'+(caption.zIndex+70)+'" style="'+style+'">'+content+'</div>';
+    return '<div id="caption-layer-'+caption.id+'" class="editor-caption clip" data-animation="'+caption.animation+'" data-style="'+caption.style+'" data-start="'+localStart/p.fps+'" data-duration="'+(localEnd-localStart)/p.fps+'" data-track-index="'+(caption.zIndex+70)+'" data-layout-allow-overlap style="'+style+'">'+content+'</div>';
   }).join("");
   const labels=shots.map((s,i)=>
     '<div id="caption-'+i+'" class="caption clip" data-layout-ignore data-start="'+s.startFrame/p.fps+'" data-duration="'+(s.endFrame-s.startFrame)/p.fps+'" data-track-index="'+(i+2)+'">'+
@@ -517,7 +517,11 @@ function editorRuntime(){
   });
   window.addEventListener("hf-seek",event=>{
     const t=Number(event.detail.time??0);
-    event.detail.waitUntil(Promise.all(texturePromises).then(()=>{draw(t);return Promise.all(pendingVideoSeeks.splice(0));}));
+    const videoReady=[...document.querySelectorAll(".editor-layer video")].map(video=>video.readyState>=1?Promise.resolve():new Promise(resolve=>{
+      const done=()=>{video.removeEventListener("loadedmetadata",done);resolve();};
+      video.addEventListener("loadedmetadata",done,{once:true});setTimeout(done,5000);
+    }));
+    event.detail.waitUntil(Promise.all([...texturePromises,...videoReady]).then(()=>{draw(t);return Promise.all(pendingVideoSeeks.splice(0));}));
   });
   window.__hf=window.__hf||{};
   window.__hf.buildReady=window.__hf.buildReady||{};

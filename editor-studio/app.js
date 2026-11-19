@@ -236,7 +236,7 @@ function addTimelineLayer(type,assetId){
  if(type==="image"&&!assetId)assetId=p.assets?.[0]?.id;
  if(type==="video"&&!assetId)assetId=p.layerAssets?.[0]?.id;
  if(["image","video"].includes(type)&&!assetId)return toast(type==="image"?"Importe uma imagem primeiro.":"Importe um vídeo MP4 ou WebM primeiro.");
- const start=Math.round((p.scenes[state.selected]?.startFrame??0)+state.frame*p.fps);
+ const start=clamp(Math.round((p.scenes[state.selected]?.startFrame??0)+state.frame*p.fps),0,p.totalFrames-1);
  const id=crypto.randomUUID().replaceAll("-","");
  const layer={id,name:type==="text"?"Texto "+((p.layers?.length??0)+1):type==="shape"?"Forma de fundo":type==="image"?"Imagem":"Vídeo",
   type,assetId,startFrame:start,endFrame:p.totalFrames,x:type==="text"?80:0,y:type==="text"?height*.62:0,z:0,
@@ -249,7 +249,7 @@ function addTimelineLayer(type,assetId){
 }
 function addTimelineCaption(){
  if(!state.project)return toast("Crie um projeto antes de adicionar legendas.");
- const p=state.project,start=Math.round((p.scenes[state.selected]?.startFrame??0)+state.frame*p.fps);
+ const p=state.project,start=clamp(Math.round((p.scenes[state.selected]?.startFrame??0)+state.frame*p.fps),0,p.totalFrames-1);
  const id=crypto.randomUUID().replaceAll("-","");
  p.captions??=[];p.captions.push({id,text:"Sua legenda dinâmica aparece aqui.",startFrame:start,endFrame:Math.min(p.totalFrames,start+p.fps*3),
   style:"karaoke",animation:"rise",x:54,y:p.aspectRatio==="9:16"?1480:760,width:972,fontSize:48,color:"#ffffff",
@@ -262,7 +262,7 @@ function updateTimelineItem(field,value){
  const item=layer||caption;if(!item)return;
  if(field==="text"){item.text=value;if(caption)delete caption.wordTimings;}
  else if(field==="startFrame"||field==="endFrame")item[field]=value;
- else if(field==="color"){if(caption)item.color=value;else item.color=value;}
+ else if(field==="color"){if(caption)item.color=value;else{item.color=value;if(item.type==="shape")delete item.background;}}
  else if(field==="style"||field==="animation")item[field]=value;
  else if(layer&&["x","y","z","scale","rotationX","rotationY","rotationZ","opacity","trimStartSeconds","speed","loop"].includes(field))item[field]=value;
  afterChange();fillTimelineItemInspector();
