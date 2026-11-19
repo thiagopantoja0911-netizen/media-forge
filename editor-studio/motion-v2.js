@@ -13,7 +13,7 @@ panel.className="editor-tab-group motion-v2-panel";
 panel.innerHTML='<summary>Motion Engine V2 · 2D/2.5D</summary>'+
 '<div class="editor-tab-body">'+
 '<p class="aside-help">Movimentos espaciais reais, fundo por keyframe e curvas Bézier. A prévia e o MP4 usam os mesmos dados.</p>'+
-'<label class="motion-v2-toggle"><input id="motionV2Enabled" type="checkbox"> Usar composição Motion V2</label>'+
+'<label class="motion-v2-toggle"><input id="motionV2Enabled" type="checkbox"> Usar composição Motion V2</label><label class="motion-v2-toggle"><input id="motionV2HideTitles" type="checkbox"> Ocultar títulos 3D antigos</label>'+
 '<div class="motion-v2-grid"><label>Fundo<select id="motionV2Pattern">'+
 '<option value="gradient">Gradiente vivo</option><option value="solid">Cor sólida</option>'+
 '<option value="rings">Anéis</option><option value="grid">Grid</option></select></label>'+
@@ -94,6 +94,23 @@ function autoCompose(){
  const p=P();if(!p)return notify("Abra um projeto para preparar o motion.");
  const m=init(p);m.enabled=true;
  const colors=[["#f9fafb","#bdd2f4"],["#eef4fa","#f9d6e2"],["#161d2c","#596aa2"],["#fbf2ea","#f1a3be"],["#f0f6f2","#8dd9bd"],["#101826","#53648e"]];
+ if(!p.layers?.length){
+   const canvas=p.aspectRatio==="16:9"?[1920,1080]:p.aspectRatio==="1:1"?[1080,1080]:[1080,1920];
+   p.layers=[];
+   for(const [i,scene] of p.scenes.entries()){
+     const width=Math.round(canvas[0]*.80),height=Math.round(canvas[1]*.22);
+     const light=i%6!==2&&i%6!==5;
+     p.layers.push({
+       id:crypto.randomUUID().replaceAll("-",""),name:"Título editável "+(i+1),
+       type:"text",text:scene.headline,startFrame:scene.startFrame,endFrame:scene.endFrame,
+       x:Math.round(canvas[0]*.10),y:Math.round(canvas[1]*.39),
+       z:0,width,height,rotationX:0,rotationY:0,rotationZ:0,scale:1,opacity:1,
+       color:light?"#111827":"#f9fafb",fontFamily:"sans",fontSize:Math.max(36,Math.round(canvas[0]*.087)),
+       fontWeight:900,textAlign:"center",zIndex:25,blendMode:"normal",keyframes:[]
+     });
+   }
+ }
+ m.hideSceneTitles=true;
  m.background.keyframes=p.scenes.slice(0,60).map((s,i)=>({frame:s.startFrame,
   color:colors[i%colors.length][0],accent:colors[i%colors.length][1],
   pattern:i%4===2?"rings":i%4===3?"grid":"gradient",
@@ -106,6 +123,7 @@ function autoCompose(){
    m.moves[l.id].exit={to:i%2?"left":"right",frames:fr,ease:"cubic-in",mask:"none"};
  }
  $("motionV2Enabled").checked=true;
+ $("motionV2HideTitles").checked=true;
  commit("Composição V2 preparada: "+m.background.keyframes.length+" fundos e "+Object.keys(m.moves).length+" camadas com trajetória.");
 }
 async function audit(){
@@ -125,6 +143,8 @@ function refresh(){
  const p=P(),m=p?.motionV2;
  $("motionV2Enabled").disabled=!p;
  $("motionV2Enabled").checked=Boolean(m?.enabled);
+ $("motionV2HideTitles").checked=Boolean(m?.hideSceneTitles);
+ $("motionV2HideTitles").disabled=!p;
  for(const id of ["motionV2ApplyBackground","motionV2AutoCompose","motionV2QA"]){$(id).disabled=!p;}
  for(const id of ["motionV2ApplyLayer","motionV2Bezier"]){$(id).disabled=!selectedLayer();}
  bgRail.replaceChildren();
@@ -146,6 +166,11 @@ $("motionV2Enabled").addEventListener("change",e=>{
  const p=P();if(!p)return;
  const m=init(p);m.enabled=e.target.checked;
  commit("Motion V2 "+(m.enabled?"ativado":"desativado")+".");
+});
+$("motionV2HideTitles").addEventListener("change",e=>{
+ const p=P();if(!p)return;
+ const m=init(p);m.hideSceneTitles=e.target.checked;
+ commit("Títulos 3D "+(m.hideSceneTitles?"ocultados":"visíveis")+".");
 });
 $("motionV2ApplyBackground").addEventListener("click",updateBackground);
 $("motionV2ApplyLayer").addEventListener("click",layerMove);
