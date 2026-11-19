@@ -5,8 +5,8 @@ import { auditMotionV2 } from "../src/editor-motion-v2.mjs";
 const source=readFileSync(new URL("../editor-studio/motion-v2.js",import.meta.url),"utf8");
 const engine=readFileSync(new URL("../src/editor-studio-engine.mjs",import.meta.url),"utf8");
 test("3D WebGL canvas is composited above the animated background plane",()=>{
- assert.match(engine,/#world\\{position:absolute;inset:0;width:100%;height:100%;z-index:2;display:block\\}/);
- assert.match(engine,/#motion-v2-bg\\{position:absolute;top:-9%;left:-9%;width:118%;height:118%;z-index:1/);
+ assert.ok(engine.includes('"#world{position:absolute;inset:0;width:100%;height:100%;z-index:2;display:block}",'));
+ assert.ok(engine.includes('"#motion-v2-bg{position:absolute;top:-9%;left:-9%;width:118%;height:118%;z-index:1;pointer-events:none;transform-origin:center center;will-change:transform,background}",'));
 });
 test("native auto-compose synchronizes editable title, kicker and support layers from scene data",()=>{
  assert.match(source,/title\.text=scene\.headline/);
