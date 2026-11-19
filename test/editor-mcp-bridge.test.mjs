@@ -76,7 +76,7 @@ test("Browser commands cannot be shadowed by MediaForge or duplicate themselves"
   );
 });
 
-test("catalog readiness confirms 11 editor operations with one Browser OAuth grant", () => {
+test("catalog readiness confirms all editor operations in the unified catalog with one Browser OAuth grant", () => {
   const browser=[{name:"tab_list",inputSchema:{type:"object"}}];
   const status=inspectUnifiedMediaCatalog(browser,VIDEOS_SECRETS_TOOLS);
   assert.equal(status.ready,true);
@@ -118,7 +118,7 @@ test("deployed entry serves unified catalog health without exposing OAuth creden
     assert.equal(data.ready,true);
     assert.equal(data.connector,"/browser/mcp");
     assert.equal(data.version,UNIFIED_MCP_CATALOG_VERSION);
-    assert.equal(data.editorTools,11);
+    assert.equal(data.editorTools,EDITOR_MCP_TOOL_NAMES.length);
     assert.ok(data.totalTools>data.mediaTools);
     const denied=await fetch("http://127.0.0.1:"+port+"/browser/mcp",{
       method:"POST",headers:{"content-type":"application/json"},
