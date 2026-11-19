@@ -283,3 +283,32 @@ export async function handleEditorJobStatus({request,response,url,isAdminSession
     artifact:job.status==="completed"?await signedVideoDownload(job):null});
   return true;
 }
+
+/** Authenticated, same-origin operator controls for the shared Windows queue.
+ * Keeps cancelled job records and every project asset on disk. */
+export async function handleEditorQueueManagementHttp({request,response,url,isAdminSession,listJobs,cancelJob}){
+  const queue=url.pathname==="/api/editor/queue";
+  const cancel=/^\/api\/editor\/queue\/([a-f0-9]{32})\/cancel$/.exec(url.pathname);
+  if(!queue&&!cancel)return false;
+  if(!(await isAdminSession(request))){json(response,401,{ok:false,error:"AUTH_REQUIRED"});return true;}
+  try{
+    if(queue&&request.method==="GET"){
+      const jobs=(await listJobs(150)).filter(x=>["queued","processing","cancelled","completed","failed"].includes(x.status));
+      json(response,200,{ok:true,jobs:jobs.map(x=>({
+        id:x.id,title:x.project?.title||"Sem titulo",status:x.status,
+        progress:x.progress||0,phase:x.phase||null,message:x.progressMessage||null,
+        createdAt:x.createdAt,updatedAt:x.updatedAt,cancelRequestedAt:x.cancelRequestedAt||null,
+        framesCompleted:x.renderTelemetry?.framesCompleted??null,
+        totalFrames:x.renderTelemetry?.totalFrames??null,
+        resolution:x.project?.resolution||null,fps:x.project?.fps||null
+      }))});return true;
+    }
+    if(cancel&&request.method==="POST"){
+      assertSameOrigin(request);
+      const job=await cancelJob(cancel[1]);
+      json(response,200,{ok:true,id:job.id,status:job.status,
+        cancelRequested:!!(job.cancelRequestedAt&&job.status==="processing")});return true;
+    }
+    json(response,405,{ok:false,error:"METHOD_NOT_ALLOWED"});return true;
+  }catch(e){json(response,e.status||400,{ok:false,error:e.message||"QUEUE_ERROR"});return true;}
+}
