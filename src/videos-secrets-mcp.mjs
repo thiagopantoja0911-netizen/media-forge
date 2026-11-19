@@ -40,7 +40,8 @@ export const VIDEOS_SECRETS_TOOLS = [
     inputSchema:{type:"object",additionalProperties:false,properties:{
       idea:{type:"string",minLength:8,maxLength:400},
       brand:{type:"string",maxLength:80},title:{type:"string",maxLength:100},
-      duration_seconds:{type:"integer",minimum:10,maximum:60},fps:{type:"integer",enum:[30,60]},
+      timeline_mode:{type:"string",enum:["free","cinematic"]},
+      duration_seconds:{type:"integer",minimum:1,maximum:600},fps:{type:"integer",enum:[30,60]},
       aspect_ratio:{type:"string",enum:["9:16","16:9","1:1"]},
       style_preset:{type:"string",enum:["apple-clean","spotify-dark-glow","motivational-bw"]},
       scenes:{type:"array",minItems:3,maxItems:12,items:{type:"object",additionalProperties:false,properties:{
@@ -71,8 +72,8 @@ export const VIDEOS_SECRETS_TOOLS = [
     inputSchema:{type:"object",additionalProperties:false,properties:{
       project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
       scene_index:{type:"integer",minimum:0,maximum:11},
-      confirm_render:{type:"boolean",const:true}
-    },required:["project_id","confirm_render"]}
+      confirm_render:{type:"boolean",const:true},allow_silent:{type:"boolean"}
+    },required:["project_id","confirm_render"]
   },
 
   {
@@ -654,13 +655,15 @@ export async function handleVideosSecretsMcp({
     }
     if(name==="create_editor_project"){
       if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      if(args.timeline_mode!=="free"&&args.duration_seconds!==undefined&&(args.duration_seconds<10||args.duration_seconds>60))return writeError(response,id,-32602,"Storyboard 3D suporta 10–60 s; use timeline_mode=free para 1–600 s.",422,version);
       const project=await saveEditorProject(makeEditorProject(args));
       return writeResult(response,id,textResult({
         ok:true,projectId:project.id,revision:project.revision,
         editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
+        timelineMode:project.mode,durationSeconds:project.totalFrames/project.fps,
         scenes:project.scenes.map(s=>({id:s.id,headline:s.headline,durationSeconds:(s.endFrame-s.startFrame)/project.fps,
           shape:s.shape,camera:s.camera})),
-        message:"Projeto editável criado; prévia de cada cena e timeline visual prontas para revisão antes do render."
+        message:project.mode==="timeline-free"?"Timeline livre criada sem cenas: adicione clipes, keyframes e áudio.":"Storyboard 3D editável criado."
       },false,version),version);
     }
     if(name==="render_editor_project"){
@@ -685,7 +688,7 @@ export async function handleVideosSecretsMcp({
           resolution:project.aspectRatio==="9:16"?"portrait":project.aspectRatio==="16:9"?"landscape":"square"},
         projectFiles:files,
         metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",editorProjectId:project.id,
-          editorSceneIndex:sceneIndex??null,productionMode:"cinematic-3d",
+          editorSceneIndex:sceneIndex??null,productionMode:project.mode,
           expectsAudio:sceneIndex===undefined&&project.audio.length>0,artisticQA:"pending-user-review",
           previewReviewRevision:previewReview.revision,previewReviewStatus:previewReview.status}
       });
