@@ -44,7 +44,9 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
       return '<img'+common+' src="'+esc(url)+'" alt="" style="'+base+'object-fit:contain">';
     }
     if(layer.type==="text"){
-      const font=layer.fontFamily==="serif"?"Georgia,serif":layer.fontFamily==="mono"?"ui-monospace,monospace":"Arial,Helvetica,sans-serif";
+      const fonts={sans:"Arial,Helvetica,sans-serif",serif:"Georgia,serif",mono:"'Courier New',monospace",impact:"Impact,'Arial Black',sans-serif",
+        verdana:"Verdana,Geneva,sans-serif",trebuchet:"'Trebuchet MS',Arial,sans-serif",tahoma:"Tahoma,Arial,sans-serif",times:"'Times New Roman',Times,serif"};
+      const font=fonts[layer.fontFamily]||fonts.sans;
       const justify=(layer.textAlign||"left")==="left"?"flex-start":layer.textAlign==="right"?"flex-end":"center";
       const style=base+'display:flex;align-items:center;justify-content:'+justify+';text-align:'+(layer.textAlign||"left")+';white-space:pre-line;overflow-wrap:anywhere;color:'+(layer.color||"#ffffff")+';font-family:'+font+';font-size:'+(layer.fontSize||64)+'px;font-weight:'+(layer.fontWeight||800)+';line-height:1.08;text-shadow:0 6px 24px #000a;';
       return '<div'+common+' style="'+style+'">'+esc(layer.text||"")+'</div>';
