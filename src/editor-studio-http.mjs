@@ -218,14 +218,14 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       return true;
     }
     if(pieces.length===5&&pieces[4]==="preview"&&request.method==="GET"){
-      const scene=validIndex(url.searchParams.get("scene")??0,p);
+      const scene=p.mode==="timeline-free"?undefined:validIndex(url.searchParams.get("scene")??0,p);
       const html=buildEditorIndex(p,{sceneIndex:scene,preview:true,projectId:p.id});
       replyText(response,200,"text/html; charset=utf-8",html,{
         "content-security-policy":"default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; object-src 'none'"
       });return true;
     }
     if(pieces.length===5&&pieces[4]==="scene.mjs"&&request.method==="GET"){
-      const scene=validIndex(url.searchParams.get("scene")??0,p);
+      const scene=p.mode==="timeline-free"?undefined:validIndex(url.searchParams.get("scene")??0,p);
       replyText(response,200,"text/javascript; charset=utf-8",buildEditorSceneModule(p,{sceneIndex:scene,preview:true}));return true;
     }
     if(pieces.length===6&&pieces[4]==="audio"&&request.method==="GET"){
@@ -273,6 +273,8 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       assertSameOrigin(request);
       const raw=await parseBody(request);
       if(raw.confirm!==true){json(response,428,{ok:false,error:"RENDER_CONFIRMATION_REQUIRED"});return true;}
+      if(p.mode==="timeline-free"&&raw.sceneIndex!==undefined)
+        throw Object.assign(new Error("Timeline livre é renderizada por inteiro, sem depender de cenas."),{status:422});
       const sceneIndex=raw.sceneIndex===undefined?undefined:validIndex(raw.sceneIndex,p);
       const frameLabReferenceProjectId=p.motionV2?.enabled?p.motionV2.frameLabProjectId??null:null;
       if(frameLabReferenceProjectId){
@@ -297,7 +299,8 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
         projectFiles:files,
         metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",
           editorProjectId:p.id,editorSceneIndex:sceneIndex??null,expectsAudio:sceneIndex===undefined&&p.audio.length>0,
-          productionMode:"cinematic-3d",artisticQA:"pending-user-review",
+          productionMode:p.mode==="timeline-free"?"timeline-free":"cinematic-3d",artisticQA:"pending-user-review",
+          audioTrackCount:p.audio.length,
           previewReviewRevision:previewReview.revision,previewReviewStatus:previewReview.status,
           frameLabReferenceProjectId}
       });
