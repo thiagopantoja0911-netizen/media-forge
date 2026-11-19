@@ -98,6 +98,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
       const state={workerId,renderer:String(body.renderer||"hyperframes"),lastSeen:new Date().toISOString()};
       await writeFile(workerStatusFile,JSON.stringify(state)+"\n");
       let mustCancel=false;
+      let currentLeaseRenewed=false;
       await updateState(async()=>{
         // Refresh this live lease first; it must not be reclaimed by the same tick.
         if(HEX_ID.test(body.jobId||"")&&body.leaseId){
@@ -106,12 +107,13 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
              job.workerLease.workerId===workerId&&Date.parse(job.workerLease.expiresAt)>Date.now()){
             job.workerLease.expiresAt=new Date(Date.now()+LEASE_MS).toISOString();
             mustCancel=cancellationRequested(job,body.leaseId);
+            currentLeaseRenewed=true;
             await saveJob(jobsDir,job);
           }
         }
         const names=(await readdir(jobsDir)).filter(x=>HEX_ID.test(x.slice(0,-5))&&x.endsWith(".json"));
         for(const filename of names){
-          if(filename===body.jobId+".json")continue;
+          if(currentLeaseRenewed&&filename===body.jobId+".json")continue;
           const job=await loadJob(jobsDir,filename.slice(0,-5));
           if(reconcileExpiredLease(job))await saveJob(jobsDir,job);
         }
