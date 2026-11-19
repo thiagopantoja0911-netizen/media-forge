@@ -171,3 +171,19 @@
  .pro-timeline-hint{flex:1 1 100%}
  .pro-timeline-status{text-align:left}
 }
+
+/* Native Free Timeline: the composition is clips, not 3D scenes. */
+body.timeline-free .timeline-panel .tracks > :nth-child(-n+6){display:none!important}
+body.timeline-free .timeline-header{border-bottom:1px solid #36505b}
+body.timeline-free .pro-timeline-title{color:#a7ffdf}
+.pro-free-tools{flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 10px;margin-top:5px;border:1px solid #385662;border-radius:9px;background:#11252d}
+.pro-free-tools[hidden]{display:none!important}
+.pro-free-tools label{display:flex;align-items:center;gap:5px;font-size:11px;color:#c6e2ec;font-weight:750}
+.pro-free-tools input[type=number]{width:75px;height:30px;background:#0b1924;color:#e9f8ff;border:1px solid #426577;border-radius:6px;padding:4px}
+.pro-free-tools input[type=color]{height:28px;width:44px;padding:2px;border:1px solid #426577;border-radius:6px;background:#0b1924}
+.pro-free-tools .pro-action{min-height:32px;padding:6px 11px}
+.pro-free-tools .pro-audio-notice{font-size:10px;color:#ffceb3;font-weight:650;line-height:1.4}
+body.timeline-free .pro-free-tools .pro-audio-notice:not(:empty){margin-left:auto}
+body.timeline-free #sceneTrack,body.timeline-free #textTrack,body.timeline-free #motionTrack{display:none!important}
+body.timeline-free .player-shell{background:#0a111a}
+body.timeline-free .timeline-item-inspector{border-top:1px solid #3e6070;padding-top:9px}
