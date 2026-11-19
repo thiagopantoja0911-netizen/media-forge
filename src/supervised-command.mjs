@@ -22,7 +22,7 @@ function terminateTree(child) {
 }
 
 export function runSupervisedCommand(command,args,cwd,diagnosticBase,{
-  env=process.env,phase="check",totalFrames=null,onVerifiedFrame=()=>{},summarizeCheck=()=>""
+  env=process.env,phase="check",totalFrames=null,onVerifiedFrame=()=>{},summarizeCheck=()=>"",signal=null
 }={}){
   return new Promise((resolve,reject)=>{
     const isCmd=process.platform==="win32"&&command.toLowerCase().endsWith(".cmd");
@@ -42,8 +42,8 @@ export function runSupervisedCommand(command,args,cwd,diagnosticBase,{
       const state=tracker?.state||{};
       watchdogError=Object.assign(new Error(reason.message+": "+(state.framesCompleted??0)+"/"+(state.totalFrames??"unknown")+" frames. Diagnostics: "+diagnosticBase),{
         code:reason.code,
-        recoverable:reason.code!=="RENDER_HARD_TIMEOUT",
-        retryable:reason.code!=="RENDER_HARD_TIMEOUT",
+        recoverable:!["RENDER_HARD_TIMEOUT","JOB_CANCELLED"].includes(reason.code),
+        retryable:!["RENDER_HARD_TIMEOUT","JOB_CANCELLED"].includes(reason.code),
         diagnostics:{stdout:diagnosticBase+".stdout.log",stderr:diagnosticBase+".stderr.log",
           framesCompleted:state.framesCompleted??null,totalFrames:state.totalFrames??null,lastFrameAt:state.lastFrameAt??null,
           startedAt:new Date(startedAt).toISOString(),reason:reason.code}
@@ -52,6 +52,9 @@ export function runSupervisedCommand(command,args,cwd,diagnosticBase,{
       forceKill=setTimeout(()=>{if(!closed)child.kill("SIGKILL");},15_000);
       forceKill.unref?.();
     }
+    const onAbort=()=>stopFor({code:"JOB_CANCELLED",message:"Usuario solicitou cancelamento deste render"});
+    if(signal?.aborted)onAbort();
+    else signal?.addEventListener("abort",onAbort,{once:true});
     const interval=setInterval(()=>{
       if(closed)return;
       const now=Date.now();
@@ -79,14 +82,15 @@ export function runSupervisedCommand(command,args,cwd,diagnosticBase,{
     child.stdout.on("data",chunk=>consume(chunk,false));
     child.stderr.on("data",chunk=>consume(chunk,true));
     child.on("error",error=>{spawnError=error;});
-    child.on("close",async(code,signal)=>{
+    child.on("close",async(code,terminationSignal)=>{
       closed=true;clearInterval(interval);if(forceKill)clearTimeout(forceKill);
+      signal?.removeEventListener("abort",onAbort);
       await Promise.allSettled([finished(stdoutLog),finished(stderrLog)]);
       if(watchdogError){reject(watchdogError);return;}
       if(spawnError){reject(spawnError);return;}
       if(code===0){resolve({stdout,stderr,framesCompleted:tracker?.state.framesCompleted??null});return;}
       const summary=summarizeCheck(stdout);
-      const error=new Error("HyperFrames exited with "+(signal?"signal "+signal:"code "+code)+
+      const error=new Error("HyperFrames exited with "+(terminationSignal?"signal "+terminationSignal:"code "+code)+
         (summary?": "+summary:stderr.trim()?": "+stderr.trim().slice(-2000):"")+". Full diagnostics: "+diagnosticBase);
       error.code="HYPERFRAMES_FAILED";
       error.exitCode=code;

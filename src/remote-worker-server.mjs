@@ -5,6 +5,7 @@ import { Transform } from "node:stream";
 import { readdir, readFile, writeFile, rename, stat, mkdir, rm, cp } from "node:fs/promises";
 import { isRecoverableRenderFailure } from "./render-recovery.mjs";
 import {orderQueuedJobs,applyWorkerProgress} from "./render-watchdog.mjs";
+import {requestCancellation,reconcileExpiredLease,acknowledgeCancellation,cancellationRequested} from "./job-cancellation.mjs";
 import { join, resolve, relative, sep } from "node:path";
 import { readState, updateState, verifySecret } from "./state-store.mjs";
 import {deliveredVideoRoot,deliveredVideoPath,MAX_DELIVERED_VIDEO_BYTES} from "./video-artifact-delivery.mjs";
@@ -72,6 +73,16 @@ function validLease(job, leaseId) {
   return job && job.status==="processing" && typeof leaseId==="string"
     && job.workerLease?.id===leaseId && Date.parse(job.workerLease.expiresAt)>Date.now();
 }
+export async function requestCancelJob(jobsDir,id){
+  if(!HEX_ID.test(id))throw Object.assign(new Error("INVALID_JOB_ID"),{status:422});
+  return updateState(async()=>{
+    const job=await loadJob(jobsDir,id);
+    const result=requestCancellation(job);
+    if(result.changed)await saveJob(jobsDir,job);
+    return job;
+  });
+}
+
 export async function handleRemoteWorker({request,response,url,jobsDir,projectsRoot,workerStatusFile}) {
   if(!url.pathname.startsWith("/v1/worker/"))return false;
   if(!(await authenticated(request))) {reply(response,401,{ok:false,error:"WORKER_UNAUTHORIZED"});return true;}
@@ -86,16 +97,28 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
       if(!workerId)throw new Error("workerId required");
       const state={workerId,renderer:String(body.renderer||"hyperframes"),lastSeen:new Date().toISOString()};
       await writeFile(workerStatusFile,JSON.stringify(state)+"\n");
-      if(HEX_ID.test(body.jobId||"")&&body.leaseId){
-        await updateState(async()=> {
+      let mustCancel=false;
+      let currentLeaseRenewed=false;
+      await updateState(async()=>{
+        // Refresh this live lease first; it must not be reclaimed by the same tick.
+        if(HEX_ID.test(body.jobId||"")&&body.leaseId){
           const job=await loadJob(jobsDir,body.jobId);
-          if(job&&job.status==="processing"&&job.workerLease?.id===body.leaseId&&job.workerLease.workerId===workerId){
+          if(job&&job.status==="processing"&&job.workerLease?.id===body.leaseId&&
+             job.workerLease.workerId===workerId&&Date.parse(job.workerLease.expiresAt)>Date.now()){
             job.workerLease.expiresAt=new Date(Date.now()+LEASE_MS).toISOString();
+            mustCancel=cancellationRequested(job,body.leaseId);
+            currentLeaseRenewed=true;
             await saveJob(jobsDir,job);
           }
-        });
-      }
-      reply(response,200,{ok:true,serverTime:new Date().toISOString()});return true;
+        }
+        const names=(await readdir(jobsDir)).filter(x=>HEX_ID.test(x.slice(0,-5))&&x.endsWith(".json"));
+        for(const filename of names){
+          if(currentLeaseRenewed&&filename===body.jobId+".json")continue;
+          const job=await loadJob(jobsDir,filename.slice(0,-5));
+          if(reconcileExpiredLease(job))await saveJob(jobsDir,job);
+        }
+      });
+      reply(response,200,{ok:true,serverTime:new Date().toISOString(),cancelRequested:mustCancel});return true;
     }
     if(request.method==="POST"&&path==="/v1/worker/claim") {
       const body=await parseBody(request);
@@ -112,10 +135,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
         const ordered=orderQueuedJobs(candidates);
         for(const j of ordered) {
           if(!j)continue;
-          if(j.status==="processing"&&j.workerLease&&Date.parse(j.workerLease.expiresAt)<Date.now()){
-            if((j.attempts||0)<3){j.status="queued";delete j.workerLease;await saveJob(jobsDir,j);}
-            else {j.status="failed";j.error={message:"Worker lease expired after retries",code:"WORKER_TIMEOUT"};delete j.workerLease;await saveJob(jobsDir,j);}
-          }
+          if(reconcileExpiredLease(j))await saveJob(jobsDir,j);
           if(j.status!=="queued" || (j.nextAttemptAt&&Date.parse(j.nextAttemptAt)>Date.now()))continue;
           if(!j.project?.inlineFiles){j.status="failed";j.error={code:"REMOTE_FILES_REQUIRED",message:"Remote worker requires inline project files"};await saveJob(jobsDir,j);continue;}
           j.status="processing";j.progress=10;j.attempts=(j.attempts||0)+1;
@@ -278,6 +298,7 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
         const result=await updateState(async()=>{
           const job=await loadJob(jobsDir,id);
           if(!validLease(job,body.leaseId))return null;
+          if(job.cancelRequestedAt)return job;
           applyWorkerProgress(job,body);
           await saveJob(jobsDir,job);
           return job;
@@ -290,6 +311,10 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
         const result=await updateState(async()=>{
           const job=await loadJob(jobsDir,id);
           if(!validLease(job,body.leaseId))return null;
+          if(acknowledgeCancellation(job)){
+            await saveJob(jobsDir,job);
+            return job;
+          }
           job.status=body.success===true?"completed":"failed";
           job.progress=body.success===true?100:0;
           if(body.success===true){

@@ -108,3 +108,24 @@
 @media(prefers-reduced-motion:reduce){
  .editor-tab-group *, .preview-mode-switch button {transition:none!important}
 }
+
+/* Operator queue: native modal, never deletes projects or auto-confirms cancellation. */
+.queue-manager-button{white-space:nowrap}
+.render-queue-dialog{position:fixed;inset:0;width:min(92vw,840px);max-width:840px;max-height:min(86vh,850px);border:1px solid #406177;border-radius:16px;background:#0d1622;color:#eaf5ff;box-shadow:0 30px 130px #000d;padding:0;overflow:hidden}
+.render-queue-dialog::backdrop{background:#030811bb;backdrop-filter:blur(4px)}
+.render-queue-header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:20px 22px;border-bottom:1px solid #2c3e50}
+.render-queue-header h2{font-size:19px;margin:0}
+.render-queue-header p{font-size:12px;max-width:600px;margin:6px 0 0;color:#9bacbf}
+.render-queue-header button{padding:8px 12px}
+.render-queue-message{font-size:12px;color:#a1dccf;padding:0 22px;min-height:15px;margin:12px 0}
+.render-queue-list{max-height:calc(86vh - 160px);overflow:auto;padding:0 16px 16px}
+.render-queue-job{display:grid;grid-template-columns:1fr auto;grid-template-areas:"title actions" "sub actions" "id actions";gap:4px 14px;align-items:center;border:1px solid #2b4054;background:#111e2c;border-radius:11px;margin:8px 0;padding:12px}
+.render-queue-job-main{grid-area:title;font-weight:780;font-size:13px;overflow-wrap:anywhere}
+.render-queue-job-sub{grid-area:sub;color:#a1bfd2;font-size:11px}
+.render-queue-job-id{grid-area:id;color:#738ca2;font:10px/1.3 monospace}
+.render-queue-job-actions{grid-area:actions}
+.render-queue-cancel{white-space:nowrap;border:1px solid #a76d73;background:#3b232c;color:#ffdbdf;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:730}
+.render-queue-cancel:disabled{opacity:.55;cursor:not-allowed}
+.render-queue-cancel:hover:not(:disabled){background:#63313b}
+.render-queue-empty{padding:24px;text-align:center;color:#8cabbc}
+@media(max-width:650px){.render-queue-dialog{width:96vw}.render-queue-job{grid-template-columns:1fr;grid-template-areas:"title" "sub" "id" "actions"}.render-queue-job-actions button{width:100%}}
