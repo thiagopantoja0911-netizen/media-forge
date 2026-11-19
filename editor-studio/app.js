@@ -203,6 +203,7 @@ function buildTracks(){
  }
  fillTimelineItemInspector();
  if(window.MediaForgeProTimeline?.refresh)window.MediaForgeProTimeline.refresh();
+ if(window.MediaForgeMotionV2?.refresh)window.MediaForgeMotionV2.refresh();
 }
 function selectTimelineItem(kind,id){
  state.selectedLayerId=kind==="layer"?id:null;state.selectedCaptionId=kind==="caption"?id:null;
@@ -383,8 +384,22 @@ function renderAudioList(){
    starts.append(start,end);box.append(row,volume,starts);container.append(box);
  }
 }
+function sanitizeMotionV2(){
+ const p=state.project,m=p?.motionV2;
+ if(!m?.moves)return;
+ const valid=new Map((p.layers||[]).map(l=>[l.id,l]));
+ for(const [id,move] of Object.entries(m.moves)){
+  const layer=valid.get(id);
+  if(!layer){delete m.moves[id];continue;}
+  if(move.path){
+   move.path=move.path.filter(k=>k.frame>=layer.startFrame&&k.frame<=layer.endFrame);
+   if(move.path.length<2)delete move.path;
+  }
+ }
+}
 function afterChange(reselect=false){
  if(!state.project)return;
+ sanitizeMotionV2();
  state.dirty=true;
  showReviewStatus("stale");
  updateMetadata();buildTracks();if(reselect)fillInspector();

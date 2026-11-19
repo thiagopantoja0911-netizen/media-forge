@@ -15,7 +15,7 @@ const id=()=>randomUUID().replaceAll("-","");
 
 export function validateEditorTimeline(project){
   const layers=project.layers??[],captions=project.captions??[];
-  if(!Array.isArray(layers)||layers.length>40)throw fail("EDITOR_LAYERS_INVALID","Máximo de 40 camadas independentes.");
+  if(!Array.isArray(layers)||layers.length>120)throw fail("EDITOR_LAYERS_INVALID","Máximo de 120 camadas independentes.");
   if(!Array.isArray(captions)||captions.length>120)throw fail("EDITOR_CAPTIONS_INVALID","Máximo de 120 blocos de legenda.");
   const imageIds=new Set((project.assets??[]).map(a=>a.id));
   const videoIds=new Set((project.layerAssets??[]).map(a=>a.id));

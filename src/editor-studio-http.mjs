@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { makeEditorProject, loadEditorProject, saveEditorProject, latestEditorProject, updateEditorProject, editorStoreDir, validateEditorProject } from "./editor-studio-core.mjs";
 import { buildEditorIndex, buildEditorSceneModule, buildEditorRenderFiles } from "./editor-studio-engine.mjs";
+import { auditMotionV2 } from "./editor-motion-v2.mjs";
 import { signedVideoDownload } from "./video-artifact-delivery.mjs";
 import { createEditorHomologationProject } from "./editor-homologation.mjs";
 import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
@@ -26,6 +27,8 @@ const staticFiles=new Map([
   ["/editor/remotion-assets/badge.png","../remotion-public/remotion-assets/badge.png"],
   ["/editor/style.css","../editor-studio/style.css"],
   ["/editor/workspace-layout.css","../editor-studio/workspace-layout.css"],
+  ["/editor/motion-v2.css","../editor-studio/motion-v2.css"],
+  ["/editor/motion-v2.js","../editor-studio/motion-v2.js"],
   ["/editor/workspace-layout.js","../editor-studio/workspace-layout.js"],
   ["/editor/queue-panel.js","../editor-studio/queue-panel.js"],
   ["/editor/vendor/three.module.js","../node_modules/three/build/three.module.js"],
@@ -180,6 +183,9 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       const saved=await saveEditorProject(next,{expectedRevision:p.revision});
       json(response,200,{ok:true,project:saved});return true;
     }
+    if(pieces.length===5&&pieces[4]==="motion-qa"&&request.method==="GET"){
+      json(response,200,{ok:true,qa:auditMotionV2(p),next:"Para análise óptica real, exporte o MP4 e compare no Frame Lab."});return true;
+    }
     if(pieces.length===5&&pieces[4]==="style-dna"&&request.method==="GET"){
       json(response,200,{ok:true,dna:buildEditorStyleDna(p)});return true;
     }
@@ -268,6 +274,12 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       const raw=await parseBody(request);
       if(raw.confirm!==true){json(response,428,{ok:false,error:"RENDER_CONFIRMATION_REQUIRED"});return true;}
       const sceneIndex=raw.sceneIndex===undefined?undefined:validIndex(raw.sceneIndex,p);
+      const frameLabReferenceProjectId=p.motionV2?.enabled?p.motionV2.frameLabProjectId??null:null;
+      if(frameLabReferenceProjectId){
+        const {statusOf}=await import("../frame-lab/handler.mjs");
+        const ref=await statusOf(frameLabReferenceProjectId);
+        if(!ref.hasReference)throw Object.assign(new Error("O Frame Lab ainda não tem o vídeo original desta referência."),{status:422});
+      }
       const previewReview=await requireApprovedEditorPreview(p);
       const files=await buildEditorRenderFiles(p,{sceneIndex});
       if(sceneIndex===undefined)for(const a of p.audio){
@@ -286,7 +298,8 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
         metadata:{source:"mediaforge-visual-editor",mode:"controlled-test",
           editorProjectId:p.id,editorSceneIndex:sceneIndex??null,expectsAudio:sceneIndex===undefined&&p.audio.length>0,
           productionMode:"cinematic-3d",artisticQA:"pending-user-review",
-          previewReviewRevision:previewReview.revision,previewReviewStatus:previewReview.status}
+          previewReviewRevision:previewReview.revision,previewReviewStatus:previewReview.status,
+          frameLabReferenceProjectId}
       });
       json(response,202,{ok:true,jobId:job.id,status:job.status,message:"Render enviado ao HyperFrames; o projeto editável foi preservado."});
       return true;
@@ -308,8 +321,22 @@ export async function handleEditorJobStatus({request,response,url,isAdminSession
   if(!(await isAdminSession(request))){json(response,401,{error:"AUTH_REQUIRED"});return true;}
   const job=await getJob(m[1]);
   if(!job||job.metadata?.source!=="mediaforge-visual-editor"){json(response,404,{error:"NOT_FOUND"});return true;}
+  let liveFrameLabStatus=null;
+  if(job.metadata?.motionV2FrameLabProjectId){
+    try{
+      const {statusOf}=await import("../frame-lab/handler.mjs");
+      const current=await statusOf(job.metadata.motionV2FrameLabProjectId);
+      liveFrameLabStatus={status:current.progress?.status??null,referenceFrames:current.referenceFrames,
+        renderedFrames:current.renderedFrames,hasReport:current.hasReport};
+    }catch{}
+  }
   json(response,200,{ok:true,status:job.status,progress:job.progress,error:job.error||null,
-    artifact:job.status==="completed"?await signedVideoDownload(job):null});
+    artifact:job.status==="completed"?await signedVideoDownload(job):null,
+    motionQA:{status:job.metadata?.motionV2FrameLabStatus??(job.metadata?.frameLabReferenceProjectId?"waiting":"not-configured"),
+      comparisonProjectId:job.metadata?.motionV2FrameLabProjectId??null,
+      referenceProjectId:job.metadata?.frameLabReferenceProjectId??null,
+      analysis:liveFrameLabStatus,
+      url:job.metadata?.motionV2FrameLabProjectId?"/frame-lab":null}});
   return true;
 }
 

@@ -5,6 +5,7 @@ import { buildEditorVisualAssets } from "./editor-visual-assets.mjs";
 import { buildEditorLayerAssets } from "./editor-layer-assets.mjs";
 import { buildEditorStyleDna, getEditorStylePreset } from "./editor-style-presets.mjs";
 import { temporalShutterSamples } from "./editor-motion-blur.mjs";
+import { motionV2Runtime } from "./editor-motion-v2.mjs";
 import { sceneTypography, renderKineticTitle, EDITOR_FONT_STACKS } from "./editor-typography.mjs";
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dims=ratio=>ratio==="16:9"?[1920,1080]:ratio==="1:1"?[1080,1080]:[1080,1920];
@@ -20,10 +21,12 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
   const duration=shots.at(-1).endFrame/p.fps;
   const frameOffset=sceneIndex===undefined?0:p.scenes[sceneIndex].startFrame;
   const frameEnd=frameOffset+shots.at(-1).endFrame;
+  const motionEnabled=Boolean(p.motionV2?.enabled&&p.motionV2?.background?.keyframes?.length);
+  const backgroundMarkup=motionEnabled?'<div id="motion-v2-bg" aria-hidden="true"></div>':'';
   const layerMarkup=(p.layers??[]).filter(layer=>layer.endFrame>frameOffset&&layer.startFrame<frameEnd).map(layer=>{
     const localStart=Math.max(0,layer.startFrame-frameOffset),localEnd=Math.min(frameEnd,layer.endFrame)-frameOffset;
     const common=' id="layer-'+layer.id+'" class="editor-layer clip" data-start="'+localStart/p.fps+'" data-duration="'+(localEnd-localStart)/p.fps+'" data-track-index="'+Math.max(1,layer.zIndex+20)+'" data-layout-allow-overlap';
-    const base='position:absolute;left:0;top:0;width:'+layer.width+'px;height:'+layer.height+'px;z-index:'+layer.zIndex+';opacity:'+layer.opacity+';mix-blend-mode:'+layer.blendMode+';transform:translate3d('+layer.x+'px,'+layer.y+'px,'+layer.z+'px) rotateX('+layer.rotationX+'deg) rotateY('+layer.rotationY+'deg) rotateZ('+layer.rotationZ+'deg) scale('+layer.scale+');transform-origin:top left;transform-style:preserve-3d;';
+    const base='position:absolute;left:0;top:0;width:'+layer.width+'px;height:'+layer.height+'px;z-index:'+(motionEnabled?layer.zIndex+8:layer.zIndex)+';opacity:'+layer.opacity+';mix-blend-mode:'+layer.blendMode+';transform:translate3d('+layer.x+'px,'+layer.y+'px,'+layer.z+'px) rotateX('+layer.rotationX+'deg) rotateY('+layer.rotationY+'deg) rotateZ('+layer.rotationZ+'deg) scale('+layer.scale+');transform-origin:top left;transform-style:preserve-3d;';
     if(layer.type==="video"){
       const asset=(p.layerAssets??[]).find(item=>item.id===layer.assetId);
       const url=preview?"/api/editor/projects/"+projectId+"/layer-assets/"+layer.assetId:"./assets/layers/"+layer.assetId+"."+asset.extension;
@@ -73,7 +76,8 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
     "*{box-sizing:border-box}html,body{margin:0;background:#070912}",
     "#root{position:relative;width:"+w+"px;height:"+h+"px;overflow:hidden;background:#070912;font-family:Arial,Helvetica,sans-serif;color:"+ink+";isolation:isolate;perspective:1300px;perspective-origin:50% 50%}",
     "#world{position:absolute;inset:0;width:100%;height:100%;z-index:0;display:block}",
-    ".caption{position:absolute;top:14%;left:10%;width:80%;z-index:3;pointer-events:none;transform-origin:15% 50%;will-change:transform,opacity}",
+    "#motion-v2-bg{position:absolute;top:-9%;left:-9%;width:118%;height:118%;z-index:1;pointer-events:none;transform-origin:center center;will-change:transform,background}",
+    ".caption{position:absolute;top:14%;left:10%;width:80%;z-index:3;pointer-events:none;transform-origin:15% 50%;will-change:transform,opacity"+(p.motionV2?.enabled&&p.motionV2?.hideSceneTitles?";display:none":"")+"}",
     ".editor-layer{position:absolute;pointer-events:none;will-change:transform,opacity;backface-visibility:visible}",
     ".editor-caption{position:absolute;box-sizing:border-box;padding:18px 28px;border-radius:18px;font-family:Arial,Helvetica,sans-serif;font-weight:800;line-height:1.18;pointer-events:none;white-space:normal;overflow-wrap:anywhere;box-shadow:0 8px 30px #0005;will-change:transform,opacity}",
     ".editor-caption[data-style=outline]{border:2px solid currentColor;text-shadow:0 4px 18px #000}",
@@ -91,10 +95,12 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
     '<body><div id="root" data-composition-id="main" data-width="'+w+'" data-height="'+h+
     '" data-fps="'+p.fps+'" data-duration="'+duration+'" data-motion-blur="off" data-motion-blur-shutter="0">'+
     '<canvas id="world" class="clip" data-start="0" data-duration="'+duration+
-    '" data-track-index="1" data-layout-allow-overlap aria-label="Cena 3D"></canvas>'+layerMarkup+labels+captionMarkup+audio+'</div>'+
+    '" data-track-index="1" data-layout-allow-overlap aria-label="Cena 3D"></canvas>'+backgroundMarkup+layerMarkup+labels+captionMarkup+audio+'</div>'+
     '<script src="'+gsap+'"><\/script><script type="module" src="'+script+'"><\/script></body></html>';
 }
 function editorRuntime(){
+  const motionEngine=motionV2Runtime(motionV2,W,H,FPS);
+  const motionBackground=document.getElementById("motion-v2-bg");
   const canvas=document.getElementById("world");
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:"high-performance",preserveDrawingBuffer:true});
   // Reduced internal GPU buffer is limited to the dedicated 24s qualification build.
@@ -321,15 +327,35 @@ function editorRuntime(){
   }
   function updateEditorOverlays(time){
     const frame=FRAME_OFFSET+Math.round(time*FPS);
+    if(motionBackground){
+      const bg=motionEngine.background(frame);
+      if(bg){
+        const style=motionBackground.style;
+        if(bg.pattern==="solid")style.background=bg.color;
+        else if(bg.pattern==="grid")style.background=
+          "linear-gradient("+bg.color+"cc 1px, transparent 1px),linear-gradient(90deg,"+bg.color+"cc 1px,transparent 1px),"+
+          "radial-gradient(circle at 70% 26%,"+bg.accent+","+bg.color+" 62%)";
+        else if(bg.pattern==="rings")style.background=
+          "repeating-radial-gradient(circle at 62% 42%,transparent 0px,transparent 105px,"+bg.accent+"55 107px,"+bg.accent+"55 109px),"+
+          "linear-gradient(130deg,"+bg.color+","+bg.accent+")";
+        else style.background=
+          "radial-gradient(ellipse at 32% 26%,"+bg.accent+" 0%,transparent 58%),"+
+          "linear-gradient(145deg,"+bg.color+","+bg.accent+")";
+        style.backgroundSize=bg.pattern==="grid"?"100px 100px,100px 100px,100% 100%":"cover";
+        style.transform="translate3d("+bg.panX+"%,"+bg.panY+"%,0) scale("+bg.zoom+")";
+      }
+    }
     for(const layer of editorLayers){
       const element=document.getElementById("layer-"+layer.id);if(!element)continue;
       const active=frame>=layer.startFrame&&frame<layer.endFrame;
       element.style.visibility=active?"visible":"hidden";
       if(!active){if(layer.type==="video")element.pause();continue;}
       const value=key=>timelineValue(layer,frame,key);
-      element.style.transform="translate3d("+value("x")+"px,"+value("y")+"px,"+value("z")+"px) rotateX("+value("rotationX")+"deg) rotateY("+value("rotationY")+"deg) rotateZ("+value("rotationZ")+"deg) scale("+value("scale")+")";
+      const motion=motionEngine.layer(layer,frame);
+      element.style.transform="translate3d("+(value("x")+(motion?.x??0))+"px,"+(value("y")+(motion?.y??0))+"px,"+value("z")+"px) rotateX("+value("rotationX")+"deg) rotateY("+value("rotationY")+"deg) rotateZ("+value("rotationZ")+"deg) scale("+value("scale")+")";
+      element.style.clipPath=motion?.clipPath??"none";
       element.style.width=value("width")+"px";element.style.height=value("height")+"px";
-      element.style.opacity=String(value("opacity"));
+      element.style.opacity=String(value("opacity")*(motion?.opacity??1));
       if(layer.type==="video"){
         const video=element,duration=Number.isFinite(video.duration)?video.duration:0;
         const local=Math.max(0,(frame-layer.startFrame)/FPS*(layer.speed??1)+(layer.trimStartSeconds??0));
@@ -543,6 +569,8 @@ export function buildEditorSceneModule(p,{sceneIndex,preview=false}={}){
   return 'import * as THREE from "three";\nconst shots='+JSON.stringify(shots)+';\n'+
     'const assets='+JSON.stringify(assets)+';\n'+
     'const editorLayers='+JSON.stringify(layers)+';\nconst editorCaptions='+JSON.stringify(captions)+';\nconst FRAME_OFFSET='+offset+';\n'+
+    'const motionV2='+JSON.stringify(p.motionV2??null)+';\n'+
+    'const motionV2Runtime='+motionV2Runtime.toString()+';\n'+
     'const baseBackground='+JSON.stringify(baseBackground)+';\n'+
     'const temporalShutterSamples='+temporalShutterSamples.toString()+';\n'+
     'const W='+w+',H='+h+',FPS='+p.fps+',D='+d+',preview='+Boolean(preview)+',renderScale='+ (p.preset==="cinematic-3d-editor-homologation-v1"?.5:1)+';\n('+

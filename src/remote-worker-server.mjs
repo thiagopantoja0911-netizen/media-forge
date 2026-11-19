@@ -9,6 +9,7 @@ import {requestCancellation,reconcileExpiredLease,acknowledgeCancellation,cancel
 import { join, resolve, relative, sep } from "node:path";
 import { readState, updateState, verifySecret } from "./state-store.mjs";
 import {deliveredVideoRoot,deliveredVideoPath,MAX_DELIVERED_VIDEO_BYTES} from "./video-artifact-delivery.mjs";
+import { createMotionV2Comparison } from "./editor-frame-lab-bridge.mjs";
 
 const HEX_ID = /^[a-f0-9]{32}$/;
 const LEASE_MS = 120_000;
@@ -288,6 +289,32 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
               const {startAnalysis}=await import("../frame-lab/handler.mjs");
               await startAnalysis(job.metadata.frameLabProjectId);
             }catch(e){console.error("Frame Lab automatic compare deferred:",e.message);}
+          }
+          const motionReference=job.metadata?.source==="mediaforge-visual-editor"&&
+            HEX_ID.test(job.metadata?.frameLabReferenceProjectId||"")?job.metadata.frameLabReferenceProjectId:null;
+          if(motionReference){
+            try{
+              const {startAnalysis}=await import("../frame-lab/handler.mjs");
+              const qa=await createMotionV2Comparison({
+                referenceProjectId:motionReference,artifactPath:target,jobId:id,startAnalysis
+              });
+              await updateState(async()=>{
+                const current=await loadJob(jobsDir,id);
+                current.metadata??={};
+                current.metadata.motionV2FrameLabProjectId=qa.comparisonId;
+                current.metadata.motionV2FrameLabStatus=qa.status;
+                if(qa.reason)current.metadata.motionV2FrameLabReason=qa.reason;
+                await saveJob(jobsDir,current);
+              });
+            }catch(error){
+              console.error("Optional Motion V2 Frame Lab QA skipped:",String(error?.message||error));
+              await updateState(async()=>{
+                const current=await loadJob(jobsDir,id);
+                current.metadata??={};
+                current.metadata.motionV2FrameLabStatus="unavailable";
+                await saveJob(jobsDir,current);
+              }).catch(()=>{});
+            }
           }
           reply(response,200,{ok:true,id,frameLabProjectId:lab?job.metadata.frameLabProjectId:null,size,sha256:digest,location:lab?"frame-lab-hostinger":"mediaforge-hostinger"});
         }finally{await rm(tmp,{force:true}).catch(()=>{});}

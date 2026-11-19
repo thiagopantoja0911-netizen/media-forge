@@ -19,6 +19,7 @@ import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } f
 import { createEditorHomologationProject } from "./editor-homologation.mjs";
 import { decodeAudioToPcm, analyzePcmForBeats, synchronizeSceneCutsToBeats } from "./editor-beat-sync.mjs";
 import { applyEditorTimelineOperations } from "./editor-timeline.mjs";
+import { auditMotionV2 } from "./editor-motion-v2.mjs";
 import { storeEditorLayerAsset } from "./editor-layer-assets.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
@@ -185,10 +186,42 @@ export const VIDEOS_SECRETS_TOOLS = [
   },
   {
     name:"edit_editor_timeline",
-    description:"Edita a timeline multicamada do MediaForge. Adicione, remova, reordene e edite independentemente vídeo, imagem, texto e formas; crie keyframes por frame com easing linear, ease-in, ease-out, ease-in-out ou spring; adicione legendas dinâmicas com destaque de palavras e tempos individuais. Todas as alterações ficam no projeto e aparecem na prévia Three.js/HyperFrames. Não renderiza.",
+    description:"Edita a timeline multicamada e o Motion Engine V2. Além de texto, vídeo, imagem, legendas e keyframes, aceita motion_v2 declarativo para trajetórias Bézier, entradas laterais, saídas, fundos animados e referência Frame Lab. A prévia e o MP4 HyperFrames usam o MESMO projeto. Não renderiza.",
     inputSchema:{type:"object",additionalProperties:false,properties:{
       project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
       expected_revision:{type:"integer",minimum:0},
+
+      motion_v2:{type:"object",description:"Objeto completo motionV2; omitir preserva o atual. Validado pelo motor nativo.",additionalProperties:false,properties:{
+        version:{type:"integer",enum:[1]},enabled:{type:"boolean"},hideSceneTitles:{type:"boolean"},
+        frameLabProjectId:{type:"string",pattern:"^[a-f0-9]{32}$"},
+        background:{type:"object",additionalProperties:false,properties:{
+          keyframes:{type:"array",minItems:1,maxItems:120,items:{type:"object",additionalProperties:false,properties:{
+            frame:{type:"integer",minimum:0},color:{type:"string",pattern:"^#[a-fA-F0-9]{6}$"},
+            accent:{type:"string",pattern:"^#[a-fA-F0-9]{6}$"},
+            pattern:{type:"string",enum:["solid","gradient","grid","rings"]},
+            panX:{type:"number",minimum:-30,maximum:30},panY:{type:"number",minimum:-30,maximum:30},
+            zoom:{type:"number",minimum:1,maximum:1.6},ease:{}
+          },required:["frame","color","accent","pattern"]}}
+        }},
+        moves:{type:"object",additionalProperties:{type:"object",additionalProperties:false,properties:{
+          enter:{type:"object",additionalProperties:false,properties:{
+            from:{type:"string",enum:["none","left","right","top","bottom"]},
+            frames:{type:"integer",minimum:1,maximum:180},ease:{},mask:{type:"string",enum:["none","wipe"]}
+          },required:["from","frames"]},
+          exit:{type:"object",additionalProperties:false,properties:{
+            to:{type:"string",enum:["none","left","right","top","bottom"]},
+            frames:{type:"integer",minimum:1,maximum:180},ease:{},mask:{type:"string",enum:["none","wipe"]}
+          },required:["to","frames"]},
+          path:{type:"array",minItems:2,maxItems:120,items:{type:"object",additionalProperties:false,properties:{
+            frame:{type:"integer",minimum:0},x:{type:"number",minimum:-4320,maximum:4320},
+            y:{type:"number",minimum:-4320,maximum:4320},
+            in:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},
+            out:{type:"array",minItems:2,maxItems:2,items:{type:"number"}},
+            ease:{}
+          },required:["frame","x","y"]}}
+        }}}
+      },required:["version","enabled"]},
+
       layer_operations:{type:"array",maxItems:80,items:{type:"object",additionalProperties:false,properties:{
         action:{type:"string",enum:["add","update","remove","reorder","add_keyframe","remove_keyframe"]},
         layer_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
@@ -737,12 +770,15 @@ export async function handleVideosSecretsMcp({
       if(args.expected_revision!==undefined&&args.expected_revision!==old.revision)
         return writeError(response,id,-32602,"EDITOR_REVISION_CONFLICT",409,version);
       const layers=args.layer_operations??[],captions=args.caption_operations??[];
-      if((!layers.length&&!captions.length)||layers.length>80||captions.length>120)
-        return writeError(response,id,-32602,"Informe operações de camadas ou legendas dentro dos limites.",422,version);
+      if((!layers.length&&!captions.length&&args.motion_v2===undefined)||layers.length>80||captions.length>120)
+        return writeError(response,id,-32602,"Informe operações de camadas, legendas ou motion_v2.",422,version);
       const next=applyEditorTimelineOperations(old,{layer_operations:layers,caption_operations:captions});
+      if(args.motion_v2!==undefined)next.motionV2=args.motion_v2;
+      validateEditorProject(next);
       const project=await saveEditorProject(next,{expectedRevision:old.revision});
       return writeResult(response,id,textResult({ok:true,revision:project.revision,
         layers:project.layers,captions:project.captions,
+        motionV2:project.motionV2??null,motionQA:auditMotionV2(project),
         previewReview:await readEditorPreviewReview(project),
         editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
         nextStep:"Atualize a prévia do editor e verifique os keyframes e as legendas em vários frames antes de renderizar."},false,version),version);
