@@ -26,7 +26,7 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
   const layerMarkup=(p.layers??[]).filter(layer=>layer.endFrame>frameOffset&&layer.startFrame<frameEnd).map(layer=>{
     const localStart=Math.max(0,layer.startFrame-frameOffset),localEnd=Math.min(frameEnd,layer.endFrame)-frameOffset;
     const common=' id="layer-'+layer.id+'" class="editor-layer clip" data-start="'+localStart/p.fps+'" data-duration="'+(localEnd-localStart)/p.fps+'" data-track-index="'+Math.max(1,layer.zIndex+20)+'" data-layout-allow-overlap';
-    const base='position:absolute;left:0;top:0;width:'+layer.width+'px;height:'+layer.height+'px;z-index:'+(motionEnabled?layer.zIndex+8:layer.zIndex)+';opacity:+layer.opacity+';mix-blend-mode:'+layer.blendMode+';transform:translate3d('+layer.x+'px,'+layer.y+'px,'+layer.z+'px) rotateX('+layer.rotationX+'deg) rotateY('+layer.rotationY+'deg) rotateZ('+layer.rotationZ+'deg) scale('+layer.scale+');transform-origin:top left;transform-style:preserve-3d;';
+    const base='position:absolute;left:0;top:0;width:'+layer.width+'px;height:'+layer.height+'px;z-index:'+(motionEnabled?layer.zIndex+8:layer.zIndex)+';opacity:'+layer.opacity+';mix-blend-mode:'+layer.blendMode+';transform:translate3d('+layer.x+'px,'+layer.y+'px,'+layer.z+'px) rotateX('+layer.rotationX+'deg) rotateY('+layer.rotationY+'deg) rotateZ('+layer.rotationZ+'deg) scale('+layer.scale+');transform-origin:top left;transform-style:preserve-3d;';
     if(layer.type==="video"){
       const asset=(p.layerAssets??[]).find(item=>item.id===layer.assetId);
       const url=preview?"/api/editor/projects/"+projectId+"/layer-assets/"+layer.assetId:"./assets/layers/"+layer.assetId+"."+asset.extension;
