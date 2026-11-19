@@ -1,7 +1,7 @@
 name: MediaForge visual timeline + Three.js preview CI
 on:
   push:
-    branches: [feat/mediaforge-visual-timeline-3d-20261117]
+    branches: [feat/mediaforge-visual-timeline-3d-20261117, feat/editor-layers-keyframes-captions-20261118]
   pull_request:
     branches: [feature/unific-media-20261116]
 jobs:
@@ -17,4 +17,4 @@ jobs:
       - name: Validate browser client JavaScript
         run: node --check editor-studio/app.js
       - name: Validate editor server and Three.js packages
-        run: node --test test/editor-homologation.test.mjs test/editor-depth-of-field.test.mjs test/editor-beat-sync.test.mjs test/editor-typography.test.mjs test/editor-motion-blur.test.mjs test/editor-premium.test.mjs test/editor-review-gate.test.mjs test/editor-studio.test.mjs test/windows-worker-credentials.test.mjs test/editor-midflow.test.mjs test/cinematic-3d.test.mjs test/studio-api.test.mjs
+        run: node --test test/editor-homologation.test.mjs test/editor-depth-of-field.test.mjs test/editor-beat-sync.test.mjs test/editor-typography.test.mjs test/editor-motion-blur.test.mjs test/editor-premium.test.mjs test/editor-review-gate.test.mjs test/editor-studio.test.mjs test/editor-timeline.test.mjs test/windows-worker-credentials.test.mjs test/editor-midflow.test.mjs test/cinematic-3d.test.mjs test/studio-api.test.mjs

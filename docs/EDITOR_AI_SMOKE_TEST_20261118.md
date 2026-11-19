@@ -15,7 +15,7 @@ schemas inválidos. **Não altera projetos, não envia renders e não publica pr
    a lista de ferramentas MCP. O conector precisa apresentar:
    `create_editor_project`, `get_editor_project`, `edit_editor_project`,
    `review_editor_preview`, `render_editor_project`, `upload_editor_asset`,
-   `list_editor_style_presets`, `apply_editor_style_preset` e `sync_editor_beats`.
+   `list_editor_style_presets`, `apply_editor_style_preset`, `sync_editor_beats`, `edit_editor_timeline` e `upload_editor_layer_asset`.
 4. Garantir que o Browser MCP autenticado consegue abrir a prévia WebGL real;
    `LANE_NOT_READY` indica bloqueio de controle de aba, não aprovação de prévia.
 5. Verificar o worker antes de enviar novo vídeo: a conexão/heartbeat isoladamente
@@ -35,12 +35,12 @@ O teste deve provar:
 - As operações de edição aparecem no catálogo combinado e têm esquema MCP válido.
 - Um nome de ferramenta Browser não pode ser sobrescrito por uma ferramenta MediaForge.
 - O render continua exigindo `confirm_render=true` e revisão visual da versão atual.
-- A criação e edição de projetos não disparam automaticamente um job de render.
+- A criação e edição de projetos não disparam automaticamente um job de render.\n- Camadas independentes de vídeo, imagem, texto e forma validam assets, z-index, blend mode e keyframes.\n- Legendas dinâmicas validam intervalo, estilo, animação e sincronização palavra a palavra.\n- A prévia Three.js e o HTML capturado pelo HyperFrames consomem a mesma timeline.
 
 ## Teste manual de ponta a ponta (apenas com sessão autenticada)
 
 1. Criar projeto descartável de 10–15 s via `create_editor_project`.
-2. Ler `get_editor_project`, editar uma cena via `edit_editor_project`, reler a nova revisão.
+2. Ler `get_editor_project`, editar uma cena via `edit_editor_project` e criar camadas/keyframes/legendas via `edit_editor_timeline`; reler a nova revisão.
 3. Abrir `/editor?project=<id>`. Conferir preview de **cada cena** em pelo menos dois instantes por cena.
 4. Registrar `review_editor_preview` apenas após inspeção real. Se houver problema,
    registrar `fail`, corrigir e repetir; nunca preencher checks de visualização fictícios.

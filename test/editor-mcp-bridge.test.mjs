@@ -13,6 +13,8 @@ const editorCommands = [
   "create_editor_project",
   "get_editor_project",
   "edit_editor_project",
+  "edit_editor_timeline",
+  "upload_editor_layer_asset",
   "review_editor_preview",
   "render_editor_project",
   "upload_editor_asset",
@@ -49,6 +51,15 @@ test("Editor project render still requires an explicit confirmation and preview 
   assert.equal(review.inputSchema.properties.checks.items.properties.samples_seconds.minItems,2);
 });
 
+test("AI timeline tools expose independent layers, keyframes and captions",()=>{
+  const edit=VIDEOS_SECRETS_TOOLS.find(t=>t.name==="edit_editor_timeline");
+  const upload=VIDEOS_SECRETS_TOOLS.find(t=>t.name==="upload_editor_layer_asset");
+  assert.ok(edit.inputSchema.properties.layer_operations);
+  assert.ok(edit.inputSchema.properties.caption_operations);
+  assert.equal(edit.inputSchema.required.includes("project_id"),true);
+  assert.ok(upload.inputSchema.properties.base64.maxLength>=22000000);
+});
+
 test("Browser commands cannot be shadowed by MediaForge or duplicate themselves", () => {
   const sample={name:"tab_list",inputSchema:{type:"object"}};
   assert.throws(
@@ -65,7 +76,7 @@ test("Browser commands cannot be shadowed by MediaForge or duplicate themselves"
   );
 });
 
-test("catalog readiness confirms 11 editor operations with one Browser OAuth grant", () => {
+test("catalog readiness confirms all editor operations in the unified catalog with one Browser OAuth grant", () => {
   const browser=[{name:"tab_list",inputSchema:{type:"object"}}];
   const status=inspectUnifiedMediaCatalog(browser,VIDEOS_SECRETS_TOOLS);
   assert.equal(status.ready,true);
@@ -107,7 +118,7 @@ test("deployed entry serves unified catalog health without exposing OAuth creden
     assert.equal(data.ready,true);
     assert.equal(data.connector,"/browser/mcp");
     assert.equal(data.version,UNIFIED_MCP_CATALOG_VERSION);
-    assert.equal(data.editorTools,11);
+    assert.equal(data.editorTools,EDITOR_MCP_TOOL_NAMES.length);
     assert.ok(data.totalTools>data.mediaTools);
     const denied=await fetch("http://127.0.0.1:"+port+"/browser/mcp",{
       method:"POST",headers:{"content-type":"application/json"},

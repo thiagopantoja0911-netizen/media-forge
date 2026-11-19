@@ -3,6 +3,7 @@ import { readFile, readdir, mkdir, writeFile, rename, stat } from "node:fs/promi
 import { join, resolve } from "node:path";
 import { getEditorStylePreset, applyEditorStylePreset } from "./editor-style-presets.mjs";
 import { validateSceneTypography } from "./editor-typography.mjs";
+import { validateEditorTimeline } from "./editor-timeline.mjs";
 
 const TITLE_MAX=100, MAX_AUDIO=10, MAX_SCENES=12, MAX_VISUAL_ASSETS=8;
 export const EDITOR_VISUAL_TYPES=["screen","card-grid"];
@@ -78,7 +79,7 @@ export function makeEditorProject(input={}){
   const project={version:1,id:randomUUID().replaceAll("-",""),revision:0,brand,title,idea,
     fps,aspectRatio,totalFrames,
     mode:"cinematic-3d",preset:compact(input.preset||"cinematic-3d-editor-v1",80),
-    scenes,audio:[],assets:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+    scenes,audio:[],assets:[],layerAssets:[],layers:[],captions:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
   const prepared=input.style_preset?applyEditorStylePreset(project,input.style_preset):project;
   validateEditorProject(prepared);
   return prepared;
@@ -145,6 +146,16 @@ export function validateEditorProject(p){
     }
   }
   if(cursor!==p.totalFrames)throw failure("SCENES_GAP","A timeline não termina no último frame.");
+  if(p.layerAssets!==undefined&&(!Array.isArray(p.layerAssets)||p.layerAssets.length>8))throw failure("EDITOR_LAYER_ASSETS_INVALID","Máximo de oito vídeos importados.");
+  const videoIds=new Set();let videoBytes=0;
+  for(const asset of p.layerAssets??[]){
+    if(!asset||!FILE_ID.test(asset.id)||videoIds.has(asset.id)||!["mp4","webm"].includes(asset.extension)||
+      typeof asset.name!=="string"||!asset.name.trim()||asset.name.length>90||
+      !integer(asset.size,64,16*1024*1024)||!["video/mp4","video/webm"].includes(asset.mime))
+      throw failure("EDITOR_LAYER_ASSET_INVALID","Asset de vídeo inválido.");
+    videoIds.add(asset.id);videoBytes+=asset.size;
+  }
+  if(videoBytes>48*1024*1024)throw failure("EDITOR_LAYER_ASSETS_TOO_LARGE","Vídeos importados ultrapassam 48 MB.");
   if(!Array.isArray(p.audio)||p.audio.length>MAX_AUDIO)throw failure("AUDIO_INVALID","Máximo de dez faixas de áudio.");
   const audioNames=new Set();
   for(const a of p.audio){
@@ -155,6 +166,7 @@ export function validateEditorProject(p){
       throw failure("AUDIO_TRACK_INVALID","Trilha de áudio inválida.");
     audioNames.add(a.id);
   }
+  validateEditorTimeline(p);
   return p;
 }
 export const editorStoreDir=()=>resolve(process.env.MEDIAFORGE_DATA_DIR??".mediaforge","editor-projects");

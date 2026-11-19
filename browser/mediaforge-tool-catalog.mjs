@@ -36,12 +36,14 @@ export function composeUnifiedMediaTools(browserTools, mediaTools) {
  * Stable version for the combined Browser + Editor MCP catalog. Reconnection
  * must discover this catalog, not the older Browser-only/legacy-media snapshot.
  */
-export const UNIFIED_MCP_CATALOG_VERSION = "0.9.1";
+export const UNIFIED_MCP_CATALOG_VERSION = "0.9.2";
 export const EDITOR_MCP_TOOL_NAMES = Object.freeze([
   "create_editor_homologation_project",
   "create_editor_project",
   "get_editor_project",
   "edit_editor_project",
+  "edit_editor_timeline",
+  "upload_editor_layer_asset",
   "review_editor_preview",
   "render_editor_project",
   "upload_editor_asset",

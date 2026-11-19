@@ -18,6 +18,8 @@ import { storeEditorVisualAsset } from "./editor-visual-assets.mjs";
 import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } from "./editor-style-presets.mjs";
 import { createEditorHomologationProject } from "./editor-homologation.mjs";
 import { decodeAudioToPcm, analyzePcmForBeats, synchronizeSceneCutsToBeats } from "./editor-beat-sync.mjs";
+import { applyEditorTimelineOperations } from "./editor-timeline.mjs";
+import { storeEditorLayerAsset } from "./editor-layer-assets.mjs";
 
 const MODERN_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOLS = ["2025-03-26", "2025-06-18", "2025-11-25"];
@@ -180,6 +182,101 @@ export const VIDEOS_SECRETS_TOOLS = [
         }}
       },required:["scene_id","changes"]}}
     },required:["project_id","edits"]}
+  },
+  {
+    name:"edit_editor_timeline",
+    description:"Edita a timeline multicamada do MediaForge. Adicione, remova, reordene e edite independentemente vídeo, imagem, texto e formas; crie keyframes por frame com easing linear, ease-in, ease-out, ease-in-out ou spring; adicione legendas dinâmicas com destaque de palavras e tempos individuais. Todas as alterações ficam no projeto e aparecem na prévia Three.js/HyperFrames. Não renderiza.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
+      expected_revision:{type:"integer",minimum:0},
+      layer_operations:{type:"array",maxItems:80,items:{type:"object",additionalProperties:false,properties:{
+        action:{type:"string",enum:["add","update","remove","reorder","add_keyframe","remove_keyframe"]},
+        layer_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
+        zIndex:{type:"integer",minimum:-100,maximum:200},
+        frame:{type:"integer",minimum:0},
+        layer:{type:"object",additionalProperties:false,properties:{
+          id:{type:"string",pattern:"^[a-f0-9]{32}$"},name:{type:"string",maxLength:90},
+          type:{type:"string",enum:["video","image","text","shape"]},assetId:{type:"string",pattern:"^[a-f0-9]{32}$"},
+          text:{type:"string",maxLength:1200},color:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},
+          background:{type:"string",maxLength:240},fontFamily:{type:"string",enum:["sans","serif","mono"]},
+          fontSize:{type:"number",minimum:8,maximum:360},fontWeight:{type:"integer",minimum:100,maximum:900},
+          textAlign:{type:"string",enum:["left","center","right"]},
+          x:{type:"number",minimum:-4320,maximum:4320},y:{type:"number",minimum:-4320,maximum:4320},
+          z:{type:"number",minimum:-10000,maximum:10000},width:{type:"number",minimum:1,maximum:4320},
+          height:{type:"number",minimum:1,maximum:4320},rotationX:{type:"number",minimum:-3600,maximum:3600},
+          rotationY:{type:"number",minimum:-3600,maximum:3600},rotationZ:{type:"number",minimum:-3600,maximum:3600},
+          scale:{type:"number",minimum:0.01,maximum:20},opacity:{type:"number",minimum:0,maximum:1},
+          zIndex:{type:"integer",minimum:-100,maximum:200},startFrame:{type:"integer",minimum:0},
+          endFrame:{type:"integer",minimum:1},blendMode:{type:"string",enum:["normal","screen","multiply","overlay","lighten","darken"]},
+          trimStartSeconds:{type:"number",minimum:0},speed:{type:"number",minimum:0.1,maximum:4},loop:{type:"boolean"},
+          keyframes:{type:"array",maxItems:120,items:{type:"object",additionalProperties:false,properties:{
+            frame:{type:"integer",minimum:0},easing:{type:"string",enum:["linear","ease-in","ease-out","ease-in-out","spring"]},
+            x:{type:"number"},y:{type:"number"},z:{type:"number"},width:{type:"number"},height:{type:"number"},
+            scale:{type:"number"},rotationX:{type:"number"},rotationY:{type:"number"},rotationZ:{type:"number"},opacity:{type:"number"}
+          },required:["frame"]}}
+        }},
+        changes:{type:"object",additionalProperties:false,properties:{
+          name:{type:"string",maxLength:90},type:{type:"string",enum:["video","image","text","shape"]},
+          assetId:{type:"string",pattern:"^[a-f0-9]{32}$"},text:{type:"string",maxLength:1200},
+          color:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},background:{type:"string",maxLength:240},
+          fontFamily:{type:"string",enum:["sans","serif","mono"]},fontSize:{type:"number",minimum:8,maximum:360},
+          fontWeight:{type:"integer",minimum:100,maximum:900},textAlign:{type:"string",enum:["left","center","right"]},
+          x:{type:"number"},y:{type:"number"},z:{type:"number"},width:{type:"number"},height:{type:"number"},
+          rotationX:{type:"number"},rotationY:{type:"number"},rotationZ:{type:"number"},scale:{type:"number"},
+          opacity:{type:"number",minimum:0,maximum:1},zIndex:{type:"integer",minimum:-100,maximum:200},
+          startFrame:{type:"integer",minimum:0},endFrame:{type:"integer",minimum:1},
+          blendMode:{type:"string",enum:["normal","screen","multiply","overlay","lighten","darken"]},
+          trimStartSeconds:{type:"number",minimum:0},speed:{type:"number",minimum:0.1,maximum:4},loop:{type:"boolean"},
+          keyframes:{type:"array",maxItems:120,items:{type:"object",additionalProperties:false,properties:{
+            frame:{type:"integer",minimum:0},easing:{type:"string",enum:["linear","ease-in","ease-out","ease-in-out","spring"]},
+            x:{type:"number"},y:{type:"number"},z:{type:"number"},width:{type:"number"},height:{type:"number"},
+            scale:{type:"number"},rotationX:{type:"number"},rotationY:{type:"number"},rotationZ:{type:"number"},opacity:{type:"number"}
+          },required:["frame"]}}
+        }},
+        keyframe:{type:"object",additionalProperties:false,properties:{
+          frame:{type:"integer",minimum:0},easing:{type:"string",enum:["linear","ease-in","ease-out","ease-in-out","spring"]},
+          x:{type:"number"},y:{type:"number"},z:{type:"number"},width:{type:"number"},height:{type:"number"},
+          scale:{type:"number"},rotationX:{type:"number"},rotationY:{type:"number"},rotationZ:{type:"number"},opacity:{type:"number"}
+        },required:["frame"]}
+      },required:["action"]}},
+      caption_operations:{type:"array",maxItems:120,items:{type:"object",additionalProperties:false,properties:{
+        action:{type:"string",enum:["add","update","remove"]},caption_id:{type:"string",pattern:"^[a-f0-9]{32}$"},
+        caption:{type:"object",additionalProperties:false,properties:{
+          id:{type:"string",pattern:"^[a-f0-9]{32}$"},text:{type:"string",maxLength:500},
+          startFrame:{type:"integer",minimum:0},endFrame:{type:"integer",minimum:1},
+          style:{type:"string",enum:["karaoke","boxed","minimal","outline"]},
+          animation:{type:"string",enum:["none","fade","rise","typewriter"]},
+          x:{type:"number",minimum:0,maximum:1080},y:{type:"number",minimum:0,maximum:1920},
+          width:{type:"number",minimum:100,maximum:1080},fontSize:{type:"number",minimum:18,maximum:120},
+          color:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},highlightColor:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},
+          backgroundColor:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},backgroundOpacity:{type:"number",minimum:0,maximum:1},
+          zIndex:{type:"integer",minimum:0,maximum:200},align:{type:"string",enum:["left","center","right"]},
+          wordTimings:{type:"array",items:{type:"object",additionalProperties:false,properties:{
+            startFrame:{type:"integer",minimum:0},endFrame:{type:"integer",minimum:1}
+          },required:["startFrame","endFrame"]}}
+        }},
+        changes:{type:"object",additionalProperties:false,properties:{
+          text:{type:"string",maxLength:500},startFrame:{type:"integer",minimum:0},endFrame:{type:"integer",minimum:1},
+          style:{type:"string",enum:["karaoke","boxed","minimal","outline"]},animation:{type:"string",enum:["none","fade","rise","typewriter"]},
+          x:{type:"number",minimum:0,maximum:1080},y:{type:"number",minimum:0,maximum:1920},
+          width:{type:"number",minimum:100,maximum:1080},fontSize:{type:"number",minimum:18,maximum:120},
+          color:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},highlightColor:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},
+          backgroundColor:{type:"string",pattern:"^#[A-Fa-f0-9]{6}$"},backgroundOpacity:{type:"number",minimum:0,maximum:1},
+          zIndex:{type:"integer",minimum:0,maximum:200},align:{type:"string",enum:["left","center","right"]},
+          wordTimings:{type:"array",items:{type:"object",additionalProperties:false,properties:{
+            startFrame:{type:"integer",minimum:0},endFrame:{type:"integer",minimum:1}
+          },required:["startFrame","endFrame"]}}
+        }}
+      },required:["action"]}}
+    },required:["project_id"]}
+  },
+  {
+    name:"upload_editor_layer_asset",
+    description:"Importa vídeo MP4 ou WebM de até 16 MB como asset privado do projeto. Depois use edit_editor_timeline para criar uma camada type=video com assetId retornado. Não usa URLs externas e não renderiza.",
+    inputSchema:{type:"object",additionalProperties:false,properties:{
+      project_id:{type:"string",pattern:"^[a-f0-9]{32}$"},filename:{type:"string",maxLength:90},
+      base64:{type:"string",maxLength:22400000}
+    },required:["project_id","filename","base64"]}
   },
   {
     name:"list_editing_styles",
@@ -625,6 +722,30 @@ export async function handleVideosSecretsMcp({
           ?"Prévia verificada e aprovada. Renderização da revisão atual liberada."
           :"Prévia reprovada. Volte ao editor, corrija e verifique novamente."
       },false,version),version);
+    }
+    if(name==="upload_editor_layer_asset"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const old=await loadEditorProject(args.project_id);
+      const result=await storeEditorLayerAsset(old,args);
+      return writeResult(response,id,textResult({ok:true,asset:result.asset,revision:result.project.revision,
+        nextStep:"Use edit_editor_timeline com layer_operations action=add, type=video e assetId retornado.",
+        editorUrl:"https://unificmedia.salevo.site/editor?project="+result.project.id},false,version),version);
+    }
+    if(name==="edit_editor_timeline"){
+      if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);
+      const old=await loadEditorProject(args.project_id);
+      if(args.expected_revision!==undefined&&args.expected_revision!==old.revision)
+        return writeError(response,id,-32602,"EDITOR_REVISION_CONFLICT",409,version);
+      const layers=args.layer_operations??[],captions=args.caption_operations??[];
+      if((!layers.length&&!captions.length)||layers.length>80||captions.length>120)
+        return writeError(response,id,-32602,"Informe operações de camadas ou legendas dentro dos limites.",422,version);
+      const next=applyEditorTimelineOperations(old,{layer_operations:layers,caption_operations:captions});
+      const project=await saveEditorProject(next,{expectedRevision:old.revision});
+      return writeResult(response,id,textResult({ok:true,revision:project.revision,
+        layers:project.layers,captions:project.captions,
+        previewReview:await readEditorPreviewReview(project),
+        editorUrl:"https://unificmedia.salevo.site/editor?project="+project.id,
+        nextStep:"Atualize a prévia do editor e verifique os keyframes e as legendas em vários frames antes de renderizar."},false,version),version);
     }
     if(name==="edit_editor_project"){
       if(!auth.scopes.includes("videos:write"))return writeError(response,id,-32003,"Insufficient scope",403,version);

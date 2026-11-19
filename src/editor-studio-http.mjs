@@ -7,6 +7,7 @@ import { signedVideoDownload } from "./video-artifact-delivery.mjs";
 import { createEditorHomologationProject } from "./editor-homologation.mjs";
 import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
 import { storeEditorVisualAsset, loadEditorVisualAsset } from "./editor-visual-assets.mjs";
+import { storeEditorLayerAsset, loadEditorLayerAsset } from "./editor-layer-assets.mjs";
 import { buildEditorStyleDna, listEditorStylePresets, applyEditorStylePreset } from "./editor-style-presets.mjs";
 import { decodeAudioToPcm, analyzePcmForBeats, synchronizeSceneCutsToBeats } from "./editor-beat-sync.mjs";
 import { demoProject as remotionDemoProject } from "../remotion/project.mjs";
@@ -31,12 +32,29 @@ const staticFiles=new Map([
   ["/editor/vendor/three.core.js","../node_modules/three/build/three.core.js"],
   ["/editor/vendor/gsap.min.js","../assets/gsap.min.js"]
 ]);
-const textType=path=>path.endsWith(".mp4")?"video/mp4":path.endsWith(".png")?"image/png":path.endsWith(".css")?"text/css; charset=utf-8":path.endsWith(".js")||path.endsWith(".mjs")?"text/javascript; charset=utf-8":"text/html; charset=utf-8";
+const textType=path=>path.endsWith(".mp4")?"video/mp4":path.endsWith(".webm")?"video/webm":path.endsWith(".png")?"image/png":path.endsWith(".css")?"text/css; charset=utf-8":path.endsWith(".js")||path.endsWith(".mjs")?"text/javascript; charset=utf-8":"text/html; charset=utf-8";
 const headers={"cache-control":"no-store","x-content-type-options":"nosniff","referrer-policy":"no-referrer"};
 function json(res,status,data){res.writeHead(status,{"content-type":"application/json; charset=utf-8",...headers});res.end(JSON.stringify(data));}
 function replyText(res,status,type,body,extra={}){
   res.writeHead(status,{"content-type":type,...headers,...extra});
   res.end(body);
+}
+function replyVideoRange(request,response,type,bytes){
+  const range=request.headers.range;
+  if(!range){
+    response.writeHead(200,{"content-type":type,"content-length":bytes.length,"accept-ranges":"bytes",...headers});
+    response.end(bytes);return;
+  }
+  const match=/^bytes=(\d*)-(\d*)$/.exec(range);
+  if(!match){response.writeHead(416,{"content-range":"bytes */"+bytes.length,...headers});response.end();return;}
+  const start=match[1]?Number(match[1]):0;
+  const end=match[2]?Math.min(Number(match[2]),bytes.length-1):bytes.length-1;
+  if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||end<start||start>=bytes.length){
+    response.writeHead(416,{"content-range":"bytes */"+bytes.length,...headers});response.end();return;
+  }
+  response.writeHead(206,{"content-type":type,"content-length":end-start+1,
+    "content-range":"bytes "+start+"-"+end+"/"+bytes.length,"accept-ranges":"bytes",...headers});
+  response.end(bytes.subarray(start,end+1));
 }
 function assertSameOrigin(request){
   const site=String(request.headers?.["sec-fetch-site"]||"").toLowerCase();
@@ -177,6 +195,16 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       assertSameOrigin(request);
       const result=await storeEditorVisualAsset(p,await parseBody(request));
       json(response,201,{ok:true,...result});return true;
+    }
+    if(pieces.length===5&&pieces[4]==="layer-assets"&&request.method==="POST"){
+      assertSameOrigin(request);
+      const result=await storeEditorLayerAsset(p,await parseBody(request));
+      json(response,201,{ok:true,...result});return true;
+    }
+    if(pieces.length===6&&pieces[4]==="layer-assets"&&request.method==="GET"){
+      const {asset,bytes}=await loadEditorLayerAsset(p,pieces[5]);
+      replyVideoRange(request,response,asset.mime,bytes);
+      return true;
     }
     if(pieces.length===6&&pieces[4]==="assets"&&request.method==="GET"){
       const {asset,bytes}=await loadEditorVisualAsset(p,pieces[5]);

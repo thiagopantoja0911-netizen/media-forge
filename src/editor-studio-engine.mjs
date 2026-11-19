@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { validateEditorProject } from "./editor-studio-core.mjs";
 import { buildEditorVisualAssets } from "./editor-visual-assets.mjs";
+import { buildEditorLayerAssets } from "./editor-layer-assets.mjs";
 import { buildEditorStyleDna, getEditorStylePreset } from "./editor-style-presets.mjs";
 import { temporalShutterSamples } from "./editor-motion-blur.mjs";
 import { sceneTypography, renderKineticTitle, EDITOR_FONT_STACKS } from "./editor-typography.mjs";
@@ -17,6 +18,39 @@ function selectScenes(p,index){
 export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
   const shots=selectScenes(p,sceneIndex),[w,h]=dims(p.aspectRatio);
   const duration=shots.at(-1).endFrame/p.fps;
+  const frameOffset=sceneIndex===undefined?0:p.scenes[sceneIndex].startFrame;
+  const frameEnd=frameOffset+shots.at(-1).endFrame;
+  const layerMarkup=(p.layers??[]).filter(layer=>layer.endFrame>frameOffset&&layer.startFrame<frameEnd).map(layer=>{
+    const localStart=Math.max(0,layer.startFrame-frameOffset),localEnd=Math.min(frameEnd,layer.endFrame)-frameOffset;
+    const common=' id="layer-'+layer.id+'" class="editor-layer clip" data-start="'+localStart/p.fps+'" data-duration="'+(localEnd-localStart)/p.fps+'" data-track-index="'+Math.max(1,layer.zIndex+20)+'" data-layout-allow-overlap';
+    const base='position:absolute;left:0;top:0;width:'+layer.width+'px;height:'+layer.height+'px;z-index:'+layer.zIndex+';opacity:'+layer.opacity+';mix-blend-mode:'+layer.blendMode+';transform:translate3d('+layer.x+'px,'+layer.y+'px,'+layer.z+'px) rotateX('+layer.rotationX+'deg) rotateY('+layer.rotationY+'deg) rotateZ('+layer.rotationZ+'deg) scale('+layer.scale+');transform-origin:top left;transform-style:preserve-3d;';
+    if(layer.type==="video"){
+      const asset=(p.layerAssets??[]).find(item=>item.id===layer.assetId);
+      const url=preview?"/api/editor/projects/"+projectId+"/layer-assets/"+layer.assetId:"./assets/layers/"+layer.assetId+"."+asset.extension;
+      return '<video'+common+' src="'+esc(url)+'" muted playsinline preload="auto" data-trim-start="'+(layer.trimStartSeconds??0)+'" data-speed="'+(layer.speed??1)+'" data-loop="'+Boolean(layer.loop)+'" style="'+base+'object-fit:cover"></video>';
+    }
+    if(layer.type==="image"){
+      const asset=(p.assets??[]).find(item=>item.id===layer.assetId);
+      const url=preview?"/api/editor/projects/"+projectId+"/assets/"+layer.assetId:"./assets/images/"+layer.assetId+"."+asset.extension;
+      return '<img'+common+' src="'+esc(url)+'" alt="" style="'+base+'object-fit:contain">';
+    }
+    if(layer.type==="text"){
+      const font=layer.fontFamily==="serif"?"Georgia,serif":layer.fontFamily==="mono"?"ui-monospace,monospace":"Arial,Helvetica,sans-serif";
+      const justify=(layer.textAlign||"left")==="left"?"flex-start":layer.textAlign==="right"?"flex-end":"center";
+      const style=base+'display:flex;align-items:center;justify-content:'+justify+';text-align:'+(layer.textAlign||"left")+';white-space:pre-line;overflow-wrap:anywhere;color:'+(layer.color||"#ffffff")+';font-family:'+font+';font-size:'+(layer.fontSize||64)+'px;font-weight:'+(layer.fontWeight||800)+';line-height:1.08;text-shadow:0 6px 24px #000a;';
+      return '<div'+common+' style="'+style+'">'+esc(layer.text||"")+'</div>';
+    }
+    return '<div'+common+' style="'+base+'background:'+(layer.background||layer.color||"#845dff")+';border-radius:24px"></div>';
+  }).join("");
+  const captionMarkup=(p.captions??[]).filter(caption=>caption.endFrame>frameOffset&&caption.startFrame<frameEnd).map(caption=>{
+    const localStart=Math.max(0,caption.startFrame-frameOffset),localEnd=Math.min(frameEnd,caption.endFrame)-frameOffset;
+    const words=caption.text.trim().split(/\s+/);
+    const content=words.map((word,index)=>'<span class="editor-caption-word" data-word-index="'+index+'">'+esc(word)+'</span>').join(" ");
+    const rgb=caption.backgroundColor.match(/[0-9a-fA-F]{2}/g).map(value=>parseInt(value,16));
+    const bg='rgba('+rgb.join(",")+','+caption.backgroundOpacity+')';
+    const style='left:'+caption.x+'px;top:'+caption.y+'px;width:'+caption.width+'px;font-size:'+caption.fontSize+'px;color:'+caption.color+';background:'+(caption.style==="minimal"||caption.style==="outline"?"transparent":bg)+';text-align:'+caption.align+';z-index:'+(caption.zIndex+50)+';';
+    return '<div id="caption-layer-'+caption.id+'" class="editor-caption clip" data-animation="'+caption.animation+'" data-style="'+caption.style+'" data-start="'+localStart/p.fps+'" data-duration="'+(localEnd-localStart)/p.fps+'" data-track-index="'+(caption.zIndex+70)+'" data-layout-allow-overlap style="'+style+'">'+content+'</div>';
+  }).join("");
   const labels=shots.map((s,i)=>
     '<div id="caption-'+i+'" class="caption clip" data-layout-ignore data-start="'+s.startFrame/p.fps+'" data-duration="'+(s.endFrame-s.startFrame)/p.fps+'" data-track-index="'+(i+2)+'">'+
     '<span class="eyebrow">'+esc(s.kicker)+'</span>'+
@@ -37,9 +71,14 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
   const supporting=colorMode==="light"?"#324242":"#dddde6";
   const style=[
     "*{box-sizing:border-box}html,body{margin:0;background:#070912}",
-    "#root{position:relative;width:"+w+"px;height:"+h+"px;overflow:hidden;background:#070912;font-family:Arial,Helvetica,sans-serif;color:"+ink+";isolation:isolate}",
+    "#root{position:relative;width:"+w+"px;height:"+h+"px;overflow:hidden;background:#070912;font-family:Arial,Helvetica,sans-serif;color:"+ink+";isolation:isolate;perspective:1300px;perspective-origin:50% 50%}",
     "#world{position:absolute;inset:0;width:100%;height:100%;z-index:0;display:block}",
     ".caption{position:absolute;top:14%;left:10%;width:80%;z-index:3;pointer-events:none;transform-origin:15% 50%;will-change:transform,opacity}",
+    ".editor-layer{position:absolute;pointer-events:none;will-change:transform,opacity;backface-visibility:visible}",
+    ".editor-caption{position:absolute;box-sizing:border-box;padding:18px 28px;border-radius:18px;font-family:Arial,Helvetica,sans-serif;font-weight:800;line-height:1.18;pointer-events:none;white-space:normal;overflow-wrap:anywhere;box-shadow:0 8px 30px #0005;will-change:transform,opacity}",
+    ".editor-caption[data-style=outline]{border:2px solid currentColor;text-shadow:0 4px 18px #000}",
+    ".editor-caption[data-style=minimal]{text-shadow:0 4px 18px #000;box-shadow:none}",
+    ".editor-caption-word{display:inline-block;transition:color .04s,text-shadow .04s}",
     ".eyebrow{display:inline-block;padding:13px 25px;border:2px solid #ffffff66;border-radius:100px;letter-spacing:.19em;font-size:28px;font-weight:800;background:#03030688}",
     ".hero-title{margin:47px 0 0;font-size:"+titleSize+"px;line-height:1.02;letter-spacing:-.06em;font-weight:900;overflow-wrap:anywhere;white-space:pre-wrap;text-shadow:0 14px 34px #000c}",
     ".kinetic-unit{display:inline-block;white-space:pre;will-change:transform,opacity,filter;transform-origin:50% 90%}",
@@ -52,12 +91,12 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
     '<body><div id="root" data-composition-id="main" data-width="'+w+'" data-height="'+h+
     '" data-fps="'+p.fps+'" data-duration="'+duration+'" data-motion-blur="off" data-motion-blur-shutter="0">'+
     '<canvas id="world" class="clip" data-start="0" data-duration="'+duration+
-    '" data-track-index="1" data-layout-allow-overlap aria-label="Cena 3D"></canvas>'+labels+audio+'</div>'+
+    '" data-track-index="1" data-layout-allow-overlap aria-label="Cena 3D"></canvas>'+layerMarkup+labels+captionMarkup+audio+'</div>'+
     '<script src="'+gsap+'"><\/script><script type="module" src="'+script+'"><\/script></body></html>';
 }
 function editorRuntime(){
   const canvas=document.getElementById("world");
-  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:"high-performance",preserveDrawingBuffer:true});
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:"high-performance",preserveDrawingBuffer:true});
   // Reduced internal GPU buffer is limited to the dedicated 24s qualification build.
   const scale=preview?.58:renderScale;
   renderer.setSize(Math.round(W*scale),Math.round(H*scale),false);
@@ -130,7 +169,7 @@ function editorRuntime(){
   dofQuad.frustumCulled=false;dofScene.add(dofQuad);
   const focusPoint=new THREE.Vector3(0,.08,0);
   const world=new THREE.Scene();
-  world.background=new THREE.Color(baseBackground);
+  world.background=null;
   world.fog=new THREE.Fog(baseBackground,7,21);
   const camera=new THREE.PerspectiveCamera(W>H?40:46,W/H,.1,60);
   const ambient=new THREE.AmbientLight(0xffffff,.55);world.add(ambient);
@@ -258,6 +297,82 @@ function editorRuntime(){
   const labels=shots.map((s,i)=>document.getElementById("caption-"+i));
   const titles=labels.map(label=>label.querySelector(".hero-title"));
   const unitLists=titles.map(title=>Array.from(title.querySelectorAll(".kinetic-unit")));
+  const pendingVideoSeeks=[];
+  const clamp01=value=>Math.max(0,Math.min(1,value));
+  function easingValue(value,easing){
+    const t=clamp01(value);
+    if(easing==="ease-in")return t*t;
+    if(easing==="ease-out")return 1-(1-t)*(1-t);
+    if(easing==="ease-in-out")return t*t*(3-2*t);
+    if(easing==="spring"){const raw=1-Math.exp(-7*t)*Math.cos(11*t);const end=1-Math.exp(-7)*Math.cos(11);return raw/end;}
+    return t;
+  }
+  function timelineValue(item,frame,key){
+    const keys=(item.keyframes??[]).filter(k=>Number.isFinite(k[key]));
+    if(!keys.length)return Number(item[key]??0);
+    if(frame<=keys[0].frame)return keys[0][key];
+    if(frame>=keys.at(-1).frame)return keys.at(-1)[key];
+    for(let i=1;i<keys.length;i++)if(frame<=keys[i].frame){
+      const before=keys[i-1],after=keys[i],progress=(frame-before.frame)/(after.frame-before.frame);
+      const amount=easingValue(progress,after.easing??"linear");
+      return before[key]+(after[key]-before[key])*amount;
+    }
+    return Number(item[key]??0);
+  }
+  function updateEditorOverlays(time){
+    const frame=FRAME_OFFSET+Math.round(time*FPS);
+    for(const layer of editorLayers){
+      const element=document.getElementById("layer-"+layer.id);if(!element)continue;
+      const active=frame>=layer.startFrame&&frame<layer.endFrame;
+      element.style.visibility=active?"visible":"hidden";
+      if(!active){if(layer.type==="video")element.pause();continue;}
+      const value=key=>timelineValue(layer,frame,key);
+      element.style.transform="translate3d("+value("x")+"px,"+value("y")+"px,"+value("z")+"px) rotateX("+value("rotationX")+"deg) rotateY("+value("rotationY")+"deg) rotateZ("+value("rotationZ")+"deg) scale("+value("scale")+")";
+      element.style.width=value("width")+"px";element.style.height=value("height")+"px";
+      element.style.opacity=String(value("opacity"));
+      if(layer.type==="video"){
+        const video=element,duration=Number.isFinite(video.duration)?video.duration:0;
+        const local=Math.max(0,(frame-layer.startFrame)/FPS*(layer.speed??1)+(layer.trimStartSeconds??0));
+        const target=duration>0?(layer.loop?local%duration:Math.min(duration-.04,local)):local;
+        video.playbackRate=layer.speed??1;
+        if(video.readyState>=1&&Math.abs(video.currentTime-target)>.08){
+          let settled=false;
+          const done=()=>{if(settled)return;settled=true;video.removeEventListener("seeked",done);clearTimeout(timer);resolveSeek();};
+          let resolveSeek=()=>{};
+          const promise=new Promise(resolve=>{resolveSeek=resolve;});
+          const timer=setTimeout(done,1400);
+          video.addEventListener("seeked",done,{once:true});
+          try{video.currentTime=Math.max(0,target);pendingVideoSeeks.push(promise);}catch{done();}
+        }
+        if(playing&&video.paused)video.play().catch(()=>{});else if(!playing&&!video.paused)video.pause();
+      }
+    }
+    for(const caption of editorCaptions){
+      const element=document.getElementById("caption-layer-"+caption.id);if(!element)continue;
+      const active=frame>=caption.startFrame&&frame<caption.endFrame;
+      element.style.visibility=active?"visible":"hidden";if(!active)continue;
+      const local=frame-caption.startFrame,duration=caption.endFrame-caption.startFrame;
+      const words=caption.text.trim().split(/\s+/),spans=element.querySelectorAll(".editor-caption-word");
+      const timings=caption.wordTimings?.length===words.length?caption.wordTimings:words.map((_,index)=>{
+        const start=caption.startFrame+Math.floor(duration*index/words.length);
+        const end=caption.startFrame+Math.floor(duration*(index+1)/words.length);
+        return {startFrame:start,endFrame:Math.max(start+1,end)};
+      });
+      const animation=caption.animation??"none";
+      const intro=animation==="none"?1:clamp01(local/Math.max(1,FPS*.18));
+      const outro=animation==="none"?1:clamp01((duration-local)/Math.max(1,FPS*.12));
+      element.style.opacity=String(intro*outro);
+      element.style.transform=animation==="rise"?"translate3d(0,"+((1-intro)*34)+"px,0) scale("+(0.97+.03*intro)+")":"translate3d(0,0,0)";
+      spans.forEach((span,index)=>{
+        const timing=timings[index]??{startFrame:caption.startFrame,endFrame:caption.endFrame};
+        const shown=frame>=timing.startFrame;
+        const highlighted=frame>=timing.startFrame&&frame<timing.endFrame;
+        span.style.opacity=animation==="typewriter"&&!shown?"0":"1";
+        span.style.color=caption.style==="karaoke"&&highlighted?caption.highlightColor:caption.color;
+        span.style.textShadow=caption.style==="karaoke"&&highlighted?"0 0 18px "+caption.highlightColor:"none";
+      });
+    }
+  }
   function updateTypography(index,local){
     const s=shots[index],typ=s.typography;
     if(!typ)return;
@@ -287,6 +402,7 @@ function editorRuntime(){
     if(chosen===-1)chosen=shots.length-1;
     const s=shots[chosen],o=objects[chosen],len=(s.endFrame-s.startFrame)/FPS;
     const local=clamp((t-s.startFrame/FPS)/len),glide=ease(local);
+    updateEditorOverlays(t);
     objects.forEach((obj,i)=>{obj.group.visible=i===chosen;});
     glowQuad.visible=!!s.glow&&s.glow.intensity>0;
     if(glowQuad.visible){
@@ -401,7 +517,11 @@ function editorRuntime(){
   });
   window.addEventListener("hf-seek",event=>{
     const t=Number(event.detail.time??0);
-    event.detail.waitUntil(Promise.all(texturePromises).then(()=>draw(t)));
+    const videoReady=[...document.querySelectorAll(".editor-layer video")].map(video=>video.readyState>=1?Promise.resolve():new Promise(resolve=>{
+      const done=()=>{video.removeEventListener("loadedmetadata",done);resolve();};
+      video.addEventListener("loadedmetadata",done,{once:true});setTimeout(done,5000);
+    }));
+    event.detail.waitUntil(Promise.all([...texturePromises,...videoReady]).then(()=>{draw(t);return Promise.all(pendingVideoSeeks.splice(0));}));
   });
   window.__hf=window.__hf||{};
   window.__hf.buildReady=window.__hf.buildReady||{};
@@ -418,8 +538,11 @@ export function buildEditorSceneModule(p,{sceneIndex,preview=false}={}){
   const assets=Object.fromEntries((p.assets??[]).map(a=>[a.id,preview
     ?"/api/editor/projects/"+p.id+"/assets/"+a.id
     :"./assets/images/"+a.id+"."+a.extension]));
+  const offset=sceneIndex===undefined?0:p.scenes[sceneIndex].startFrame;
+  const layers=p.layers??[],captions=p.captions??[];
   return 'import * as THREE from "three";\nconst shots='+JSON.stringify(shots)+';\n'+
     'const assets='+JSON.stringify(assets)+';\n'+
+    'const editorLayers='+JSON.stringify(layers)+';\nconst editorCaptions='+JSON.stringify(captions)+';\nconst FRAME_OFFSET='+offset+';\n'+
     'const baseBackground='+JSON.stringify(baseBackground)+';\n'+
     'const temporalShutterSamples='+temporalShutterSamples.toString()+';\n'+
     'const W='+w+',H='+h+',FPS='+p.fps+',D='+d+',preview='+Boolean(preview)+',renderScale='+ (p.preset==="cinematic-3d-editor-homologation-v1"?.5:1)+';\n('+
@@ -434,6 +557,7 @@ export async function buildEditorRenderFiles(p,{sceneIndex}={}){
     {path:"assets/style-dna.json",content:JSON.stringify(buildEditorStyleDna(p),null,2)}
   ];
   files.push(...await buildEditorVisualAssets(p,{sceneIndex}));
+  files.push(...await buildEditorLayerAssets(p,{sceneIndex}));
   for(const [path,source] of [
     ["assets/three/build/three.core.js","../node_modules/three/build/three.core.js"],
     ["assets/three/build/three.module.js","../node_modules/three/build/three.module.js"],
