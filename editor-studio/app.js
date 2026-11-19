@@ -62,6 +62,7 @@ function openScene(i,{seek=0}={}){
   $("renderSceneButton").hidden=free;
   $("freeReviewButton").hidden=!free;
   document.body.classList.toggle("timeline-free",free);
+  const version=document.querySelector(".brandmark .version");if(version)version.textContent=free?"TIMELINE LIVRE / BETA":"3D / BETA";
   buildTracks();fillInspector();
 }
 function playbackMessage(message){const f=$("scenePreview").contentWindow;if(f)f.postMessage(message,location.origin);}
@@ -641,7 +642,7 @@ async function render(selectedOnly){
  if(!state.project)return toast("Abra um projeto antes de renderizar.");
  await saveProject(false);
  await refreshReviewStatus();
- if(!state.previewApproved)return toast("A prévia ainda não foi aprovada pelo GPT. Revise as cenas antes de renderizar.");
+ if(!state.previewApproved)return toast(state.project.mode==="timeline-free"?"Revise a prévia completa e clique em Aprovar prévia antes de renderizar.":"A prévia 3D ainda não foi aprovada. Revise as cenas antes de renderizar.");
  if(selectedOnly&&state.project.mode==="timeline-free")return toast("Timeline livre é renderizada por inteiro.");
  const desc=selectedOnly?"somente a cena "+(state.selected+1):"o vídeo inteiro";
  if(state.project.mode==="timeline-free"&&!state.project.audio.length&&
