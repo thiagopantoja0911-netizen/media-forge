@@ -233,10 +233,10 @@ function magnet(frame,p){
  }}
  return result;
 }
-function seekMark(frame,container,kind){
- const mark=doc.createElement("span");mark.className="pro-keyframe";mark.title="Keyframe · quadro "+frame+" · clicar para visualizar";
- mark.style.left=toPercent(frame,container)+"%";mark.setAttribute("role","button");mark.setAttribute("tabindex","0");
- const seek=event=>{event.stopPropagation();api()?.seekFrame(frame);};
+function seekMark(localFrame,clipDuration,globalFrame){
+ const mark=doc.createElement("span");mark.className="pro-keyframe";mark.title="Keyframe · quadro "+globalFrame+" · clicar para visualizar";
+ mark.style.left=toPercent(localFrame,clipDuration)+"%";mark.setAttribute("role","button");mark.setAttribute("tabindex","0");
+ const seek=event=>{event.stopPropagation();api()?.seekFrame(globalFrame);};
  mark.addEventListener("click",seek);
  mark.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();seek(event);}});
  mark.addEventListener("pointerdown",event=>event.stopPropagation());
@@ -286,7 +286,7 @@ function attachDrag(clip,item,kind,rail){
   window.addEventListener("pointercancel",end,{once:true});
  });
  clip.addEventListener("keydown",event=>{
-  if(event.key==="Enter"){event.preventDefault();if(kind!=="audio")api()?.selectItem(kind,item.id);}
+  if(event.key==="Enter"||event.key===" "){event.preventDefault();event.stopPropagation();if(kind!=="audio")api()?.selectItem(kind,item.id);}
  });
 }
 function createClip(rail,item,index,kind,p,selected){
@@ -301,7 +301,7 @@ function createClip(rail,item,index,kind,p,selected){
  clip.append(title);
  if(kind==="layer"){
   for(const k of item.keyframes||[]){if(k.frame<item.startFrame||k.frame>item.endFrame)continue;
-   clip.append(seekMark(k.frame-item.startFrame,item.endFrame-item.startFrame,kind));
+   clip.append(seekMark(k.frame-item.startFrame,item.endFrame-item.startFrame,k.frame));
   }
  }
  const start=doc.createElement("span"),end=doc.createElement("span");
