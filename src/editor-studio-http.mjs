@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { makeEditorProject, loadEditorProject, saveEditorProject, latestEditorProject, updateEditorProject, editorStoreDir, validateEditorProject } from "./editor-studio-core.mjs";
 import { buildEditorIndex, buildEditorSceneModule, buildEditorRenderFiles } from "./editor-studio-engine.mjs";
+import { auditMotionV2 } from "./editor-motion-v2.mjs";
 import { signedVideoDownload } from "./video-artifact-delivery.mjs";
 import { createEditorHomologationProject } from "./editor-homologation.mjs";
 import { readEditorPreviewReview, saveEditorPreviewReview, requireApprovedEditorPreview } from "./editor-review-gate.mjs";
@@ -179,6 +180,9 @@ export async function handleEditorStudioHttp({request,response,url,isAdminSessio
       const next=updateEditorProject(p,body.project);
       const saved=await saveEditorProject(next,{expectedRevision:p.revision});
       json(response,200,{ok:true,project:saved});return true;
+    }
+    if(pieces.length===5&&pieces[4]==="motion-qa"&&request.method==="GET"){
+      json(response,200,{ok:true,qa:auditMotionV2(p),next:"Para análise óptica real, exporte o MP4 e compare no Frame Lab."});return true;
     }
     if(pieces.length===5&&pieces[4]==="style-dna"&&request.method==="GET"){
       json(response,200,{ok:true,dna:buildEditorStyleDna(p)});return true;
