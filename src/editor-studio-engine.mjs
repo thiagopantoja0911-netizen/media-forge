@@ -6,11 +6,16 @@ import { buildEditorLayerAssets } from "./editor-layer-assets.mjs";
 import { buildEditorStyleDna, getEditorStylePreset } from "./editor-style-presets.mjs";
 import { temporalShutterSamples } from "./editor-motion-blur.mjs";
 import { motionV2Runtime } from "./editor-motion-v2.mjs";
+import { buildEditorFreeTimelineModule } from "./editor-free-timeline.mjs";
 import { sceneTypography, renderKineticTitle, EDITOR_FONT_STACKS } from "./editor-typography.mjs";
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dims=ratio=>ratio==="16:9"?[1920,1080]:ratio==="1:1"?[1080,1080]:[1080,1920];
 function selectScenes(p,index){
   validateEditorProject(p);
+  if(p.mode==="timeline-free"){
+    if(index!==undefined)throw Object.assign(new Error("Não existem cenas no projeto de timeline livre."),{status:422});
+    return [{id:"virtual-timeline",startFrame:0,endFrame:p.totalFrames}];
+  }
   const items=index===undefined?p.scenes:[p.scenes[index]];
   if(items.some(v=>!v))throw Object.assign(new Error("Cena inválida."),{status:404});
   const offset=items[0].startFrame;
@@ -18,8 +23,9 @@ function selectScenes(p,index){
 }
 export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
   const shots=selectScenes(p,sceneIndex),[w,h]=dims(p.aspectRatio);
+  const free=p.mode==="timeline-free";
   const duration=shots.at(-1).endFrame/p.fps;
-  const frameOffset=sceneIndex===undefined?0:p.scenes[sceneIndex].startFrame;
+  const frameOffset=sceneIndex===undefined||free?0:p.scenes[sceneIndex].startFrame;
   const frameEnd=frameOffset+shots.at(-1).endFrame;
   const motionEnabled=Boolean(p.motionV2?.enabled&&p.motionV2?.background?.keyframes?.length);
   const backgroundMarkup=motionEnabled?'<div id="motion-v2-bg" aria-hidden="true"></div>':'';
@@ -54,7 +60,7 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
     const style='left:'+caption.x+'px;top:'+caption.y+'px;width:'+caption.width+'px;font-size:'+caption.fontSize+'px;color:'+caption.color+';background:'+(caption.style==="minimal"||caption.style==="outline"?"transparent":bg)+';text-align:'+caption.align+';z-index:'+(caption.zIndex+50)+';';
     return '<div id="caption-layer-'+caption.id+'" class="editor-caption clip" data-animation="'+caption.animation+'" data-style="'+caption.style+'" data-start="'+localStart/p.fps+'" data-duration="'+(localEnd-localStart)/p.fps+'" data-track-index="'+(caption.zIndex+70)+'" data-layout-allow-overlap style="'+style+'">'+content+'</div>';
   }).join("");
-  const labels=shots.map((s,i)=>
+  const labels=(free?[]:shots).map((s,i)=>
     '<div id="caption-'+i+'" class="caption clip" data-layout-ignore data-start="'+s.startFrame/p.fps+'" data-duration="'+(s.endFrame-s.startFrame)/p.fps+'" data-track-index="'+(i+2)+'">'+
     '<span class="eyebrow">'+esc(s.kicker)+'</span>'+
     '<h1 class="hero-title" aria-label="'+esc(s.headline)+'" style="font-family:'+EDITOR_FONT_STACKS[sceneTypography(s).family]+'">'+renderKineticTitle(s.headline,s.typography)+'</h1>'+
@@ -74,7 +80,7 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
   const supporting=colorMode==="light"?"#324242":"#dddde6";
   const style=[
     "*{box-sizing:border-box}html,body{margin:0;background:#070912}",
-    "#root{position:relative;width:"+w+"px;height:"+h+"px;overflow:hidden;background:#070912;font-family:Arial,Helvetica,sans-serif;color:"+ink+";isolation:isolate;perspective:1300px;perspective-origin:50% 50%}",
+    "#root{position:relative;width:"+w+"px;height:"+h+"px;overflow:hidden;background:"+(free?(p.canvasColor??"#0b1018"):"#070912")+";font-family:Arial,Helvetica,sans-serif;color:"+ink+";isolation:isolate;perspective:1300px;perspective-origin:50% 50%}",
     "#world{position:absolute;inset:0;width:100%;height:100%;z-index:2;display:block}",
     "#motion-v2-bg{position:absolute;top:-9%;left:-9%;width:118%;height:118%;z-index:1;pointer-events:none;transform-origin:center center;will-change:transform,background}",
     ".caption{position:absolute;top:14%;left:10%;width:80%;z-index:3;pointer-events:none;transform-origin:15% 50%;will-change:transform,opacity"+(p.motionV2?.enabled&&p.motionV2?.hideSceneTitles?";display:none":"")+"}",
@@ -94,8 +100,8 @@ export function buildEditorIndex(p,{sceneIndex,preview=false,projectId}={}){
     '<script type="importmap">{"imports":{"three":"'+vendor+'"}}<\/script></head>'+
     '<body><div id="root" data-composition-id="main" data-width="'+w+'" data-height="'+h+
     '" data-fps="'+p.fps+'" data-duration="'+duration+'" data-motion-blur="off" data-motion-blur-shutter="0">'+
-    '<canvas id="world" class="clip" data-start="0" data-duration="'+duration+
-    '" data-track-index="1" data-layout-allow-overlap aria-label="Cena 3D"></canvas>'+backgroundMarkup+layerMarkup+labels+captionMarkup+audio+'</div>'+
+    (free?"":'<canvas id="world" class="clip" data-start="0" data-duration="'+duration+
+    '" data-track-index="1" data-layout-allow-overlap aria-label="Cena 3D"></canvas>')+backgroundMarkup+layerMarkup+labels+captionMarkup+audio+'</div>'+
     '<script src="'+gsap+'"><\/script><script type="module" src="'+script+'"><\/script></body></html>';
 }
 function editorRuntime(){
@@ -559,6 +565,7 @@ function editorRuntime(){
     .catch(error=>window.parent.postMessage({mediaforge:"error",reason:String(error)},"*"));
 }
 export function buildEditorSceneModule(p,{sceneIndex,preview=false}={}){
+  if(p.mode==="timeline-free"){validateEditorProject(p);return buildEditorFreeTimelineModule(p);}
   const shots=selectScenes(p,sceneIndex),[w,h]=dims(p.aspectRatio),d=shots.at(-1).endFrame/p.fps;
   const baseBackground=getEditorStylePreset(p.stylePreset)?.background??"#060810";
   const assets=Object.fromEntries((p.assets??[]).map(a=>[a.id,preview
@@ -586,7 +593,7 @@ export async function buildEditorRenderFiles(p,{sceneIndex}={}){
   ];
   files.push(...await buildEditorVisualAssets(p,{sceneIndex}));
   files.push(...await buildEditorLayerAssets(p,{sceneIndex}));
-  for(const [path,source] of [
+  if(p.mode!=="timeline-free")for(const [path,source] of [
     ["assets/three/build/three.core.js","../node_modules/three/build/three.core.js"],
     ["assets/three/build/three.module.js","../node_modules/three/build/three.module.js"],
     ["assets/three/LICENSE","../node_modules/three/LICENSE"]
