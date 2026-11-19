@@ -26,6 +26,7 @@
     for(const node of source){
       if(node.matches(".panel-heading")){
         makeGroup(node.textContent.trim().replace(/\s+/g," "));
+        node.remove(); // The summary replaces this heading; do not duplicate it.
       }else if(node.matches(".thin-divider")){node.remove();}
       else{
         if(!group)makeGroup(untitled);
