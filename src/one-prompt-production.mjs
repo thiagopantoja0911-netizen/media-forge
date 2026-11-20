@@ -39,7 +39,7 @@ export function buildOnePromptBlueprint(input={}){
   checklist:{assetPresent:false,audioPresent:false,reviewed:false}};
  });
  const assets=shots.map((s)=>({id:s.hero.id,kind:"visual",purpose:s.hero.kind,path:null,generated:false,rightsVerified:false}));
- for(const shot of shots)assets.push({id:"ambience-"+shot.id,kind:"ambience",purpose:"subtle scene-specific sound bed: "+shot.sound,path:null,generated:false,rightsVerified:false});
+ for(const shot of shots)assets.push({id:"ambience-"+shot.id,kind:"ambience",purpose:"scene sound design: "+JSON.stringify(shot.shotSound||{}),path:null,generated:false,rightsVerified:false});
  assets.push({id:"music-bed",kind:"music",purpose:"licensed or original music for entire film",path:null,generated:false,rightsVerified:false});
  if(voice!=="off")assets.push({id:"narration",kind:"voice",purpose:"word-timestamped intelligible narration",path:null,generated:false,rightsVerified:false});
  for(let i=0;i<4;i++)assets.push({id:"sfx-"+String(i+1),kind:"sfx",purpose:"caused by a visible action; validate sound via FFprobe",path:null,generated:false,rightsVerified:false});
