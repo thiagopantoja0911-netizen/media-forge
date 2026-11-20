@@ -115,10 +115,14 @@ export function validateMotionPlan(plan) {
       if(cue.sceneId!==undefined&&(!identifier.test(cue.sceneId)||!scenes.some(s=>s.id===cue.sceneId)))fail(`${cue.id}: sceneId must reference a scene`);
       if(cue.syncTarget!==undefined&&!["caption","motion","transition"].includes(cue.syncTarget))fail(`${cue.id}: invalid syncTarget`);
       if(cue.role==="sfx"&&cue.syncTarget==="caption"&&(!Number.isInteger(cue.captionIndex)||cue.captionIndex<0||!Number.isInteger(cue.wordIndex)||cue.wordIndex<0))fail(`${cue.id}: caption sync requires captionIndex and wordIndex`);
-      if (cue.role === "sfx") {
-        const anchor = eventFrames.get(cue.eventId);
-        if (anchor === undefined) fail(`${cue.id}: sfx must reference a visible eventId`);
-        else if (Math.abs(cue.startFrame - anchor) > Math.ceil(fps * .08)) warnings.push(`${cue.id}: sound is more than 80ms from its visual peak`);
+      if(cue.role==="sfx"){
+        let anchor;
+        if(cue.syncTarget==="caption")anchor=plan.captions?.[cue.captionIndex]?.words?.[cue.wordIndex]?.startFrame;
+        else if(cue.syncTarget==="motion")anchor=eventFrames.get(cue.eventId);
+        else if(cue.syncTarget==="transition")anchor=scenes.find(s=>s.id===cue.sceneId)?.startFrame;
+        else anchor=eventFrames.get(cue.eventId);
+        if(anchor===undefined)fail(`${cue.id}: SFX must reference a real caption word, motion event or scene transition`);
+        else if(Math.abs(cue.startFrame-anchor)>Math.ceil(fps*.08))warnings.push(`${cue.id}: sound is more than 80ms from its visual event`);
       }
     }
     if (plan.audioMode === "silent-study" && cues.length) fail("silent-study cannot contain audio cues");
