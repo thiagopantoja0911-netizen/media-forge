@@ -1,6 +1,7 @@
 // Converts a two-field request into a reproducible creative-production contract.
 // This does not fabricate logos, testimonials, media bytes, or conversion measurements.
 import {planFromShortBrief} from "./creative-director.mjs";
+import { buildArtisticDirection } from "./artistic-director.mjs";
 import { CINEMATIC_POLICY_VERSION, CINEMATIC_PRODUCTION_POLICY } from "./cinematic-production-policy.mjs";
 
 const GOALS={
@@ -25,16 +26,17 @@ export function buildOnePromptBlueprint(input={}){
  const goalSpec=GOALS[goal];
  const verified=sourceId(input);
  const voice=optionalVoice(input.voice_mode,goal);
+ const artisticDirection=buildArtisticDirection(input,original,{voiceMode:voice});
  const verifiedClaims=original.claims.filter(c=>c.eligible);
  const unverifiedClaims=original.claims.filter(c=>!c.eligible);
- const shots=original.storyboard.map((shot,index)=>{
+ const shots=artisticDirection.storyboard.map((shot,index)=>{
   const cue=index===2?"impact on motivated transition":index===4?"music resolution":index===0?"music opening":"sound only if action is visible";
   return {...shot,creativeGoal:goalSpec.mechanics[index],hero:{
    id:"hero-"+String(index+1),asset:"not-generated",kind:index===4?"real brand logo or clearly labeled illustrative":"real product/screen or original shot-specific visual",
    required:true,realCompanyProofRequired:index===3||index===4
   },cameraTarget:"hero-"+String(index+1),
   soundtrack:{kind:cue,startsAtSeconds:shot.start,generated:false},
-  narration:voice==="off"?null:goalSpec.mechanics[index],
+  narration:voice==="off"?null:shot.voiceLineTemplate,
   continuation:index<4?"Visible object or cause carries into next scene":"Readable end-card; CTA must not be occluded",
   checklist:{assetPresent:false,audioPresent:false,reviewed:false}};
  });
@@ -52,25 +54,27 @@ export function buildOnePromptBlueprint(input={}){
     minimumMovingFootageShare:CINEMATIC_PRODUCTION_POLICY.limits.minMovingFootageShare,
     flatVectorsAsPrimaryScene:false,mandatoryArtisticReview:true},
   storyArc:original.storyArc,assetManifest:original.assetManifest,
-  brief:original.brief,
+  brief:original.brief,creativeBrief:artisticDirection.brief,
   creative:{goal,hook:goalSpec.hook,chosenApproach:original.decision.chosen,psychology:goalSpec.mechanics,
-    cta:goalSpec.cta,conversionOrEngagementIsNotGuaranteed:true},
-  alternatives:original.alternatives,storyboard:shots,assets,
+    cta:artisticDirection.brief.cta,selectedConcept:artisticDirection.selectedConcept.id,conversionOrEngagementIsNotGuaranteed:true},
+  alternatives:original.alternatives,hooks:artisticDirection.hooks,storyboard:shots,artisticDirection,assets,
   claims:{allowed:verifiedClaims,withheld:unverifiedClaims.map(c=>({text:c.text,reason:"Unverified source"}))},
   identity:{brandUrl:verified.url,logoPath:verified.logo,verified:false},
   audio:{voice,wordTimestampsRequired:voice!=="off",music:true,causalSfx:true,sceneAmbience:true,voiceDucking:true,
     targets:{integratedLufs:[-16,-14],truePeakDbtp:-1,wordSyncMs:100}},
-  direction:{motionProfile:"dynamic-motion-v1",cinematicProfile:"cinematic-media-first-v2",previewSeconds:3,depthLayers:3,fullFilmAfterPreview:true,
+  direction:{motionProfile:"dynamic-motion-v1",cinematicProfile:"cinematic-media-first-v2",selectedConcept:artisticDirection.selectedConcept.id,
+    artDirection:artisticDirection.artDirection,qualityRubric:artisticDirection.qualityRubric,audioDirection:artisticDirection.audioDirection,
+    motionPlanDraft:artisticDirection.motionPlanDraft,previewSeconds:3,depthLayers:3,fullFilmAfterPreview:true,
     trueMotionBlur:"validated local HyperFrames shutter renderer",renderedFrameInspection:true,
     visualConstruction:"on-screen actions enact each narration beat",
     timedCaptionAndMovementSfx:true,filmGradingAndShadows:true,bloomAndMotionBlurWhenMotivated:true,
     requirements:["camera with a clear target","three depth layers with independent movement","object-caused scene transitions",
       "no generic cards or placeholders","no long static holds without narrative reason","CTA unobstructed",
       "no invented statistics, testimonials, pricing or scarcity"]},
-  readiness:{storyboard:true,mediaAssetsReady:false,soundAssetsReady:false,hyperframesProjectReady:false,
+  readiness:{storyboard:true,artisticDirection:true,mediaAssetsReady:false,soundAssetsReady:false,hyperframesProjectReady:false,
     technicalQA:false,artisticQA:false,verifiedCompanyAssets:!!verified.url&&!!verified.logo},
-  delivery:{expected:["MP4","editable project","media manifest","technical QA","audio QA","human artistic approval"],performed:false,finalBlockedUntilHumanReview:true},
-  nextActions:["verify brand and factual claims","source/generate real specific visual and audio files",
+  delivery:{expected:["MP4","editable project","media manifest","technical QA","audio QA","artistic review rubric","human artistic approval"],performed:false,finalBlockedUntilHumanReview:true},
+  nextActions:["confirm the recommended concept or provide concept_id","verify brand and factual claims","source/generate real specific visual and audio files",
     "build editable HyperFrames composition","run 3-second visual preview","check motion and sound",
     "render on Windows","review complete MP4","deliver only after approval"]
  };
