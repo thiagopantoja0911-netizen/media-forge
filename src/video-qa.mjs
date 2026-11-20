@@ -19,7 +19,11 @@ export function evaluateVideoProbe(data, project, expectsAudio = false) {
     "square-1080p": [1080,1080], "4k-square": [2160,2160],
     "1440p-portrait": [1440,2560], "1440p-square": [1440,1440]
   };
-  const target = expected[project.resolution] || (project.width && project.height ? [project.width,project.height] : null);
+  // Explicit dimensions come from the inspected motion plan and are authoritative.
+  // Resolution aliases such as "1080p" are ambiguous about orientation and are only fallbacks.
+  const target = project.width && project.height
+    ? [Number(project.width), Number(project.height)]
+    : (expected[project.resolution] || null);
   if (!video) issues.push("MP4 sem stream de vídeo");
   if (target && video && (Number(video.width) !== target[0] || Number(video.height) !== target[1])) {
     issues.push("Resolução diferente de " + target.join("x"));
