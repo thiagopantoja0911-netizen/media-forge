@@ -158,7 +158,7 @@ async function processRemote(job,leaseId) {
       const error=new Error("Cinematic audio QA failed: "+(audioQA.issues||[]).join("; "));
       error.code="AUDIO_MIX_QA_FAILED";error.retryable=false;throw error;
     }
-    const frameQA=isCinematicV2?await inspectRenderedFrames(rendered.outputPath,{plan:cinematicPlan}):null;
+    const frameQA=isCinematicV2?await inspectRenderedFrames(rendered.outputPath,{plan:cinematicPlan,durationSeconds}):null;
     if(isCinematicV2&&frameQA?.status!=="passed"){
       const error=new Error("Cinematic V2 frame inspection failed: "+(frameQA?.issues||[]).join("; "));
       error.code="CINEMATIC_FRAME_QA_FAILED";error.retryable=false;throw error;
