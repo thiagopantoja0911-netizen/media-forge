@@ -1,4 +1,5 @@
 import {spawn} from "node:child_process";
+import ffmpegStatic from "ffmpeg-static";
 import {mkdtemp,mkdir,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join,dirname} from "node:path";
@@ -15,7 +16,7 @@ function run(command,args){
   child.on("close",code=>code===0?resolve():reject(new Error(command+" exited "+code+": "+stderr.slice(-2500))));
  });
 }
-const ffmpeg=process.env.FFMPEG_BIN||"ffmpeg";
+const ffmpeg=process.env.FFMPEG_BIN||ffmpegStatic||"ffmpeg";
 const root=await mkdtemp(join(tmpdir(),"mediaforge-cinematic-v2-"));
 try{
  const projectDir=join(root,"project"),assets=join(projectDir,"assets");
