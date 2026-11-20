@@ -177,7 +177,7 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     const explicitStudy = await call("tools/call", MODERN, {
       params: { name: "create_video", arguments: {
         title: "Intentional silent experiment", prompt: "Study with no music, no production claim",
-        duration_seconds: 16, aspect_ratio: "16:9", production_profile: "study",
+        duration_seconds: 16, aspect_ratio: "16:9", production_profile: "study", study_purpose:"intentionally-silent-study",
         project_files: [{ path: "index.html", content: "<!doctype html><html><body>Static</body></html>" }]
       } }
     });
