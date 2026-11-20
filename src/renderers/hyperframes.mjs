@@ -213,6 +213,8 @@ export async function renderWithHyperFrames(job, { onProgress = async () => {},s
     motionReview,
     diagnosticsDir,
     preflight: preflight?.stdout.trim() || null,
-    renderLog: render.stdout.trim() || null
+    renderLog: render.stdout.trim() || null,
+    motionBlurApplied:job.metadata?.kind==="cinematic-3d"&&job.metadata?.motionBlur?.enabled===true,
+    motionBlurShutterAngle:job.metadata?.kind==="cinematic-3d"&&job.metadata?.motionBlur?.enabled===true?180:null
   };
 }
