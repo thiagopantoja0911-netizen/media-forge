@@ -443,6 +443,7 @@ export const VIDEOS_SECRETS_TOOLS = [
         camera: { type: "string", enum: ["dolly", "orbit", "reveal"] },
         model_glb_base64: { type: "string", description: "Optional complete GLB 2.0 model embedded as base64 (max 8MB; no external dependencies)" },
         quality: { type: "string", enum: ["draft", "looks", "standard", "high", "delivery"] },
+        render_profile: { type: "string", enum: ["balanced", "4k60"], description: "balanced (padrão): 1080p e 30 FPS, um worker. 4k60: opt-in explícito para GPU e RAM validadas." },
         browser_gpu: { type: "boolean" },
         preflight: { type: "boolean" }
       },
@@ -967,7 +968,8 @@ export async function handleVideosSecretsMcp({
         aspect_ratio: project.aspectRatio,
         resolution: project.resolution,
         fps: project.fps,
-        quality: args.quality ?? "high",
+        quality: args.quality ?? "standard",
+        workers: 1,
         browser_gpu: args.browser_gpu,
         preflight: args.preflight ?? true,
         project_files: project.projectFiles,
@@ -978,7 +980,7 @@ export async function handleVideosSecretsMcp({
         status: job.status,
         renderer: "hyperframes",
         effect: "cinematic-3d",
-        profile: { resolution: project.resolution, fps: project.fps, quality: args.quality ?? "high" },
+        profile: { resolution: project.resolution, fps: project.fps, workers: 1, render_profile: project.productionMetadata.renderProfile, quality: args.quality ?? "standard" },
         message: "Projeto 3D entregue à fila do Worker; aprovação artística continua pendente."
       }, false, version), version);
     }
