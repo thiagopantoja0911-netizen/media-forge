@@ -102,7 +102,7 @@ function sceneFile(plan, scene, index) {
   if(scene.media) variables.push({id:"productImage",type:"image",label:"Imagem",default:scene.media});
   return `<template><style>${css}${effects.css}${depth.css}</style>
 <div id="root" data-composition-id="${sid}" data-width="${plan.width}" data-height="${plan.height}" data-duration="${duration}" data-composition-variables='${html(JSON.stringify(variables))}' style="container-type:size;--ground:${p.ground};--ink:${p.ink};--accent:${p.accent};--paper:${p.paper}">
-<div id="${sid}-clip" ${["photo","footage"].includes(scene.type) ? 'class="media-wrapper" data-layout-allow-overflow' : `class="clip" data-start="0" data-duration="${duration}" data-track-index="1"`}><div id="${sid}-stage" class="stage ${["photo","footage"].includes(scene.type) ? "media-first" : ""}" data-layout-allow-overlap>
+<div id="${sid}-clip" ${["photo","footage"].includes(scene.type) ? 'class="media-wrapper" data-layout-allow-overflow' : `class="clip" data-start="0" data-duration="${duration}" data-track-index="1"`}><div id="${sid}-stage" class="stage ${["photo","footage"].includes(scene.type) ? "media-first" : ""}" data-shot-size="${html(scene.shotSize??"")}" data-pace="${html(scene.pace??"")}" data-layout-allow-overlap>
 <div class="eyebrow">${html(scene.eyebrow ?? plan.title)}</div><h1 id="${sid}-headline" class="headline ${scene.type === "end-card" ? "end-title" : ""}">${headline}</h1>${visual}${effects.overlay && !["footage","photo"].includes(scene.type) ? effects.overlay : ""}
 ${scene.type !== "end-card" ? `<div class="detail" data-var-text="detail">${html(scene.detail ?? "")}</div>` : ""}
 </div></div></div>
@@ -118,7 +118,7 @@ export async function buildMotionComposition(plan, suppliedFiles = []) {
   const files = suppliedFiles.map(f => ({...f}));
   if (files.some(f => !/^assets\//.test(f.path ?? "") || f.path === "assets/gsap.min.js")) throw new Error("Supplied files must be assets/ files; gsap is provided by MediaForge");
   const paths = new Set(files.map(f => f.path));
-  for (const source of [...plan.scenes.map(s=>s.media),...(plan.audioCues??[]).map(c=>c.src)].filter(Boolean)) if (!paths.has(source)) throw new Error("Missing asset: " + source);
+  for (const source of [...plan.scenes.map(s=>s.media),...plan.scenes.flatMap(s=>(s.depthLayers||[]).map(x=>x.src)),...(plan.audioCues??[]).map(c=>c.src)].filter(Boolean)) if (!paths.has(source)) throw new Error("Missing asset: " + source);
   const assetValidation=validateCinematicMediaAssets(plan,files);
   const cinematicPolicy=reviewCinematicPolicyV2(plan,{assetValidation});
   if(plan.cinematicPolicyVersion==="v2"&&!cinematicPolicy.ok)throw new Error("Cinematic V2 asset/policy gate failed: "+cinematicPolicy.errors.join("; "));
@@ -131,7 +131,7 @@ export async function buildMotionComposition(plan, suppliedFiles = []) {
   // Preserve requested levels in standard mode, and cap beds/transients under speech for cinematic narration.
   const voiced=plan.audioMode==="voice-led";
   const audio=(plan.audioCues??[]).map((c,i)=>{
-    const volume=plan.productionMode==="cinematic" ? Math.min(c.volume,c.role==="music"?(voiced ? 0.16 : 0.7):c.role==="sfx" ? 0.65 : 1) : c.volume;
+    const volume=plan.productionMode==="cinematic" ? Math.min(c.volume,c.role==="music"?(voiced ? 0.16 : 0.7):c.role==="sfx" ? 0.65 : c.role==="ambience" ? 0.18 : 1) : c.volume;
     const fade=c.role==="music" ? ' data-fade-in="0.35" data-fade-out="0.8"' : "";
     return `<audio id="audio-${c.id}" class="clip" src="${html(c.src)}" data-start="${frameSeconds(c.startFrame,plan.fps)}" data-duration="${frameSeconds(c.endFrame-c.startFrame,plan.fps)}" data-track-index="${30+i}" data-volume="${volume}"${fade}></audio>`;
   });
