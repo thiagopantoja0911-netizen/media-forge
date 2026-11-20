@@ -4,6 +4,7 @@ import { makeCinematicV2Fixture, cinematicV2FilesFor } from "./fixtures/cinemati
 import { validateCinematicV2JobPayload, validateCinematicV2CompletionReport } from "../src/cinematic-v2-gates.mjs";
 import { reviewCinematicPolicyV2 } from "../src/cinematic-production-policy.mjs";
 import { editMotionPlan } from "../src/motion/editor.mjs";
+import { runCinematicV2RenderQa } from "../src/cinematic-render-qa.mjs";
 
 function payloadFor(plan = makeCinematicV2Fixture()) {
   const projectFiles = [
@@ -17,6 +18,10 @@ function payloadFor(plan = makeCinematicV2Fixture()) {
     metadata: { source: "cinematic-motion-v2", productionMode: "cinematic", cinematicPolicyVersion: "v2" }
   };
 }
+
+test("shared post-render QA module is loadable by both worker paths", () => {
+  assert.equal(typeof runCinematicV2RenderQa, "function");
+});
 
 test("public API gate requires the same packaged V2 plan and real local assets as MCP", () => {
   const payload = payloadFor();
