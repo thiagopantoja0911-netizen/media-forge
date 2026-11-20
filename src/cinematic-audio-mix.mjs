@@ -36,7 +36,7 @@ export function buildCinematicAudioFilterGraph(plan,projectDir){
   filters.push("["+i+":a]"+parts.join(",")+"["+label(i)+"]");
   groups[cue.role==="music"||cue.role==="ambience"?"bed":cue.role].push("["+label(i)+"]");
  }
- if(!groups.bed.length)throw new Error("Cinematic audio mix: a music/ambience bed is required");
+ if(!cues.some(c=>c.role==="music"))throw new Error("Cinematic audio mix: a music/ambience bed is required");
  if(!groups.sfx.length)throw new Error("Cinematic audio mix: at least one event SFX is required");
  const mix=(items,out)=>{if(items.length===1){filters.push(items[0]+"anull["+out+"]");return;}
   filters.push(items.join("")+"amix=inputs="+items.length+":normalize=0:dropout_transition=0["+out+"]");};
