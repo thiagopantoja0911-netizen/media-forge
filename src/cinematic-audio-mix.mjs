@@ -78,8 +78,11 @@ export async function mixCinematicAudio({videoPath,projectDir,plan,ffmpegBin=pro
  await run(ffmpegBin,["-y","-hide_banner","-loglevel","error","-i",videoPath,"-i",master,
   "-map","0:v:0","-map","1:a:0","-c:v","copy","-c:a","aac","-b:a","192k","-ar","48000",
   "-t",fmt(graph.durationSeconds),"-movflags","+faststart",temp],{timeoutMs});
- await unlink(videoPath);
- await rename(temp,videoPath);
+ const backup=videoPath+".pre-cinematic-mix.bak";
+ await unlink(backup).catch(()=>{});
+ await rename(videoPath,backup);
+ try{await rename(temp,videoPath);await unlink(backup);}
+ catch(error){await rename(backup,videoPath).catch(()=>{});throw error;}
  return {status:"mixed",durationSeconds:graph.durationSeconds,voiceDucking:plan.audioMix?.voiceDucking===true,
   stems:{music:plan.audioCues.filter(c=>c.role==="music").length,voice:plan.audioCues.filter(c=>c.role==="voice").length,
    ambience:plan.audioCues.filter(c=>c.role==="ambience").length,sfx:plan.audioCues.filter(c=>c.role==="sfx").length}};
