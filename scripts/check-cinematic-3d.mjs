@@ -38,7 +38,8 @@ try{
   for(const file of project.projectFiles){
     let body=file.encoding==="base64" ? Buffer.from(file.content,"base64") : file.content;
     if(file.path==="index.html" || file.path==="assets/scene.mjs"){
-      body=body.replaceAll("2160","540").replaceAll("3840","960");
+      // Smoke-test the balanced 1080x1920 project at 540x960 on CI.
+      body=body.replaceAll("1080","540").replaceAll("1920","960");
     }
     const target=join(dir,file.path);
     await mkdir(dirname(target),{recursive:true});
