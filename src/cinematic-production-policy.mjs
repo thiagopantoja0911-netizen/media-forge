@@ -108,7 +108,7 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
   if(!Number.isInteger(scene.voiceStartFrame)||!Number.isInteger(scene.voiceEndFrame)||
      scene.voiceStartFrame<scene.startFrame||scene.voiceEndFrame<=scene.voiceStartFrame||scene.voiceEndFrame>scene.endFrame||
      !say(n.voiceCue))validVoiceAnchors=false;
-  if(scene.shotSize)shotSizes.add(scene.shotSize);
+  if(shotSizes.has(scene.shotSize))shotSizes.add(scene.shotSize);
   if(scene.camera)cameras.add(scene.camera);
   if(scene.transition)transitions.add(scene.transition);
   if(scene.pace)paces.add(scene.pace);
@@ -201,7 +201,9 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
  if(!effects.depthOfField)fail("composited-layers","Inclua camadas foreground/midground/background");
  else pass("composited-layers",{scenes:effects.depthOfField});
  if(!effects.motionBlur)fail("motion-blur","Motion blur temporal precisa ser declarado em pelo menos uma cena");
- else pass("motion-blur",{scenes:effects.motionBlur,renderer:"HyperFrames cinematic shutter"});
+ else if(evidence.motionBlurApplied===true)pass("motion-blur",{scenes:effects.motionBlur,renderer:"HyperFrames cinematic shutter",shutterAngle:180});
+ else if(evidence.renderComplete===true)fail("motion-blur","Render final não confirmou captura temporal do HyperFrames");
+ else pending("motion-blur","A flag --cinematic-motion-blur só é confirmada após render pelo fork validado");
  if(!effects.bloom)fail("bloom-glow","Inclua bloom/glow em ao menos uma cena");
  else pass("bloom-glow",{scenes:effects.bloom});
  if(!effects.parallax)fail("parallax-depth","Inclua parallax em camadas com profundidades distintas");
