@@ -82,6 +82,6 @@ export function cinematicV2FilesFor(plan){
    :ext==="png"?Buffer.from([137,80,78,71,13,10,26,10])
    :ext==="mp3"?Buffer.from("ID3")
    :ext==="wav"?Buffer.from("RIFF1234WAVE"):Buffer.from("NOT_MEDIA");
-  return {path,contentBase64:Buffer.concat([header,Buffer.alloc(128)]).toString("base64")};
+  return {path,contentBase64:Buffer.concat([header,Buffer.from(path),Buffer.alloc(128)]).toString("base64")};
  });
 }
