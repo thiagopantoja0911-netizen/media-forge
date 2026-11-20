@@ -49,8 +49,8 @@ export function buildCinematicAudioFilterGraph(plan,projectDir){
   filters.push("[bed][voice]sidechaincompress=threshold=0.025:ratio=7:attack=20:release=260:makeup=1[ducked]");
   finalInputs=["[ducked]","[voice]","[sfx]"];
  }
- filters.push(finalInputs.join("")+"amix=inputs="+finalInputs.length+":normalize=0:dropout_transition=0,alimiter=limit=0.891,loudnorm=I="+
-  fmt(plan.audioMix?.targetIntegratedLUFS??-15)+":TP="+fmt(plan.audioMix?.maxTruePeakDbtp??-1)+":LRA=11[master]");
+ filters.push(finalInputs.join("")+"amix=inputs="+finalInputs.length+":normalize=0:dropout_transition=0,alimiter=limit=0.841,loudnorm=I="+
+  fmt(plan.audioMix?.targetIntegratedLUFS??-15)+":TP="+fmt(Math.min(plan.audioMix?.maxTruePeakDbtp??-1,-1.5))+":LRA=11[master]");
  return {inputs,filterComplex:filters.join(";"),durationSeconds:duration,outputLabel:"[master]"};
 }
 
