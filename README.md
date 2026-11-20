@@ -39,6 +39,7 @@ O repositório contém:
 - painel web de configuração e administração;
 - estado persistente protegido com hashes;
 - scripts de instalação e execução do worker Windows;
+
 - API HTTP local;
 - endpoint MCP compatível com Vídeos Secrets;
 - contrato de job validável;
@@ -117,4 +118,10 @@ Veja:
 
 O Forge Midjourney está disponível em `/studio` após autenticação no painel. Ele permite criar briefings, três ganchos, storyboard de cinco cenas, prévia ilustrativa e exportação JSON/TXT. O botão Gerar pacote HyperFrames envia o briefing e os arquivos de áudio opcionais (locução e trilha) ao endpoint autenticado `POST /api/studio/compose` e baixa um pacote editável, sem criar jobs. A locução pode ser exportada do VoiceStudio; o VoiceStudio continua independente.
 
-A importação do JSON v1 legado é compatível com os rascunhos exportados manualmente de `video.salevo.site/studio/`. O armazenamento local novo usa uma chave independente e preserva os dados legados até a conclusão da migração.
+A importação do JSON v1 legado é compatível com os rascunhos exportados manualmente de `video.salevo.site/studio/`. O armazenamento local novo usa uma chave separada para não sobrescrever dados do domínio antigo.
+
+**Limite atual:** gera uma composição editorial tipográfica HyperFrames de protótipo, com cinco cenas, uma faixa de legendas e quatro transições; pode empacotar locução/trilha fornecidas pelo usuário, mas ainda não inclui mídia específica do assunto nem efeitos sonoros por cena. O pacote é marcado `renderReady=false` e não pode ser enviado diretamente à fila. A geração de mídia só será ativada depois da validação de áudio e QA no Worker Windows. Consulte `docs/CREATOR_STUDIO.md` e `docs/MIGRATION_SALEVO_CREATOR.md`.
+
+## Limpeza final da migração
+
+A remoção do hub antigo e de integrações do Secrets só poderá acontecer depois dos testes e backups definidos em `docs/FINAL_CLEANUP_GATE.md`. O Browser MCP, o domínio pai `salevo.site` e o portal `secretssystem.online` são recursos independentes e ficam fora da limpeza do Creator Video.
