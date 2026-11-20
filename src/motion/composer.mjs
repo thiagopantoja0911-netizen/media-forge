@@ -4,6 +4,8 @@ import { validateProjectFiles } from "../job-schema.mjs";
 import { validateCinematicMediaAssets } from "./assets-validation.mjs";
 import { buildCinematicCaptionTrack } from "./captions.mjs";
 import { buildCinematicSceneEffects } from "./cinematic-effects.mjs";
+import { buildCinematicDepthLayers } from "./cinematic-depth.mjs";
+import { reviewCinematicPolicyV2 } from "../cinematic-production-policy.mjs";
 
 const html = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const js = value => JSON.stringify(value).replace(/</g, "\\u003c");
@@ -26,6 +28,8 @@ function sceneFile(plan, scene, index) {
   const p = { ground: "#efeee8", ink: "#191b1a", accent: "#91cc35", paper: "#ffffff", ...plan.palette };
   const sid = scene.id;
   const effects=buildCinematicSceneEffects(scene,plan);
+  const depth=buildCinematicDepthLayers(scene,plan);
+  const motionBlurAttrs=effects.motionBlurEnabled?' data-motion-blur="on" data-motion-blur-shutter="180" data-motion-blur-events="on"':"";
   const q = suffix => `#${sid}-${suffix}`;
   const headline = scene.headline.split(/\s+/).map((word, i, list) => `<span class="word ${i === list.length - 1 ? "accent" : ""}" data-var-text="word${i}">${html(word)}</span>`).join(" ");
   let visual = `<div id="${sid}-motif" class="motif"></div>`;
@@ -38,9 +42,11 @@ function sceneFile(plan, scene, index) {
   if (scene.type === "collage") visual = `<div id="${sid}-visual" class="collage">${[0,1,2].map(i=>`<div id="${sid}-tile-${i}" class="tile"><img src="${html(scene.media)}" alt=""></div>`).join("")}</div>`;
   if (scene.type === "footage" || scene.type === "photo") {
     const mediaElement = scene.type === "footage"
-      ? `<video id="${sid}-source" class="clip" data-start="0" data-duration="${duration}" data-track-index="0" src="${html(scene.media)}" muted playsinline preload="auto" style="${effects.mediaStyle}"></video>`
-      : `<img id="${sid}-source" src="${html(scene.media)}" alt="${html(scene.headline)}" loading="eager" style="${effects.mediaStyle}">`;
-    visual = `<div id="${sid}-visual" class="media-stage" data-layout-allow-overflow><div id="${sid}-camera-rig" class="media-rig" data-layout-allow-overflow>${mediaElement}</div><div class="veil"></div>${effects.overlay}</div>`;
+      ? `<video id="${sid}-source" class="clip" data-start="0" data-duration="${duration}" data-track-index="0" src="${html(scene.media)}" muted playsinline preload="auto"${motionBlurAttrs} style="${effects.mediaStyle}"></video>`
+      : `<img id="${sid}-source" src="${html(scene.media)}" alt="${html(scene.headline)}" loading="eager"${motionBlurAttrs} style="${effects.mediaStyle}">`;
+    visual = depth.enabled
+      ? `<div id="${sid}-visual" class="media-stage mf-depth-stage" data-layout-allow-overflow><div id="${sid}-camera-rig" class="media-rig mf-depth-rig" data-layout-allow-overflow${motionBlurAttrs}>${depth.html}</div><div class="veil"></div>${effects.overlay}</div>`
+      : `<div id="${sid}-visual" class="media-stage" data-layout-allow-overflow><div id="${sid}-camera-rig" class="media-rig" data-layout-allow-overflow${motionBlurAttrs}>${mediaElement}</div><div class="veil"></div>${effects.overlay}</div>`;
   }
   if (scene.type === "end-card") visual = `<div id="${sid}-rule" class="rule"></div><div id="${sid}-pill" class="pill" data-var-text="detail">${html(scene.detail ?? "Crie o próximo movimento.")}</div>`;
   const tweens = [];
@@ -94,13 +100,13 @@ function sceneFile(plan, scene, index) {
   if (index > 0 && scene.transition === "iris") tweens.unshift(`tl.fromTo(${js(q("stage"))},{clipPath:"circle(0% at 65% 65%)"},{clipPath:"circle(150% at 65% 65%)",duration:.5,ease:"power3.inOut"},0);`);
   const variables = [...scene.headline.split(/\s+/).map((word,i)=>({id:"word"+i,type:"string",label:"Palavra "+(i+1),default:word})),{id:"detail",type:"string",label:"Detalhe",default:scene.detail??""}];
   if(scene.media) variables.push({id:"productImage",type:"image",label:"Imagem",default:scene.media});
-  return `<template><style>${css}${effects.css}</style>
+  return `<template><style>${css}${effects.css}${depth.css}</style>
 <div id="root" data-composition-id="${sid}" data-width="${plan.width}" data-height="${plan.height}" data-duration="${duration}" data-composition-variables='${html(JSON.stringify(variables))}' style="container-type:size;--ground:${p.ground};--ink:${p.ink};--accent:${p.accent};--paper:${p.paper}">
 <div id="${sid}-clip" ${["photo","footage"].includes(scene.type) ? 'class="media-wrapper" data-layout-allow-overflow' : `class="clip" data-start="0" data-duration="${duration}" data-track-index="1"`}><div id="${sid}-stage" class="stage ${["photo","footage"].includes(scene.type) ? "media-first" : ""}" data-layout-allow-overlap>
 <div class="eyebrow">${html(scene.eyebrow ?? plan.title)}</div><h1 id="${sid}-headline" class="headline ${scene.type === "end-card" ? "end-title" : ""}">${headline}</h1>${visual}${effects.overlay && !["footage","photo"].includes(scene.type) ? effects.overlay : ""}
 ${scene.type !== "end-card" ? `<div class="detail" data-var-text="detail">${html(scene.detail ?? "")}</div>` : ""}
 </div></div></div>
-<script>{const counter={value:0};const tl=gsap.timeline({paused:true});${tweens.join("\n")}${effects.timeline}
+<script>{const counter={value:0};const tl=gsap.timeline({paused:true});${tweens.join("\n")}${effects.timeline}${depth.timeline}
 window.__timelines=window.__timelines||{};window.__timelines[${js(sid)}]=tl;}</script></template>`;
 }
 
@@ -113,7 +119,9 @@ export async function buildMotionComposition(plan, suppliedFiles = []) {
   if (files.some(f => !/^assets\//.test(f.path ?? "") || f.path === "assets/gsap.min.js")) throw new Error("Supplied files must be assets/ files; gsap is provided by MediaForge");
   const paths = new Set(files.map(f => f.path));
   for (const source of [...plan.scenes.map(s=>s.media),...(plan.audioCues??[]).map(c=>c.src)].filter(Boolean)) if (!paths.has(source)) throw new Error("Missing asset: " + source);
-  validateCinematicMediaAssets(plan,files);
+  const assetValidation=validateCinematicMediaAssets(plan,files);
+  const cinematicPolicy=reviewCinematicPolicyV2(plan,{assetValidation});
+  if(plan.cinematicPolicyVersion==="v2"&&!cinematicPolicy.ok)throw new Error("Cinematic V2 asset/policy gate failed: "+cinematicPolicy.errors.join("; "));
   files.push({path:"assets/gsap.min.js",content:await readFile(new URL("../../assets/gsap.min.js",import.meta.url),"utf8")});
   files.push({path:"motion-plan.json",content:JSON.stringify(plan,null,2)+"\n"});
   files.push({path:"index.motion.json",content:JSON.stringify({assertions:plan.scenes.map(s=>({kind:"appearsBy",selector:`#${s.id}-headline`,bySec:frameSeconds(s.startFrame,plan.fps)+(s.startFrame===0?.05:.85)}))},null,2)});
@@ -127,8 +135,8 @@ export async function buildMotionComposition(plan, suppliedFiles = []) {
     const fade=c.role==="music" ? ' data-fade-in="0.35" data-fade-out="0.8"' : "";
     return `<audio id="audio-${c.id}" class="clip" src="${html(c.src)}" data-start="${frameSeconds(c.startFrame,plan.fps)}" data-duration="${frameSeconds(c.endFrame-c.startFrame,plan.fps)}" data-track-index="${30+i}" data-volume="${volume}"${fade}></audio>`;
   });
-  files.push({path:"index.html",content:`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${html(plan.title)}</title><style>html,body{margin:0}#root{position:relative;overflow:hidden;width:${plan.width}px;height:${plan.height}px;background:${plan.palette?.ground??"#efeee8"};container-type:size}${captions.css}</style></head><body><div id="root" data-composition-id="main" data-width="${plan.width}" data-height="${plan.height}" data-fps="${plan.fps}" data-duration="${duration}">${hosts.join("\n")}${captions.html}${audio.join("\n")}</div><script src="assets/gsap.min.js"></script><script>window.__timelines=window.__timelines||{};const timeline=gsap.timeline({paused:true});${captions.timeline}window.__timelines.main=timeline;</script></body></html>`});
+  files.push({path:"index.html",content:`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${html(plan.title)}</title><style>html,body{margin:0}#root{position:relative;overflow:hidden;width:${plan.width}px;height:${plan.height}px;background:${plan.palette?.ground??"#efeee8"};container-type:size}${captions.css}</style></head><body><div id="root" data-composition-id="main" data-width="${plan.width}" data-height="${plan.height}" data-fps="${plan.fps}" data-duration="${duration}"${plan.cinematicPolicyVersion==="v2"&&plan.scenes.some(s=>s.effects?.motionBlur>0)?' data-motion-blur="on" data-motion-blur-shutter="180" data-motion-blur-events="on"':""}>${hosts.join("\n")}${captions.html}${audio.join("\n")}</div><script src="assets/gsap.min.js"></script><script>window.__timelines=window.__timelines||{};const timeline=gsap.timeline({paused:true});${captions.timeline}window.__timelines.main=timeline;</script></body></html>`});
   const valid=validateProjectFiles(files);
   if(!valid.ok) throw new Error(valid.errors.join("; "));
-  return {project:{title:plan.title,durationSeconds:duration,aspectRatio:plan.width===plan.height?"1:1":plan.width>plan.height?"16:9":"9:16",renderer:"hyperframes",outputs:["video","project"],fps:plan.fps,quality:"high",preflight:true},projectFiles:files,metadata:{source:"reference-motion",productionMode:plan.productionMode??"standard",expectsAudio:plan.audioMode!=="silent-study",motionPlan:true,cinematicCraft:review.cinematicCraft,captionCount:captions.count,cinematicPolicyVersion:plan.cinematicPolicyVersion??null},readiness:{testRenderReady:true,renderReady:false,artisticReview:"pending",warnings:review.warnings,cinematicCraft:review.cinematicCraft}};
+  return {project:{title:plan.title,durationSeconds:duration,aspectRatio:plan.width===plan.height?"1:1":plan.width>plan.height?"16:9":"9:16",renderer:"hyperframes",outputs:["video","project"],fps:plan.fps,quality:"high",preflight:true},projectFiles:files,metadata:{source:"reference-motion",productionMode:plan.productionMode??"standard",expectsAudio:plan.audioMode!=="silent-study",motionPlan:true,cinematicCraft:review.cinematicCraft,captionCount:captions.count,cinematicPolicyVersion:plan.cinematicPolicyVersion??null,...(plan.cinematicPolicyVersion==="v2"&&plan.scenes.some(s=>s.effects?.motionBlur>0)?{kind:"cinematic-3d",motionBlur:{enabled:true,shutterAngle:180}}:{}),cinematicPolicy,assetValidation,previewOnly:true,artisticQA:"pending-user-review"},readiness:{testRenderReady:true,renderReady:false,finalDeliveryApproved:false,artisticReview:"pending-user-review",warnings:review.warnings,cinematicCraft:review.cinematicCraft,cinematicPolicy}};
 }
