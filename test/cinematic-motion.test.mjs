@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { validateMotionPlan } from "../src/motion/plan.mjs";
 import { buildMotionComposition } from "../src/motion/composer.mjs";
+import {makeCinematicV2Fixture,cinematicV2FilesFor} from "./fixtures/cinematic-v2-fixture.mjs";
 
 function cinematicFixture() {
   const scenes=[];
@@ -96,4 +97,41 @@ test("cinematic compiler rejects external or missing media and SFX assets",async
   await assert.rejects(buildMotionComposition(p,f.filter(v=>!v.path.endsWith("impact.wav"))),/Missing asset/);
   p.scenes[0].media="https://example.com/movie.mp4";
   assert.equal(validateMotionPlan(p).ok,false);
+});
+
+test("V2 compositor builds real captions, depth, reframing, shutter blur and a 40-control report",async()=>{
+ const plan=makeCinematicV2Fixture();
+ const result=await buildMotionComposition(plan,cinematicV2FilesFor(plan));
+ assert.equal(result.readiness.testRenderReady,true);
+ assert.equal(result.readiness.renderReady,false);
+ assert.equal(result.readiness.finalDeliveryApproved,false);
+ assert.equal(result.metadata.cinematicPolicyVersion,"v2");
+ assert.equal(result.metadata.kind,undefined,"V2 2D must not masquerade as a 3D job");
+ assert.equal(result.metadata.cinematicPolicyVersion,"v2");
+ assert.equal(result.metadata.motionBlur.enabled,true);
+ assert.equal(result.metadata.cinematicPolicy.controls.length,40);
+ const root=result.projectFiles.find(f=>f.path==="index.html").content;
+ const first=result.projectFiles.find(f=>f.path==="compositions/scene-1.html").content;
+ const depth=result.projectFiles.find(f=>f.path==="compositions/scene-3.html").content;
+ assert.match(root,/id="mf-caption-1"/);
+ assert.match(root,/mf-caption-word-1-1/);
+ assert.match(root,/data-track-kind="captions"/);
+ assert.match(root,/data-motion-blur="on"/);
+ assert.match(root,/window\.__timelines\.main=timeline/);
+ assert.match(first,/class="mf-fx-bloom"/);
+ assert.match(first,/class="mf-fx-shadow"/);
+ assert.match(first,/id="scene-1-micro"/);
+ assert.match(first,/data-motion-blur-strength="0.62"/);
+ assert.match(first,/data-shot-size="wide"/);
+ assert.match(first,/data-transition-reason=/);
+ assert.match(first,/tl\.fromTo\("#scene-1-camera-rig"/);
+ assert.match(first,/filter:contrast/);
+ assert.match(depth,/mf-depth-stage/);
+ assert.match(depth,/mf-depth-background/);
+ assert.match(depth,/mf-depth-midground/);
+ assert.match(depth,/mf-depth-foreground/);
+ const planFile=result.projectFiles.find(f=>f.path==="motion-plan.json").content;
+ assert.match(planFile,/storyArc/);
+ assert.match(root,/id="audio-narration"/);
+ assert.match(root,/id="audio-caption-pop"/);
 });

@@ -79,6 +79,8 @@ export function makeEditorProject(input={}){
     cursor=end;
   }
   const project={version:1,id:randomUUID().replaceAll("-",""),revision:0,brand,title,idea,
+    productionPolicyVersion:"cinematic-v2",artisticReview:"pending",
+    outputIntent:"editable-preview-until-real-scene-assets-and-artistic-review",
     fps,aspectRatio,totalFrames,
     mode:free?"timeline-free":"cinematic-3d",preset:compact(input.preset||(free?"native-free-timeline-v1":"cinematic-3d-editor-v1"),80),
     ...(free?{canvasColor:"#0b1018"}:{}),

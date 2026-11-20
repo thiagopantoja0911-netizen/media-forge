@@ -33,9 +33,10 @@ test("editing style actively changes per-shot directions but preserves brief and
   assert.ok(plan.storyboard.every(s=>s.motionDirection&&s.graphicRules&&s.sound));
   assert.equal(plan.brief.goal,"sales");
   const raw=planFromShortBrief({...input,editing_style:undefined});
-  assert.equal(raw.editingStyle,undefined);
-  assert.equal(raw.storyboard[0].visualTreatment,undefined);
+  assert.equal(raw.editingStyle.id,"cinematic-media-first-v2");
+  assert.match(raw.storyboard[0].visualTreatment,/real person|object/);
   assert.deepEqual(raw.storyboard.map(s=>s.movement),plan.storyboard.map(s=>s.movement));
+  assert.notDeepEqual(raw.storyboard.map(s=>s.visualTreatment),plan.storyboard.map(s=>s.visualTreatment));
 });
 
 test("catalog and optional style selector are exposed to MCP without changing required brief fields",()=>{

@@ -1,4 +1,5 @@
 import { reviewProceduralMotion } from "./procedural-motion.mjs";
+import { reviewCinematicPolicyV2 } from "../cinematic-production-policy.mjs";
 // Media-first cinematic production gate. Enforced before the Windows job is queued.
 // Does not claim artistic quality: it prevents known slideshow and silent-render failures.
 const fpsValue = value => { const [n,d="1"]=String(value).split("/"); return Number(n)/Number(d); };
@@ -81,6 +82,10 @@ export function reviewCinematicCraft(plan) {
     const anchor=anchors.get(cue.eventId);
     if(anchor!==undefined&&Math.abs(anchor-cue.startFrame)>Math.ceil(fps*.08))errors.push(cue.id+": SFX must land within 80ms of the visual event peak");
   }
-  const metrics={durationSeconds:duration,visualMode:plan.visualMode||"media-first",proceduralCoveragePct:procedural?Math.round(100*(proceduralReview.metrics?.plannedActiveRatio||0)):null,shotCount:scenes.length,shotTypes:[...types],footagePct:Math.round(100*footageSeconds/duration),photoPct:Math.round(100*photoSeconds/duration),motionPct:Math.round(100*motionSeconds/duration),sfxCount:sfx.length,musicCount:music.length,voiceCount:voice.length};
+  // The strict V2 policy applies to new production submissions only.
+  // Existing finished plans retain their historical validation contract.
+  const v2=reviewCinematicPolicyV2(plan);
+  if(v2.enabled){errors.push(...v2.errors);warnings.push(...v2.warnings);}
+  const metrics={durationSeconds:duration,visualMode:plan.visualMode||"media-first",proceduralCoveragePct:procedural?Math.round(100*(proceduralReview.metrics?.plannedActiveRatio||0)):null,shotCount:scenes.length,shotTypes:[...types],footagePct:Math.round(100*footageSeconds/duration),photoPct:Math.round(100*photoSeconds/duration),motionPct:Math.round(100*motionSeconds/duration),sfxCount:sfx.length,musicCount:music.length,voiceCount:voice.length,...(v2.enabled?{cinematicV2:v2.metrics}:{})};
   return {ok:errors.length===0,errors,warnings,metrics,artisticReview:"pending"};
 }

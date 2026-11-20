@@ -12,6 +12,11 @@ test('one sentence produces actionable sales storyline without inventing brand p
  assert.equal(plan.status,'production-plan-ready-not-rendered');
  assert.equal(plan.readiness.mediaAssetsReady,false);
  assert.equal(plan.readiness.artisticQA,false);
+ assert.equal(plan.cinematicPolicy.controlCount,40);
+ assert.equal(plan.cinematicPolicy.controls.length,40);
+ assert.equal(plan.assetManifest.length,5);
+ assert.equal(plan.audio.voiceDucking,true);
+ assert.ok(plan.assets.some(x=>x.kind==="ambience"));
  assert.equal(plan.creative.conversionOrEngagementIsNotGuaranteed,true);
  assert.ok(plan.assets.filter(x=>x.kind==='visual').length===5);
  assert.ok(plan.assets.some(x=>x.kind==='music'));

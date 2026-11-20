@@ -25,6 +25,11 @@ jobs:
       - run: node --check src/motion/cinematic-quality.mjs
       - run: node --check src/motion/plan.mjs
       - run: node --check src/motion/composer.mjs
+      - run: node --check src/cinematic-production-policy.mjs
+      - run: node --check src/cinematic-audio-mix.mjs
+      - run: node --check src/motion/cinematic-depth.mjs
+      - run: node --check src/motion/cinematic-effects.mjs
+      - run: node --check src/motion/captions.mjs
       - run: node --check scripts/analyze-reference.mjs
       - run: node --check src/creator-composer.mjs
       - run: node --check src/studio.mjs
@@ -59,6 +64,9 @@ jobs:
           ffmpeg -version | head -n 1
       - name: Install static FFmpeg and FFprobe
         run: npm run media-tools:install
+      - name: Run cinematic V2 post-render QA smoke
+        timeout-minutes: 8
+        run: node scripts/check-cinematic-v2-ffmpeg.mjs
       - name: Run Frame Lab full-frame analysis tests
         run: npm run frame-lab:test
       - name: Test cinematic motion playback with real media and audio

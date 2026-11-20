@@ -14,6 +14,10 @@ test("sales intent in one sentence selects before/after story without fabricated
  assert.equal(plan.status,"storyboard-only-not-rendered");
  assert.equal(plan.production.threeSecondPrototype,true);
  assert.equal(plan.production.motionProfile,"dynamic-motion-v1");
+ assert.equal(plan.cinematicPolicy.controlCount,40);
+ assert.equal(plan.assetManifest.length,5);
+ assert.equal(plan.storyArc.payoff.length>0,true);
+ assert.ok(plan.assetManifest.every(x=>x.localAssetRequired&&x.prompt.includes("Sem cartões vetoriais")));
  assert.equal(plan.claims.length,0);
  assert.ok(plan.blockers.length>=2);
 });

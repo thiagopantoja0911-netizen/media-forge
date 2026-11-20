@@ -4,7 +4,9 @@ import { join } from "node:path";
 import { FRAME_LAB_MCP_TOOLS, FRAME_LAB_MCP_NAMES, FRAME_LAB_MCP_READ_TOOLS } from "../frame-lab/mcp-schemas.mjs";
 import { buildCinematic3dProject } from "./cinematic-3d.mjs";
 import { buildMotionComposition } from "./motion/composer.mjs";
+import { fillMissingCinematicFootage } from "./motion/stock-footage-source.mjs";
 import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./premium-motion-baseline.mjs";
+import { CINEMATIC_POLICY_VERSION, CINEMATIC_PRODUCTION_POLICY, validateStudyUsage } from "./cinematic-production-policy.mjs";
 import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
 import { planFromShortBrief } from "./creative-director.mjs";
 import { listEditingStyles } from "./editing-style-presets.mjs";
@@ -370,6 +372,11 @@ export const VIDEOS_SECRETS_TOOLS = [
     }
   },
   {
+    name:"get_cinematic_production_policy",
+    description:"Retorna os 40 controles de produção cinematográfica, cobertura de mídia, regras de áudio, limites, bloqueios e revisão artística do MediaForge.",
+    inputSchema:{type:"object",additionalProperties:false}
+  },
+  {
     name: "create_video",
     description: "Produção de vídeo com Premium Motion como padrão: 60 FPS, high/delivery, preflight, movimento GSAP, trilha e micro-SFX. Para estudo silencioso use production_profile=study; para mídia cinematográfica especializada use create_motion_video.",
     inputSchema: {
@@ -384,7 +391,8 @@ export const VIDEOS_SECRETS_TOOLS = [
         quality: { type: "string", enum: ["draft", "looks", "standard", "high", "delivery"] },
         workers: { type: "integer", minimum: 1, maximum: 64 },
         preflight: { type: "boolean" },
-        production_profile: { type: "string", enum: ["premium-motion-v1", "study"], description: "Padrão para anúncios: Premium Motion. study permite testes visuais ou vídeos intencionalmente silenciosos." },
+        production_profile: { type: "string", enum: ["premium-motion-v1", "study"], description: "Padrão para vídeos finais: Premium Motion com mídia real; study só para prévias/testes com study_purpose." },
+        study_purpose: { type:"string", enum:["smoke-test","visual-prototype","intentionally-silent-study"], description:"Obrigatório ao usar study. O job não pode ser considerado entrega final." },
         project_files: {
           type: "array",
           minItems: 1,
@@ -405,14 +413,15 @@ export const VIDEOS_SECRETS_TOOLS = [
   },
   {
     name: "create_motion_video",
-    description: "Cria vídeo cinematográfico no Worker Windows usando compositor validado MediaForge: planos reais em movimento, câmera GSAP, trilha e micro-SFX com eventos sincronizados. Bloqueia mídia ausente, fotos repetidas e entregas sem áudio. Requer plano mediaforge-motion-v1 com productionMode=cinematic e assets locais em base64.",
+    description: "Produção cinematográfica V2 estrita: exige narração com timestamps por palavra, ações visuais por fala, footage real, três camadas de profundidade quando aplicável, legendas cinéticas, trilha com sidechain, ambiências e SFX sincronizados. Motion blur temporal usa o fork validado do HyperFrames. Render e QA técnico não equivalem a aprovação artística. Exige motion_plan completo e assets locais." ,
     inputSchema: {
       type: "object",
       additionalProperties: false,
       properties: {
         motion_plan: { type: "object", description: "Frame-based plan: format=mediaforge-motion-v1, productionMode=cinematic, audioMode=voice-led or sound-design, scenes, events and audioCues" },
         asset_files: { type: "array", minItems: 1, maxItems: 72, items: { type: "object", additionalProperties: false, properties: { path: {type:"string"}, content: {type:"string"}, encoding: {type:"string",enum:["base64","utf8"]} }, required:["path","content","encoding"] } },
-        quality: {type:"string",enum:["draft","looks","standard","high","delivery"]}
+        quality: {type:"string",enum:["draft","looks","standard","high","delivery"]},
+        auto_source_stock: {type:"boolean",description:"Opt-in: search Pexels for missing footage via configured PEXELS_API_KEY; no vector fallback. Requires scene.stockQuery, footage license and visual review."}
       },
       required: ["motion_plan","asset_files"]
     }
@@ -862,9 +871,16 @@ export async function handleVideosSecretsMcp({
       return writeResult(response, id, textResult({ ...plan, productionBlueprint:blueprint }, false, version), version);
     }
 
+    if (name === "get_cinematic_production_policy") {
+      if (!auth.scopes.includes("videos:read")) return writeError(response,id,-32003,"Insufficient scope",403,version);
+      return writeResult(response,id,textResult({policy:CINEMATIC_PRODUCTION_POLICY,version:CINEMATIC_POLICY_VERSION},false,version),version);
+    }
+
     if (name === "create_video") {
       if (!auth.scopes.includes("videos:write")) return writeError(response, id, -32003, "Insufficient scope", 403, version);
       const productionProfile = args.production_profile ?? PREMIUM_MOTION_BASELINE;
+      const studyAuthorization=validateStudyUsage({...args,production_profile:productionProfile});
+      if(!studyAuthorization.ok)return writeError(response,id,-32602,studyAuthorization.errors.join("; "),422,version);
       if (!["premium-motion-v1", "study"].includes(productionProfile)) {
         return writeError(response, id, -32602, "Unsupported production profile", 422, version);
       }
@@ -890,7 +906,7 @@ export async function handleVideosSecretsMcp({
         project_files: args.project_files,
         metadata: premium
           ? { productionMode: "cinematic", qualityBaseline: PREMIUM_MOTION_BASELINE, expectsAudio: true, artisticQA: "pending-user-review" }
-          : { productionMode: "study" }
+          : { productionMode: "study", previewOnly:true, studyPurpose:args.study_purpose, artisticQA:"preview-not-approved" }
       });
       return writeResult(response, id, textResult({
         id: job.id,
@@ -908,7 +924,10 @@ export async function handleVideosSecretsMcp({
       const assets = args.asset_files.map(file => file.encoding === "base64"
         ? {path:file.path,contentBase64:file.content}
         : {path:file.path,content:file.content});
-      const composition = await buildMotionComposition(args.motion_plan, assets);
+      // Apply V2 by default at the authoritative MCP boundary; legacy saved projects remain untouched.
+      const productionPlan={...args.motion_plan,productionMode:"cinematic",cinematicPolicyVersion:"v2"};
+      const stock = await fillMissingCinematicFootage(productionPlan,assets,{enabled:args.auto_source_stock===true});
+      const composition = await buildMotionComposition(stock.plan, stock.assets);
       // The cinematic gate is mandatory; the tool never bypasses preflight or creative asset checks.
       if (!composition.readiness.testRenderReady) {
         return writeError(response, id, -32602, "Motion assets or cinematic quality gate not ready", 422, version);
@@ -927,7 +946,7 @@ export async function handleVideosSecretsMcp({
         prompt: "Cinematic motion from validated timed plan: " + project.title,
         project,
         projectFiles: composition.projectFiles,
-        metadata: { ...composition.metadata, source:"cinematic-motion-v2", qaStatus:"pending-technical-and-artistic-review" }
+        metadata: { ...composition.metadata, source:"cinematic-motion-v2",stockAssets:stock.provenance,artisticQA:"pending-user-review", qaStatus:"pending-technical-and-artistic-review" }
       });
       return writeResult(response, id, textResult({
         id:job.id,status:job.status,worker:"windows-local",renderer:"hyperframes",

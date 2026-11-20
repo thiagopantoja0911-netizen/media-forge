@@ -1,6 +1,7 @@
 // Converts a two-field request into a reproducible creative-production contract.
 // This does not fabricate logos, testimonials, media bytes, or conversion measurements.
 import {planFromShortBrief} from "./creative-director.mjs";
+import { CINEMATIC_POLICY_VERSION, CINEMATIC_PRODUCTION_POLICY } from "./cinematic-production-policy.mjs";
 
 const GOALS={
  sales:{mechanics:["relevant pain","observable mechanism","measurable consequence only if verified","risk reduction","clear invitation"],cta:"Conheça a solução",hook:"Show the observable problem and what changes"},
@@ -38,27 +39,37 @@ export function buildOnePromptBlueprint(input={}){
   checklist:{assetPresent:false,audioPresent:false,reviewed:false}};
  });
  const assets=shots.map((s)=>({id:s.hero.id,kind:"visual",purpose:s.hero.kind,path:null,generated:false,rightsVerified:false}));
+ for(const shot of shots)assets.push({id:"ambience-"+shot.id,kind:"ambience",purpose:"scene sound design: "+JSON.stringify(shot.shotSound||{}),path:null,generated:false,rightsVerified:false});
  assets.push({id:"music-bed",kind:"music",purpose:"licensed or original music for entire film",path:null,generated:false,rightsVerified:false});
  if(voice!=="off")assets.push({id:"narration",kind:"voice",purpose:"word-timestamped intelligible narration",path:null,generated:false,rightsVerified:false});
  for(let i=0;i<4;i++)assets.push({id:"sfx-"+String(i+1),kind:"sfx",purpose:"caused by a visible action; validate sound via FFprobe",path:null,generated:false,rightsVerified:false});
  if(!verified.logo)assets.push({id:"brand-logo",kind:"identity",purpose:"verified brand identity; never fabricate an official logo",path:null,generated:false,rightsVerified:false});
  return {
   version:"mediaforge-chat-one-prompt-v1",status:"production-plan-ready-not-rendered",
+  cinematicPolicy:{version:CINEMATIC_POLICY_VERSION,controlCount:CINEMATIC_PRODUCTION_POLICY.controls.length,
+    controls:original.cinematicPolicy.controls,
+    minimumRealMediaShare:CINEMATIC_PRODUCTION_POLICY.limits.minRealMediaShare,
+    minimumMovingFootageShare:CINEMATIC_PRODUCTION_POLICY.limits.minMovingFootageShare,
+    flatVectorsAsPrimaryScene:false,mandatoryArtisticReview:true},
+  storyArc:original.storyArc,assetManifest:original.assetManifest,
   brief:original.brief,
   creative:{goal,hook:goalSpec.hook,chosenApproach:original.decision.chosen,psychology:goalSpec.mechanics,
     cta:goalSpec.cta,conversionOrEngagementIsNotGuaranteed:true},
   alternatives:original.alternatives,storyboard:shots,assets,
   claims:{allowed:verifiedClaims,withheld:unverifiedClaims.map(c=>({text:c.text,reason:"Unverified source"}))},
   identity:{brandUrl:verified.url,logoPath:verified.logo,verified:false},
-  audio:{voice,wordTimestampsRequired:voice!=="off",music:true,causalSfx:true,
+  audio:{voice,wordTimestampsRequired:voice!=="off",music:true,causalSfx:true,sceneAmbience:true,voiceDucking:true,
     targets:{integratedLufs:[-16,-14],truePeakDbtp:-1,wordSyncMs:100}},
-  direction:{motionProfile:"dynamic-motion-v1",previewSeconds:3,depthLayers:3,fullFilmAfterPreview:true,
+  direction:{motionProfile:"dynamic-motion-v1",cinematicProfile:"cinematic-media-first-v2",previewSeconds:3,depthLayers:3,fullFilmAfterPreview:true,
+    trueMotionBlur:"validated local HyperFrames shutter renderer",renderedFrameInspection:true,
+    visualConstruction:"on-screen actions enact each narration beat",
+    timedCaptionAndMovementSfx:true,filmGradingAndShadows:true,bloomAndMotionBlurWhenMotivated:true,
     requirements:["camera with a clear target","three depth layers with independent movement","object-caused scene transitions",
       "no generic cards or placeholders","no long static holds without narrative reason","CTA unobstructed",
       "no invented statistics, testimonials, pricing or scarcity"]},
   readiness:{storyboard:true,mediaAssetsReady:false,soundAssetsReady:false,hyperframesProjectReady:false,
     technicalQA:false,artisticQA:false,verifiedCompanyAssets:!!verified.url&&!!verified.logo},
-  delivery:{expected:["MP4","editable project","media manifest","QA report"],performed:false},
+  delivery:{expected:["MP4","editable project","media manifest","technical QA","audio QA","human artistic approval"],performed:false,finalBlockedUntilHumanReview:true},
   nextActions:["verify brand and factual claims","source/generate real specific visual and audio files",
     "build editable HyperFrames composition","run 3-second visual preview","check motion and sound",
     "render on Windows","review complete MP4","deliver only after approval"]

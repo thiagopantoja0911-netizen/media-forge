@@ -6,6 +6,40 @@
  * The source file is deliberately NOT bundled into the application.
  */
 export const EDITING_STYLE_PRESETS = Object.freeze({
+  "cinematic-media-first-v2": Object.freeze({
+    id:"cinematic-media-first-v2",name:"Cinematográfico — narrativa em ação | V2",version:2,
+    category:"cinematic-media-first",
+    source:{kind:"official-mediaforge-production-policy",policyVersion:"cinematic-v2"},
+    identity:{palette:["#101821","#e2be94","#eee8df"],background:"authentic footage, realistic photography or physically lit CGI",
+      composition:"action-first, depth and motivated camera",illustration:"never flat vector as the main shot",
+      treatments:["light motivated by scene","controlled bloom","contact shadows","photographic color grade"],
+      avoid:["vector-only slideshow","floating symbols as actors","repeated title card","slow zoom-only"]},
+    editorial:{purpose:"build the event described by narration on screen",
+      hook:"concrete visible action and sound cue in first 2s",progression:["observed problem","person or object acts","visible consequence","decision","emotionally satisfying resolution"],
+      beatSeconds:{min:1.2,preferred:3.1,max:5},
+      visualEventsPerBeat:{min:1,max:4},continuity:"objects, action and gaze motivate every cut",
+      temporalRule:"reveal real event when spoken; captions support scene, never replace it",
+      safeZone:"portrait video captions remain above platform buttons"},
+    audio:{narration:"use real word-timestamped voice asset",music:"original/licensed score, narrative arc",
+      microSfx:["caption pop on entrance","camera whoosh on movement","impact on causal action"],
+      synchronization:"SFX on visual peaks within 80ms",voicePriority:true,
+      qa:{integratedLufsRange:[-16,-14],maxTruePeakDbtp:-1}},
+    production:{defaultAspectRatio:"9:16",alternateAspectRatio:"16:9 with native recomposition",
+      defaultFps:30,editableGraphics:true,animationEngine:"HyperFrames/GSAP seekable",
+      reusePolicy:"use original/licensed assets, never copy a reference movie",
+      minimumRealMediaShare:.7,minimumMovingFootageShare:.5,maximumGraphicsShare:.15},
+    shotDirections:[
+      {visual:"real person or object starts a meaningful action immediately",movement:"match-action dolly and quick visual hook",sound:"short impact tied to the hook"},
+      {visual:"show the scene's obstacle through a physical, filmed event",movement:"motivated handheld/tracking, layered depth",sound:"scene ambience and light transition whoosh"},
+      {visual:"let an object or decision cause a visible before-and-after",movement:"causal match cut with fast blur accent",sound:"precise movement SFX at action peak"},
+      {visual:"show the consequence unfolding, not a graph or label",movement:"reveal through focus pull or scene change",sound:"emotional music lift, restrained cue"},
+      {visual:"end on a real payoff image and readable final question",movement:"settle after decisive physical action",sound:"musical resolve with room for voice"}
+    ],
+    qualityChecklist:["Real media assets attached per plan","Spoken beat has a real on-screen action",
+      "No vector-only scene stands in for missing media","Bloom, blur, shadows and impacts are motivated",
+      "Voice, music and SFX stems attached with provenance","Rendered frames and audio inspected",
+      "Technical QA is not artistic approval"],
+  }),
   "minimal-outline-explainer-v1": Object.freeze({
     id: "minimal-outline-explainer-v1",
     name: "Motion Minimalista P&B | Explicador 10K",

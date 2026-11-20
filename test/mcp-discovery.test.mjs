@@ -108,7 +108,7 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
       "upload_editor_asset", "apply_editor_style_preset", "get_editor_style_dna",
       "list_editor_style_presets", "sync_editor_beats", "get_editor_project",
       "review_editor_preview", "edit_editor_project", "edit_editor_timeline", "upload_editor_layer_asset", "list_editing_styles", "edit_motion_plan",
-      "plan_video_from_brief", "create_video", "create_motion_video", "create_cinematic_3d",
+      "plan_video_from_brief", "get_cinematic_production_policy", "create_video", "create_motion_video", "create_cinematic_3d",
       "renderer_status", "list_videos", "get_video",
       "frame_lab_capabilities", "frame_lab_create_project", "frame_lab_list_projects",
       "frame_lab_start_upload", "frame_lab_upload_chunk", "frame_lab_upload_status",
@@ -127,6 +127,14 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     assert.equal(storyboard.brief.brand,"Empresa Exemplo");
     assert.equal(storyboard.storyboard.length,5);
     assert.equal(storyboard.status,"storyboard-only-not-rendered");
+
+    const policyQuery=await call("tools/call", MODERN, {
+      params:{name:"get_cinematic_production_policy",arguments:{}}
+    });
+    assert.equal(policyQuery.status,200,JSON.stringify(policyQuery.data));
+    const policy=JSON.parse(policyQuery.data.result.content[0].text);
+    assert.equal(policy.policy.controls.length,40);
+    assert.equal(policy.version,"cinematic-v2");
 
     const modernCall = await call("tools/call", MODERN, {
       params: { name: "renderer_status", arguments: {} }
@@ -177,7 +185,7 @@ test("OAuth-protected MCP discovers tools in both 2026 stateless and legacy prot
     const explicitStudy = await call("tools/call", MODERN, {
       params: { name: "create_video", arguments: {
         title: "Intentional silent experiment", prompt: "Study with no music, no production claim",
-        duration_seconds: 16, aspect_ratio: "16:9", production_profile: "study",
+        duration_seconds: 16, aspect_ratio: "16:9", production_profile: "study", study_purpose:"intentionally-silent-study",
         project_files: [{ path: "index.html", content: "<!doctype html><html><body>Static</body></html>" }]
       } }
     });

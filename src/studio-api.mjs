@@ -82,7 +82,7 @@ export async function handleStudioApi({ request, response, parseBody, isAdminSes
     const imported = isMotion ? {warnings:[]} : importSalevoStudioDraft(raw);
     const mediaAssets = raw.mediaAssets && typeof raw.mediaAssets === "object" ? raw.mediaAssets : {};
     const composition = isMotion
-      ? await buildMotionComposition(raw.motionPlan, raw.assetFiles ?? [])
+      ? await buildMotionComposition(isRender && raw.motionPlan?.productionMode==="cinematic" ? {...raw.motionPlan,cinematicPolicyVersion:"v2"} : raw.motionPlan, raw.assetFiles ?? [])
       : await buildCreatorComposition(imported.manifest, mediaAssets);
     if (isCompose) {
       reply(response, 200, { ok: true, ...composition, warnings: imported.warnings });
@@ -107,8 +107,12 @@ export async function handleStudioApi({ request, response, parseBody, isAdminSes
         source: "forge-midjourney-studio",
         mode: "controlled-test",
         qaStatus: "pending-technical-and-artistic-review",
+        artisticQA:"pending-user-review",previewOnly:true,
+        cinematicPolicyVersion:isMotion && raw.motionPlan?.productionMode==="cinematic" ? "v2" : null,
         expectsAudio: isMotion ? composition.metadata.expectsAudio : Boolean(composition.readiness.audio.voiceover.attached),
         motionPlan: isMotion,
+        productionMode:isMotion?composition.metadata.productionMode:"study",
+        cinematicCraft:isMotion?composition.readiness.cinematicCraft:null,
         approvedBy: "authenticated-admin-confirmation"
       }
     });

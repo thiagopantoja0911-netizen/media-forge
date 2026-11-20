@@ -52,6 +52,27 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "Sintaxe invalida do renderer HyperFrames" }
   & node --check (Join-Path $InstallDir "src\render-recovery.mjs")
   if ($LASTEXITCODE -ne 0) { throw "Sintaxe invalida da recuperacao de render" }
+  foreach ($relativePath in @(
+    "src\cinematic-production-policy.mjs",
+    "src\cinematic-audio-mix.mjs",
+    "src\motion\plan.mjs",
+    "src\motion\composer.mjs",
+    "src\motion\assets-validation.mjs",
+    "src\motion\cinematic-depth.mjs",
+    "src\motion\cinematic-effects.mjs",
+    "src\motion\captions.mjs"
+  )) {
+    & node --check (Join-Path $InstallDir $relativePath)
+    if ($LASTEXITCODE -ne 0) { throw "Sintaxe invalida: $relativePath" }
+  }
+  $criticalTests = @(
+    (Join-Path $InstallDir "test\cinematic-production-policy-v2.test.mjs"),
+    (Join-Path $InstallDir "test\cinematic-audio-mix.test.mjs"),
+    (Join-Path $InstallDir "test\cinematic-motion.test.mjs"),
+    (Join-Path $InstallDir "test\cinematic-shutter-renderer.test.mjs")
+  )
+  & node --test $criticalTests
+  if ($LASTEXITCODE -ne 0) { throw "Testes criticos Cinematic V2 falharam; worker nao sera reiniciado." }
   $current = (& git -C $InstallDir rev-parse HEAD | Out-String).Trim()
   Write-Output "Worker atualizado: $current"
   if (Get-Command ffprobe -ErrorAction SilentlyContinue) {

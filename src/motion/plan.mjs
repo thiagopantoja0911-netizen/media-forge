@@ -43,6 +43,42 @@ export function validateMotionPlan(plan) {
     if (scene.media !== undefined && !isAsset(scene.media)) fail(`${scene.id}: media must be a local assets/ path`);
     if (["product", "collage", "footage", "photo"].includes(scene.type) && !scene.media) fail(`${scene.id}: ${scene.type} requires a packaged local asset (no external URLs)`);
     if (scene.camera !== undefined && !["dolly-in","pull-back","truck-left","truck-right","arc-reveal","locked"].includes(scene.camera)) fail(`${scene.id}: invalid camera move`);
+    if(scene.voiceStartFrame!==undefined&&(!Number.isInteger(scene.voiceStartFrame)||scene.voiceStartFrame<scene.startFrame||scene.voiceStartFrame>=scene.endFrame))fail(`${scene.id}: invalid voiceStartFrame`);
+    if(scene.voiceEndFrame!==undefined&&(!Number.isInteger(scene.voiceEndFrame)||scene.voiceEndFrame<=scene.startFrame||scene.voiceEndFrame>scene.endFrame))fail(`${scene.id}: invalid voiceEndFrame`);
+    if(scene.shotSize!==undefined&&!["extreme-wide","wide","medium","close-up","extreme-close-up","over-shoulder","low-angle","top-down","detail"].includes(scene.shotSize))fail(`${scene.id}: invalid shotSize`);
+    if(scene.pace!==undefined&&!["fast","medium","hold"].includes(scene.pace))fail(`${scene.id}: invalid pace`);
+    if(scene.hook!==undefined&&typeof scene.hook!=="boolean")fail(`${scene.id}: hook must be boolean`);
+    if(scene.mediaRights!==undefined&&!["owned","licensed","ai-generated","public-domain","stock-licensed"].includes(scene.mediaRights))fail(`${scene.id}: invalid mediaRights`);
+    if(scene.transitionReason!==undefined&&(typeof scene.transitionReason!=="string"||scene.transitionReason.length>240))fail(`${scene.id}: transitionReason max 240 characters`);
+    if(scene.depthLayers!==undefined){
+      if(!Array.isArray(scene.depthLayers)||scene.depthLayers.length!==3)fail(`${scene.id}: depthLayers must contain exactly three layers`);
+      else{
+        const layerIds=new Set(),roles=new Set();
+        for(const layer of scene.depthLayers){
+          if(!layer||!identifier.test(layer.id)||layerIds.has(layer.id)||!["background","midground","foreground"].includes(layer.role)||
+            !isAsset(layer.src)||!Number.isFinite(layer.parallax)||layer.parallax<0||layer.parallax>1||
+            !Number.isFinite(layer.blurPx)||layer.blurPx<0||layer.blurPx>16||!Number.isFinite(layer.depth)||layer.depth<0||layer.depth>1||typeof layer.focus!=="boolean")
+            fail(`${scene.id}: invalid depth layer`);
+          if(layer?.id)layerIds.add(layer.id);if(layer?.role)roles.add(layer.role);
+        }
+        if(roles.size!==3)fail(`${scene.id}: depth layers require background/midground/foreground`);
+        if(scene.depthLayers.find(x=>x?.role==="background")?.src!==scene.media)fail(`${scene.id}: background depth layer must be the scene media asset`);
+        if(new Set(scene.depthLayers.map(x=>x.depth)).size!==3)fail(`${scene.id}: depth layers require distinct depth values`);
+        if(scene.depthLayers.filter(x=>x?.focus===true).length!==1)fail(`${scene.id}: exactly one depth layer must be in focus`);
+      }
+    }
+    if(scene.reframe!==undefined){
+      const ok=p=>p&&Number.isFinite(p.scale)&&p.scale>=1&&p.scale<=1.6&&Number.isFinite(p.xPercent)&&Math.abs(p.xPercent)<=12&&Number.isFinite(p.yPercent)&&Math.abs(p.yPercent)<=12;
+      if(!scene.reframe||!ok(scene.reframe.from)||!ok(scene.reframe.to)||JSON.stringify(scene.reframe.from)===JSON.stringify(scene.reframe.to))
+        fail(`${scene.id}: invalid reframe`);
+    }
+    if(scene.continuity!==undefined&&(!scene.continuity||typeof scene.continuity.subjectId!=="string"||
+      !["left-to-right","right-to-left","static"].includes(scene.continuity.screenDirection)||!Array.isArray(scene.continuity.propIds)||scene.continuity.propIds.some(x=>typeof x!=="string"||!identifier.test(x))))
+      fail(`${scene.id}: invalid continuity contract`);
+    if(scene.soundDesign!==undefined&&(!scene.soundDesign||typeof scene.soundDesign.intent!=="string"||
+      !Array.isArray(scene.soundDesign.cueIds)||scene.soundDesign.cueIds.some(x=>typeof x!=="string")))
+      fail(`${scene.id}: invalid soundDesign contract`);
+
     if (!TRANSITIONS.includes(scene.transition ?? "cut")) fail(`${scene.id}: unsupported transition`);
     if ((scene.transition ?? "cut") !== "cut" && length < fps * .8) fail(`${scene.id}: transition needs at least 0.8 seconds`);
     if (!Array.isArray(scene.events) || !scene.events.length || scene.events.length > 24) { fail(`${scene.id}: provide 1..24 timed events`); continue; }
@@ -72,14 +108,21 @@ export function validateMotionPlan(plan) {
       if (!cue || !identifier.test(cue.id) || cueIds.has(cue.id)) { fail("audio cues require unique lowercase ids"); continue; }
       cueIds.add(cue.id);
       if (!isAsset(cue.src) || !/\.(?:wav|mp3|m4a|aac|ogg|opus|webm)$/i.test(cue.src)) fail(`${cue.id}: audio must be a packaged audio file under assets/`);
-      if (!["music", "voice", "sfx"].includes(cue.role)) fail(`${cue.id}: invalid audio role`);
+      if (!["music", "voice", "sfx", "ambience"].includes(cue.role)) fail(`${cue.id}: invalid audio role`);
       if (!Number.isInteger(cue.startFrame) || !Number.isInteger(cue.endFrame) || cue.startFrame < 0 || cue.endFrame <= cue.startFrame || cue.endFrame > plan.totalFrames) fail(`${cue.id}: audio outside timeline`);
       if (!Number.isFinite(cue.volume) || cue.volume < 0 || cue.volume > 1) fail(`${cue.id}: volume must be 0..1`);
       if (typeof cue.provenance !== "string" || !cue.provenance.trim()) fail(`${cue.id}: record source/license or ownership`);
-      if (cue.role === "sfx") {
-        const anchor = eventFrames.get(cue.eventId);
-        if (anchor === undefined) fail(`${cue.id}: sfx must reference a visible eventId`);
-        else if (Math.abs(cue.startFrame - anchor) > Math.ceil(fps * .08)) warnings.push(`${cue.id}: sound is more than 80ms from its visual peak`);
+      if(cue.sceneId!==undefined&&(!identifier.test(cue.sceneId)||!scenes.some(s=>s.id===cue.sceneId)))fail(`${cue.id}: sceneId must reference a scene`);
+      if(cue.syncTarget!==undefined&&!["caption","motion","transition"].includes(cue.syncTarget))fail(`${cue.id}: invalid syncTarget`);
+      if(cue.role==="sfx"&&cue.syncTarget==="caption"&&(!Number.isInteger(cue.captionIndex)||cue.captionIndex<0||!Number.isInteger(cue.wordIndex)||cue.wordIndex<0))fail(`${cue.id}: caption sync requires captionIndex and wordIndex`);
+      if(cue.role==="sfx"){
+        let anchor;
+        if(cue.syncTarget==="caption")anchor=plan.captions?.[cue.captionIndex]?.words?.[cue.wordIndex]?.startFrame;
+        else if(cue.syncTarget==="motion")anchor=eventFrames.get(cue.eventId);
+        else if(cue.syncTarget==="transition")anchor=scenes.find(s=>s.id===cue.sceneId)?.startFrame;
+        else anchor=eventFrames.get(cue.eventId);
+        if(anchor===undefined)fail(`${cue.id}: SFX must reference a real caption word, motion event or scene transition`);
+        else if(Math.abs(cue.startFrame-anchor)>Math.ceil(fps*.08))warnings.push(`${cue.id}: sound is more than 80ms from its visual event`);
       }
     }
     if (plan.audioMode === "silent-study" && cues.length) fail("silent-study cannot contain audio cues");
@@ -87,6 +130,16 @@ export function validateMotionPlan(plan) {
     if (plan.audioMode === "voice-led" && !cues.some(c => c?.role === "voice")) fail("voice-led requires narration");
     if (plan.audioMode === "silent-study") warnings.push("Silent visual study: sound design and mix are pending");
     else if (cues.length && Math.max(...cues.map(c => c?.endFrame ?? 0)) < plan.totalFrames - fps * .5) warnings.push("Audio ends more than 0.5 seconds before the picture");
+  }
+  if(plan.cinematicPolicyVersion==="v2"){
+    if(!plan.storyArc||!["hook","conflict","escalation","resolution","payoff"].every(k=>typeof plan.storyArc[k]==="string"&&plan.storyArc[k].trim()))fail("cinematic V2 requires a five-beat storyArc");
+    if(!plan.audioMix||plan.audioMix.voiceDucking!==true||!Number.isFinite(plan.audioMix.targetIntegratedLUFS)||
+      plan.audioMix.targetIntegratedLUFS< -16||plan.audioMix.targetIntegratedLUFS> -14||
+      !Number.isFinite(plan.audioMix.maxTruePeakDbtp)||plan.audioMix.maxTruePeakDbtp> -1)fail("cinematic V2 requires voiceDucking and safe audio targets");
+    if(!plan.soundtrackArc||!["opening","build","payoff"].every(k=>typeof plan.soundtrackArc[k]==="string"&&plan.soundtrackArc[k].trim()))fail("cinematic V2 requires soundtrackArc");
+    if(!plan.captionStyle||plan.captionStyle.maxLines!==2||!Number.isFinite(plan.captionStyle.minFontSize)||plan.captionStyle.minFontSize<36||
+      !plan.captionStyle.safeZone||!Number.isFinite(plan.captionStyle.safeZone.left)||!Number.isFinite(plan.captionStyle.safeZone.right)||
+      !Number.isFinite(plan.captionStyle.safeZone.bottom))fail("cinematic V2 requires captionStyle and safe zones");
   }
   const craft = reviewCinematicCraft(plan);
   return { ok: errors.length === 0 && craft.ok, errors: [...errors, ...craft.errors], warnings: [...warnings, ...craft.warnings], cinematicCraft: craft.metrics, artisticReview: "pending" };

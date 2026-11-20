@@ -86,9 +86,9 @@ export function renderArgs(job, outputPath, { resume = false } = {}) {
   if (job.project.browserGpu === false) args.push("--no-browser-gpu");
   if (job.project.browserGpu === true) args.push("--browser-gpu");
   // Keep compatibility with the validated cinematic fork installed on the worker.
-  if (job.metadata?.kind === "cinematic-3d" && job.metadata?.motionBlur?.enabled === true) {
+  if ((job.metadata?.kind === "cinematic-3d" && job.metadata?.motionBlur?.enabled === true) || (job.metadata?.productionMode === "cinematic" && job.metadata?.cinematicPolicyVersion === "v2")) {
     if (!process.env.HYPERFRAMES_BIN?.toLowerCase().endsWith("hyperframes.cmd")) {
-      throw new Error("The cinematic 3D renderer requires the validated local HyperFrames fork");
+      throw new Error("Cinematic V2/3D requires the validated local HyperFrames fork with shutter capture");
     }
     args.push("--cinematic-motion-blur");
   }
@@ -213,6 +213,8 @@ export async function renderWithHyperFrames(job, { onProgress = async () => {},s
     motionReview,
     diagnosticsDir,
     preflight: preflight?.stdout.trim() || null,
-    renderLog: render.stdout.trim() || null
+    renderLog: render.stdout.trim() || null,
+    motionBlurApplied:((job.metadata?.kind==="cinematic-3d"&&job.metadata?.motionBlur?.enabled===true)||(job.metadata?.productionMode==="cinematic"&&job.metadata?.cinematicPolicyVersion==="v2")),
+    motionBlurShutterAngle:((job.metadata?.kind==="cinematic-3d"&&job.metadata?.motionBlur?.enabled===true)||(job.metadata?.productionMode==="cinematic"&&job.metadata?.cinematicPolicyVersion==="v2"))?180:null
   };
 }
