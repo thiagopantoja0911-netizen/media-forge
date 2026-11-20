@@ -47,7 +47,13 @@ export function validateCinematicV2JobPayload({ project = {}, projectFiles = [],
     errors.push("The packaged motion plan must declare productionMode=cinematic and cinematicPolicyVersion=v2.");
   }
 
-  const motion = requireMotionPlan(plan);
+  let motion;
+  try {
+    motion = requireMotionPlan(plan);
+  } catch (error) {
+    errors.push("Cinematic V2 motion plan failed structural validation: " + String(error.message || error).slice(0, 500));
+    return { enabled: true, ok: false, errors };
+  }
   const fps = Number(String(plan.fps).split("/")[0]) / Number(String(plan.fps).split("/")[1] || 1);
   const aspectRatio = plan.width > plan.height ? "16:9" : plan.width < plan.height ? "9:16" : "1:1";
   if (Number.isFinite(project.durationSeconds) && Math.abs(project.durationSeconds - plan.totalFrames / fps) > 1 / fps) {
