@@ -175,7 +175,7 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
  else if(scenes.every(s=>s.camera&&s.camera!=="locked"))pass("motivated-camera",[...cameras]);
  if(transitions.size<2)fail("motivated-transitions","Use pelo menos duas transições diferentes e motivadas");
  else if(scenes.slice(1).every(s=>say(s.transitionReason)))pass("motivated-transitions",[...transitions]);
- if(paces.size<2)fail("rhythm","Alterne ao menos dois ritmos: fast, medium ou hold");
+ if(paces.size<2){fail("rhythm","Alterne ao menos dois ritmos: fast, medium ou hold");fail("pacing-variation","A montagem precisa alternar ao menos dois ritmos");}
  else {pass("rhythm",[...paces]);pass("pacing-variation",[...paces]);}
  if(!scenes.length||scenes.length<5)fail("shot-variety","Cinematográfico V2 exige pelo menos cinco planos narrativos");
  if(!scenes.length||scenes[0]?.startFrame>fps*1.5||scenes[0]?.hook!==true)fail("visual-hook","O gancho precisa começar nos primeiros 1,5s e declarar hook=true");
@@ -223,7 +223,7 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
     !say(c.text)||c.text.length>80){fail("timed-captions","Legenda "+(i+1)+": texto/tempo inválido");continue;}
   if(c.startFrame-lastCaption>limits.maxCaptionGapSeconds*fps)warn("timed-captions","Intervalo sem legenda superior a 3s");
   lastCaption=c.endFrame;
-  if(!Array.isArray(c.words)||!c.words.length){allWordTimed=false;continue;}
+  if(!Array.isArray(c.words)||!c.words.length){allWordTimed=false;wordSyncOk=false;continue;}
   let previous=c.startFrame;
   for(const [j,w] of c.words.entries()){
    if(!say(w.text)||!Number.isInteger(w.startFrame)||!Number.isInteger(w.endFrame)||w.startFrame<previous||
