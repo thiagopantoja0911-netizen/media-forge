@@ -111,6 +111,8 @@ export async function handleStudioApi({ request, response, parseBody, isAdminSes
         cinematicPolicyVersion:isMotion && raw.motionPlan?.productionMode==="cinematic" ? "v2" : null,
         expectsAudio: isMotion ? composition.metadata.expectsAudio : Boolean(composition.readiness.audio.voiceover.attached),
         motionPlan: isMotion,
+        productionMode:isMotion?composition.metadata.productionMode:"study",
+        cinematicCraft:isMotion?composition.readiness.cinematicCraft:null,
         approvedBy: "authenticated-admin-confirmation"
       }
     });
