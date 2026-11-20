@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { requireMotionPlan, frameSeconds } from "./plan.mjs";
 import { validateProjectFiles } from "../job-schema.mjs";
 import { validateCinematicMediaAssets } from "./assets-validation.mjs";
+import { buildCinematicCaptionTrack } from "./captions.mjs";
 
 const html = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const js = value => JSON.stringify(value).replace(/</g, "\\u003c");
@@ -105,6 +106,7 @@ export async function buildMotionComposition(plan, suppliedFiles = []) {
   if(plan.visualMode==="procedural-motion") throw new Error("Procedural cinema requires a real authored index.html, GSAP source and assets via create_video; this scene-template composer cannot manufacture it.");
   const review = requireMotionPlan(plan);
   const duration = frameSeconds(plan.totalFrames, plan.fps);
+  const captions = buildCinematicCaptionTrack(plan);
   const files = suppliedFiles.map(f => ({...f}));
   if (files.some(f => !/^assets\//.test(f.path ?? "") || f.path === "assets/gsap.min.js")) throw new Error("Supplied files must be assets/ files; gsap is provided by MediaForge");
   const paths = new Set(files.map(f => f.path));
@@ -123,8 +125,8 @@ export async function buildMotionComposition(plan, suppliedFiles = []) {
     const fade=c.role==="music" ? ' data-fade-in="0.35" data-fade-out="0.8"' : "";
     return `<audio id="audio-${c.id}" class="clip" src="${html(c.src)}" data-start="${frameSeconds(c.startFrame,plan.fps)}" data-duration="${frameSeconds(c.endFrame-c.startFrame,plan.fps)}" data-track-index="${30+i}" data-volume="${volume}"${fade}></audio>`;
   });
-  files.push({path:"index.html",content:`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${html(plan.title)}</title><style>html,body{margin:0}#root{position:relative;overflow:hidden;width:${plan.width}px;height:${plan.height}px;background:${plan.palette?.ground??"#efeee8"}}</style></head><body><div id="root" data-composition-id="main" data-width="${plan.width}" data-height="${plan.height}" data-fps="${plan.fps}" data-duration="${duration}">${hosts.join("\n")}${audio.join("\n")}</div><script src="assets/gsap.min.js"></script><script>window.__timelines=window.__timelines||{};window.__timelines.main=gsap.timeline({paused:true});</script></body></html>`});
+  files.push({path:"index.html",content:`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${html(plan.title)}</title><style>html,body{margin:0}#root{position:relative;overflow:hidden;width:${plan.width}px;height:${plan.height}px;background:${plan.palette?.ground??"#efeee8"};container-type:size}${captions.css}</style></head><body><div id="root" data-composition-id="main" data-width="${plan.width}" data-height="${plan.height}" data-fps="${plan.fps}" data-duration="${duration}">${hosts.join("\n")}${captions.html}${audio.join("\n")}</div><script src="assets/gsap.min.js"></script><script>window.__timelines=window.__timelines||{};const timeline=gsap.timeline({paused:true});${captions.timeline}window.__timelines.main=timeline;</script></body></html>`});
   const valid=validateProjectFiles(files);
   if(!valid.ok) throw new Error(valid.errors.join("; "));
-  return {project:{title:plan.title,durationSeconds:duration,aspectRatio:plan.width===plan.height?"1:1":plan.width>plan.height?"16:9":"9:16",renderer:"hyperframes",outputs:["video","project"],fps:plan.fps,quality:"high",preflight:true},projectFiles:files,metadata:{source:"reference-motion",productionMode:plan.productionMode??"standard",expectsAudio:plan.audioMode!=="silent-study",motionPlan:true,cinematicCraft:review.cinematicCraft},readiness:{testRenderReady:true,renderReady:false,artisticReview:"pending",warnings:review.warnings,cinematicCraft:review.cinematicCraft}};
+  return {project:{title:plan.title,durationSeconds:duration,aspectRatio:plan.width===plan.height?"1:1":plan.width>plan.height?"16:9":"9:16",renderer:"hyperframes",outputs:["video","project"],fps:plan.fps,quality:"high",preflight:true},projectFiles:files,metadata:{source:"reference-motion",productionMode:plan.productionMode??"standard",expectsAudio:plan.audioMode!=="silent-study",motionPlan:true,cinematicCraft:review.cinematicCraft,captionCount:captions.count,cinematicPolicyVersion:plan.cinematicPolicyVersion??null},readiness:{testRenderReady:true,renderReady:false,artisticReview:"pending",warnings:review.warnings,cinematicCraft:review.cinematicCraft}};
 }
