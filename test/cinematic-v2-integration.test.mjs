@@ -80,7 +80,8 @@ test("remote worker completion rejects missing evidence and accepts a QA-complet
     frameQA: { status: "passed", frameSamples: 450, blackFrameCount: 0, freezeSegments: [], duplicateScenePairs: [], issues: [] },
     renderComplete: true,
     motionBlurApplied: true,
-    artisticQA: "pending-user-review"
+    artisticQA: "pending-user-review",
+    artisticReview: { humanApproval: "required", automaticApproval: false }
   };
   const cinematicPolicy = reviewCinematicPolicyV2(plan, evidence);
   assert.equal(cinematicPolicy.ok, true, cinematicPolicy.errors.join("; "));
@@ -126,6 +127,7 @@ test("remote worker cannot mark a Cinematic V2 render completed without uploaded
     cinematicPolicy,
     motionBlurApplied: true,
     artisticQA: "pending-user-review",
+    artisticReview: { humanApproval: "required", automaticApproval: false },
     finalDeliveryApproved: false
   };
   const rejected = validateCinematicV2CompletionReport({
