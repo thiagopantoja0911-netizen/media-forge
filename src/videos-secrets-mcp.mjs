@@ -952,8 +952,11 @@ export async function handleVideosSecretsMcp({
       return writeResult(response, id, textResult({
         id:job.id,status:job.status,worker:"windows-local",renderer:"hyperframes",
         cinematicCraft:composition.readiness.cinematicCraft,
+        cinematicPolicy:composition.metadata.cinematicPolicy,
+        assetValidation:composition.metadata.assetValidation,
+        preflightSummary:composition.metadata.cinematicPolicy?.controlSummary,
         audio: { voice:args.motion_plan.audioCues.some(c=>c.role==="voice"),music:args.motion_plan.audioCues.some(c=>c.role==="music"),sfx:args.motion_plan.audioCues.filter(c=>c.role==="sfx").length },
-        message:"Composição cinematográfica validada e enfileirada no Worker Windows; revisão artística ainda pendente."
+        message:"Composição Cinematic V2 aprovada no preflight dos 40 controles e enfileirada no Worker Windows; QA pós-render e revisão artística ainda pendentes."
       }, false, version), version);
     }
 
