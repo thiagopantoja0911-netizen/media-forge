@@ -128,7 +128,7 @@ async function processRemote(job,leaseId) {
       :await renderWithHyperFrames(configured,{onProgress:report,signal:renderAbort.signal});
     throwIfCancelled();
     await report(93,"Render concluído; validando arquivo MP4",{phase:"technical-qa"});
-    const info=await stat(rendered.outputPath);
+    let info=await stat(rendered.outputPath);
     if(!info.isFile()||info.size===0)throw new Error("Video artifact missing or empty");
     const isCinematicV2=configured.metadata?.productionMode==="cinematic"&&configured.metadata?.cinematicPolicyVersion==="v2";
     const projectDir=resolve(projectsRoot,job.id);
@@ -136,6 +136,7 @@ async function processRemote(job,leaseId) {
     if(isCinematicV2){
       cinematicPlan=JSON.parse(await readFile(join(projectDir,"motion-plan.json"),"utf8"));
       audioMix=await mixCinematicAudio({videoPath:rendered.outputPath,projectDir,plan:cinematicPlan});
+      info=await stat(rendered.outputPath);
     }
     const technicalQA=await inspectRenderedVideo(rendered.outputPath,{...configured.project,width:rendered.motionReview?.width,height:rendered.motionReview?.height}, 
       configured.metadata?.expectsAudio===true || rendered.motionReview?.expectsAudio===true);
