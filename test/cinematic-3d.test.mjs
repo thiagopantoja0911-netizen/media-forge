@@ -26,7 +26,9 @@ test("cinematic 3D exports a complete, locally bundled Three.js HyperFrames proj
   assert.equal(files.size,8);
   const index=files.get("index.html");
   assert.match(index,/data-width="1080" data-height="1920"/);
-  assert.match(index,/data-motion-blur="on"/);
+  assert.match(index,/data-motion-blur="off"/);
+  assert.equal(project.productionMetadata.motionBlur.enabled,false);
+  assert.equal(project.productionMetadata.internalRenderScale,0.75);
   assert.match(index,/data-motion-blur-shutter="180"/);
   assert.match(index,/data-duration="12"/);
   assert.match(index,/__timelines\["main"\] = timeline/);
@@ -35,6 +37,7 @@ test("cinematic 3D exports a complete, locally bundled Three.js HyperFrames proj
   const scene=files.get("assets/scene.mjs");
   assert.match(scene,/import \* as THREE/);
   assert.match(scene,/new THREE\.WebGLRenderer/);
+  assert.match(scene,/INTERNAL_SCALE = 0\.75/);
   assert.match(scene,/THREE\.ACESFilmicToneMapping/);
   assert.match(scene,/new THREE\.PerspectiveCamera/);
   assert.match(scene,/window\.addEventListener\("hf-seek"/);
@@ -60,8 +63,24 @@ test("cinematic 3D offers explicit 4K60 only when requested",async()=>{
   assert.equal(project.resolution,"portrait-4k");
   assert.equal(project.fps,60);
   assert.equal(project.productionMetadata.renderProfile,"4k60");
+  assert.equal(project.productionMetadata.motionBlur.enabled,true);
+  assert.equal(project.productionMetadata.internalRenderScale,1);
   const html=project.projectFiles.find(f=>f.path==="index.html").content;
   assert.match(html,/data-width="2160" data-height="3840"/);
+  assert.match(html,/data-motion-blur="on"/);
+});
+
+test("draft 3D keeps 1080p delivery but renders WebGL internally at half scale",async()=>{
+  const project=await buildCinematic3dProject({title:"Draft QA",duration_seconds:10,quality:"draft"});
+  assert.equal(project.resolution,"portrait");
+  assert.equal(project.fps,30);
+  assert.equal(project.productionMetadata.internalRenderScale,0.5);
+  assert.equal(project.productionMetadata.motionBlur.enabled,false);
+  const js=project.projectFiles.find(f=>f.path==="assets/scene.mjs").content;
+  assert.match(js,/INTERNAL_SCALE = 0\.5/);
+  const html=project.projectFiles.find(f=>f.path==="index.html").content;
+  assert.match(html,/data-motion-blur="off"/);
+  assert.match(html,/data-width="1080" data-height="1920"/);
 });
 
 test("balanced dimensions preserve 16:9 and square orientation",async()=>{

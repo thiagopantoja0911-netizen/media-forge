@@ -89,7 +89,7 @@ const INDEX_HTML = `<!doctype html>
 </head>
 <body>
   <div id="root" data-composition-id="main" data-start="0" data-duration="__DURATION__"
-       data-width="__WIDTH__" data-height="__HEIGHT__" data-motion-blur="on"
+       data-width="__WIDTH__" data-height="__HEIGHT__" data-motion-blur="__MOTION_BLUR__"
        data-motion-blur-shutter="180" data-motion-blur-events="on"
        style="--accent:__ACCENT__">
     <canvas id="studio-canvas" class="clip" data-start="0"
@@ -124,6 +124,7 @@ import { GLTFLoader } from "./three/examples/jsm/loaders/GLTFLoader.js";
 // Seekable cinematic 3D: no timer, autoplay, random values or RAF loop.
 // Each frame is a pure function of the HyperFrames timeline timestamp.
 const W = __WIDTH__, H = __HEIGHT__, D = __DURATION__;
+const INTERNAL_SCALE = __RENDER_SCALE__;
 const CANVAS = document.getElementById("studio-canvas");
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("#080d16");
@@ -134,7 +135,7 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference:"high-performance"
 });
 renderer.setPixelRatio(1);
-renderer.setSize(W,H,false);
+renderer.setSize(Math.max(1,Math.round(W*INTERNAL_SCALE)),Math.max(1,Math.round(H*INTERNAL_SCALE)),false);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -272,6 +273,9 @@ export async function buildCinematic3dProject(input) {
        "1:1":{dimensions:[1080,1080],resolution:"square"}};
   const {dimensions,resolution}=presets[ratio];
   const fps=renderProfile==="4k60" ? 60 : 30;
+  // A diagnostic preview must not invoke costly shutter subframes on software WebGL.
+  const motionBlurEnabled=renderProfile==="4k60";
+  const renderScale=renderProfile==="4k60" ? 1 : (["draft","looks"].includes(input.quality) ? 0.5 : 0.75);
   const accent=String(input.accent_color ?? "#a9edcf");
   if (!/^#[0-9a-fA-F]{6}$/.test(accent)) throw new TypeError("accent_color deve ser hexadecimal #RRGGBB");
   const shape=String(input.shape ?? "torus-knot");
@@ -283,6 +287,8 @@ export async function buildCinematic3dProject(input) {
   const replacements={
     "__WIDTH__":String(dimensions[0]), "__HEIGHT__":String(dimensions[1]),
     "__DURATION__":String(seconds),"__ACCENT__":accent,
+    "__MOTION_BLUR__":motionBlurEnabled?"on":"off",
+    "__RENDER_SCALE__":String(renderScale),
     "__SHAPE__":shape,"__CAMERA__":camera,"__HAS_MODEL__":String(Boolean(model))
   };
   const patch=source=>Object.entries(replacements).reduce((s,[key,value])=>s.replaceAll(key,value),source);
@@ -308,6 +314,6 @@ export async function buildCinematic3dProject(input) {
     fps,
     projectFiles:files,
     productionMetadata:{kind:"cinematic-3d",version:1,renderProfile,shape:model?"glb":shape,camera,accent,threeVersion:THREE_RELEASE,
-      motionBlur:{enabled:true,shutterAngle:180},artisticQA:"pending-user-review"}
+      internalRenderScale:renderScale,motionBlur:{enabled:motionBlurEnabled,shutterAngle:motionBlurEnabled?180:null},artisticQA:"pending-user-review"}
   };
 }
