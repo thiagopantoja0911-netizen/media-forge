@@ -29,7 +29,7 @@ function sceneFile(plan, scene, index) {
   const sid = scene.id;
   const effects=buildCinematicSceneEffects(scene,plan);
   const depth=buildCinematicDepthLayers(scene,plan);
-  const motionBlurAttrs=effects.motionBlurEnabled?' data-motion-blur="on" data-motion-blur-shutter="180" data-motion-blur-events="on"':"";
+  const motionBlurAttrs=effects.motionBlurEnabled?' data-motion-blur="on" data-motion-blur-shutter="180" data-motion-blur-events="on" data-motion-blur-strength="'+Number(scene.effects.motionBlur).toFixed(2)+'"':"";
   const q = suffix => `#${sid}-${suffix}`;
   const headline = scene.headline.split(/\s+/).map((word, i, list) => `<span class="word ${i === list.length - 1 ? "accent" : ""}" data-var-text="word${i}">${html(word)}</span>`).join(" ");
   let visual = `<div id="${sid}-motif" class="motif"></div>`;
@@ -88,7 +88,12 @@ function sceneFile(plan, scene, index) {
     }
     if (event.action === "camera") {
       const motion = cameraMotion[scene.camera || "dolly-in"];
-      if (motion && ["photo","footage"].includes(scene.type)) tweens.push(`tl.fromTo(${js(q("camera-rig"))},${js(motion[0])},{...${js(motion[1])},duration:${Math.max(.3,arrive+settle).toFixed(3)},ease:"power2.inOut",immediateRender:false},${start});`);
+      const shotScale={"extreme-wide":.98,"wide":1,"medium":1.06,"close-up":1.14,"extreme-close-up":1.22,"over-shoulder":1.08,"low-angle":1.06,"top-down":1.03,"detail":1.2}[scene.shotSize]??1;
+      if (motion && ["photo","footage"].includes(scene.type)) {
+        const from={...motion[0],scale:Number((motion[0].scale*shotScale).toFixed(3))};
+        const to={...motion[1],scale:Number((motion[1].scale*shotScale).toFixed(3))};
+        tweens.push(`tl.fromTo(${js(q("camera-rig"))},${js(from)},{...${js(to)},duration:${Math.max(.3,arrive+settle).toFixed(3)},ease:"power2.inOut",immediateRender:false},${start});`);
+      }
       else if (motion && ["product","collage"].includes(scene.type)) tweens.push(`tl.fromTo(${js(q("visual"))},{x:0,scale:1},{x:${scene.camera==="truck-left"?-64:scene.camera==="truck-right"?64:0},scale:${scene.camera==="pull-back"?.94:1.07},duration:${Math.max(.3,arrive+settle).toFixed(3)},ease:"power2.inOut",immediateRender:false},${start});`);
     }
     if (event.action === "exit") tweens.push(`tl.to(${js(q("stage"))},{xPercent:-105,duration:${arrive},ease:"power3.in"},${start});`);
@@ -102,7 +107,7 @@ function sceneFile(plan, scene, index) {
   if(scene.media) variables.push({id:"productImage",type:"image",label:"Imagem",default:scene.media});
   return `<template><style>${css}${effects.css}${depth.css}</style>
 <div id="root" data-composition-id="${sid}" data-width="${plan.width}" data-height="${plan.height}" data-duration="${duration}" data-composition-variables='${html(JSON.stringify(variables))}' style="container-type:size;--ground:${p.ground};--ink:${p.ink};--accent:${p.accent};--paper:${p.paper}">
-<div id="${sid}-clip" ${["photo","footage"].includes(scene.type) ? 'class="media-wrapper" data-layout-allow-overflow' : `class="clip" data-start="0" data-duration="${duration}" data-track-index="1"`}><div id="${sid}-stage" class="stage ${["photo","footage"].includes(scene.type) ? "media-first" : ""}" data-shot-size="${html(scene.shotSize??"")}" data-pace="${html(scene.pace??"")}" data-layout-allow-overlap>
+<div id="${sid}-clip" ${["photo","footage"].includes(scene.type) ? 'class="media-wrapper" data-layout-allow-overflow' : `class="clip" data-start="0" data-duration="${duration}" data-track-index="1"`}><div id="${sid}-stage" class="stage ${["photo","footage"].includes(scene.type) ? "media-first" : ""}" data-shot-size="${html(scene.shotSize??"")}" data-pace="${html(scene.pace??"")}" data-subject-id="${html(scene.continuity?.subjectId??"")}" data-screen-direction="${html(scene.continuity?.screenDirection??"")}" data-transition-reason="${html(scene.transitionReason??"")}" data-layout-allow-overlap>
 <div class="eyebrow">${html(scene.eyebrow ?? plan.title)}</div><h1 id="${sid}-headline" class="headline ${scene.type === "end-card" ? "end-title" : ""}">${headline}</h1>${visual}${effects.overlay && !["footage","photo"].includes(scene.type) ? effects.overlay : ""}
 ${scene.type !== "end-card" ? `<div class="detail" data-var-text="detail">${html(scene.detail ?? "")}</div>` : ""}
 </div></div></div>
