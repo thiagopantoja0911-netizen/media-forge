@@ -50,6 +50,16 @@ test("authenticated ChatGPT -> API -> Windows remote worker handshake", async()=
     assert.equal(validAuth.data.authenticated,true);
     const unauthorized=await request(base,"/v1/jobs",null);
     assert.equal(unauthorized.status,401);
+    const rejectedCinematicV2=await request(base,"/v1/jobs",mcpToken,"POST",{
+      prompt:"Tentativa de contornar o preflight Cinematic V2",
+      project:{title:"V2 sem manifesto",durationSeconds:10,aspectRatio:"9:16",renderer:"hyperframes",
+        resolution:"portrait",fps:30,quality:"high"},
+      projectFiles:[{path:"index.html",content:"<!doctype html><html><body>Sem plano V2</body></html>"}],
+      metadata:{source:"cinematic-motion-v2",productionMode:"cinematic",cinematicPolicyVersion:"v2"}
+    });
+    assert.equal(rejectedCinematicV2.status,400);
+    assert.match(rejectedCinematicV2.data.error,/motion-plan.json/);
+
     const payload={
       prompt:"Criar movimento de alta qualidade.",
       project:{title:"Teste de conexoes",durationSeconds:10,aspectRatio:"9:16",renderer:"hyperframes",
