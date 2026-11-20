@@ -9,6 +9,7 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -74,9 +75,17 @@ jobs:
         run: |
           node scripts/check-cinematic-motion.mjs .mediaforge/cinematic-ci
           npx --yes hyperframes@0.9.30 check .mediaforge/cinematic-ci --json
+      - name: Install Chrome Headless Shell for HyperFrames snapshots
+        run: |
+          npx --yes @puppeteer/browsers install chrome-headless-shell
+          browser_path="$(find "$HOME/.cache/puppeteer" -type f -name chrome-headless-shell -print -quit)"
+          test -n "$browser_path"
+          echo "HYPERFRAMES_BROWSER_PATH=$browser_path" >> "$GITHUB_ENV"
       - name: Check generated Forge Midjourney composition with HyperFrames
+        timeout-minutes: 6
         run: node scripts/check-creator-composition.mjs
       - name: Check real-media HyperFrames composition and snapshots
+        timeout-minutes: 6
         run: node scripts/check-creator-media-composition.mjs
       - name: Upload Forge Midjourney review snapshots
         if: always()
