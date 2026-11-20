@@ -6,10 +6,10 @@ function sample(overrides = {}) {
   const root = [
     '<!doctype html><html><head><script src="assets/gsap.min.js"></script></head><body>',
     '<div data-composition-id="main" data-duration="16">',
-    '<div class="clip" data-start="0" data-duration="4"></div>',
-    '<div class="clip" data-start="4" data-duration="4"></div>',
-    '<div class="clip" data-start="8" data-duration="4"></div>',
-    '<div class="clip" data-start="12" data-duration="4"></div>',
+    '<video class="clip" data-start="0" data-duration="4" src="assets/scene-1.mp4"></video>',
+    '<video class="clip" data-start="4" data-duration="4" src="assets/scene-2.mp4"></video>',
+    '<video class="clip" data-start="8" data-duration="4" src="assets/scene-3.mp4"></video>',
+    '<video class="clip" data-start="12" data-duration="4" src="assets/scene-4.mp4"></video>',
     '<audio id="music" data-start="0" data-duration="16" src="https://music.example.test/bed.mp3"></audio>',
     '<audio id="whoosh" data-start="4" data-duration="1" src="assets/whoosh.wav"></audio>',
     '<audio id="impact" data-start="8" data-duration="1" src="assets/impact.wav"></audio>',
@@ -20,6 +20,7 @@ function sample(overrides = {}) {
     project_files: [
       { path: "index.html", content: root, encoding: "utf8" },
       { path: "assets/gsap.min.js", content: "window.gsap={};" },
+      ...[1,2,3,4].map(i=>({path:"assets/scene-"+i+".mp4",content:"test video fixture placeholder"})),
       { path: "assets/whoosh.wav", content: "RIFF" },
       { path: "assets/impact.wav", content: "RIFF" }
     ],
@@ -51,7 +52,7 @@ test("premium motion blocks missing GSAP runtime, silent films, and missing clip
   assert.match(validatePremiumMotionSubmission(noAudio).errors.join(" "), /musical bed/);
 
   const fewerClips = sample();
-  fewerClips.project_files[0].content = fewerClips.project_files[0].content.replace(/<div class="clip"[^>]*><\/div>/g, "");
+  fewerClips.project_files[0].content = fewerClips.project_files[0].content.replace(/<video class="clip"[^>]*><\/video>/g, "");
   assert.match(validatePremiumMotionSubmission(fewerClips).errors.join(" "), /four timed visual/);
 });
 
