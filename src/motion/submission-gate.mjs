@@ -44,7 +44,7 @@ export function validateWindowsRenderSubmission(args) {
   if(Math.abs(fpsValue(plan.fps)-fps)>.001)errors.push("FPS do manifesto difere do FPS de renderização.");
   const ratio=plan.width>plan.height?"16:9":plan.width<plan.height?"9:16":"1:1";
   if(ratio!==args.aspect_ratio)errors.push("Proporção do manifesto difere da proporção solicitada.");
-  const sources=[...(plan.scenes||[]).map(x=>x?.media),...(plan.audioCues||[]).map(x=>x?.src)].filter(Boolean);
+  const sources=[...(plan.scenes||[]).map(x=>x?.media),...(plan.scenes||[]).flatMap(x=>(x?.depthLayers||[]).map(d=>d?.src)),...(plan.audioCues||[]).map(x=>x?.src)].filter(Boolean);
   for(const source of unique(sources))if(typeof source!=="string"||!source.startsWith("assets/")||!names.has(source))
     errors.push("Asset declarado no plano não foi enviado: "+String(source).slice(0,100));
  }
