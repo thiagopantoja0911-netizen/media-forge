@@ -27,10 +27,13 @@ export function buildCinematicSceneEffects(scene,plan) {
   const fps=Number(String(plan.fps).split("/")[0])/Number(String(plan.fps).split("/")[1]||1);
   const keyEvent=Array.isArray(scene.events)?scene.events.find(e=>["camera","focus","enter"].includes(e.action)):null;
   const hit=keyEvent?keyEvent.peakFrame/fps:.25;
+  const duration=(scene.endFrame-scene.startFrame)/fps;
+  const reframe=scene.reframe
+    ? 'tl.fromTo("#'+id+'-camera-rig",'+JSON.stringify(scene.reframe.from)+',{...'+JSON.stringify(scene.reframe.to)+',duration:'+Math.max(.5,duration*.9).toFixed(3)+',ease:"power2.inOut"},0);'
+    : "";
   const timeline=(micro?
     'tl.fromTo("#'+id+'-micro",{opacity:0},{opacity:.52,duration:.075,ease:"power2.out"},'+hit.toFixed(5)+');'+
-    'tl.to("#'+id+'-micro",{opacity:0,duration:.18,ease:"power1.out"},'+(hit+.075).toFixed(5)+');':"")+
-    (blur>0&&["footage","photo"].includes(scene.type)?
-      'tl.fromTo("#'+id+'-camera-rig",{filter:"blur('+Math.round(3+blur*8)+'px)"},{filter:"blur(0px)",duration:.23,ease:"power3.out"},0);':"");
-  return {enabled:true,overlay,css,timeline,mediaStyle,effects:{bloom,grade,blur,shadow,micro}};
+    'tl.to("#'+id+'-micro",{opacity:0,duration:.18,ease:"power1.out"},'+(hit+.075).toFixed(5)+');':"")+reframe;
+  return {enabled:true,overlay,css,timeline,mediaStyle,motionBlurEnabled:blur>0,
+    effects:{bloom,grade,blur,shadow,micro,reframe:Boolean(scene.reframe)}};
 }
