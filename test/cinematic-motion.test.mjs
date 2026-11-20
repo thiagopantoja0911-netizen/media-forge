@@ -106,7 +106,8 @@ test("V2 compositor builds real captions, depth, reframing, shutter blur and a 4
  assert.equal(result.readiness.renderReady,false);
  assert.equal(result.readiness.finalDeliveryApproved,false);
  assert.equal(result.metadata.cinematicPolicyVersion,"v2");
- assert.equal(result.metadata.kind,"cinematic-3d");
+ assert.equal(result.metadata.kind,undefined,"V2 2D must not masquerade as a 3D job");
+ assert.equal(result.metadata.cinematicPolicyVersion,"v2");
  assert.equal(result.metadata.motionBlur.enabled,true);
  assert.equal(result.metadata.cinematicPolicy.controls.length,40);
  const root=result.projectFiles.find(f=>f.path==="index.html").content;
