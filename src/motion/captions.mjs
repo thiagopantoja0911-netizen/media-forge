@@ -20,7 +20,10 @@ export function buildCinematicCaptionTrack(plan){
       ? escaped.replace(escapeHtml(safeEmphasis),'<strong class="mf-caption-emphasis">'+escapeHtml(safeEmphasis)+'</strong>')
       : escaped;
     const words=Array.isArray(c.words)?c.words:[];
-    const content=words.length && words.map(w=>w.text).join(" ").trim()===String(c.text).trim() ? words.map((w,j)=>'<span id="mf-caption-word-'+(i+1)+'-'+(j+1)+'" class="mf-caption-word'+(safeEmphasis&&w.text===safeEmphasis?' mf-caption-emphasis':'')+'">'+escapeHtml(w.text)+'</span>').join(" ") : emphasized;
+    const spokenPrefix=words.map(w=>String(w.text)).join(" ").trim();
+    const matchesVoice=spokenPrefix.length>0 && (String(c.text).trim()===spokenPrefix || String(c.text).trim().startsWith(spokenPrefix+" "));
+    const trailing=matchesVoice?String(c.text).trim().slice(spokenPrefix.length).trim():"";
+    const content=matchesVoice ? words.map((w,j)=>'<span id="mf-caption-word-'+(i+1)+'-'+(j+1)+'" class="mf-caption-word'+(safeEmphasis&&w.text===safeEmphasis?' mf-caption-emphasis':'')+'">'+escapeHtml(w.text)+'</span>').join(" ")+(trailing?" "+escapeHtml(trailing):"") : emphasized;
     return '<div id="mf-caption-'+(i+1)+'" class="clip mf-caption" data-start="'+start+'" data-duration="'+duration+
       '" data-track-index="80" data-track-kind="captions" data-layout-allow-overlap><span class="mf-caption-text">'+content+'</span></div>';
   }).join("\n");
