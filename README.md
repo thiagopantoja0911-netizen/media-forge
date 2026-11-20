@@ -2,6 +2,14 @@
 
 Orquestrador local para criação de áudio e vídeo a partir de prompts enviados pelo ChatGPT.
 
+## Plano mestre — Cinematográfico V2
+
+O plano oficial do projeto está em [MediaForge V2 — Plano Mestre](docs/MEDIAFORGE_V2_MASTER_PLAN.md). Ele organiza as cinco etapas, os 40 requisitos, os critérios de homologação, a limpeza segura do repositório e os gates de publicação.
+
+**Regra de aceitação:** um render técnico concluído ou um smoke test 3D isolado não equivale a um filme cinematográfico aprovado. O piloto de aceitação deve ter 15–25 segundos, narrativa completa, footage real/licenciado, narração, trilha, sound design, legendas e revisão humana.
+
+O padrão visual obrigatório está em [Padrão de produção cinematográfica](docs/MEDIAFORGE_CINEMATIC_PRODUCTION_STANDARD.md); os 40 controles executáveis estão em [Implementação da política V2](docs/CINEMATIC_POLICY_V2_IMPLEMENTATION.md).
+
 ## Visão
 
 ChatGPT transforma o prompt em um job estruturado. O MediaForge recebe o prompt e os arquivos HyperFrames, valida o projeto, coloca na fila e entrega a execução ao worker local.
@@ -31,7 +39,6 @@ O repositório contém:
 - painel web de configuração e administração;
 - estado persistente protegido com hashes;
 - scripts de instalação e execução do worker Windows;
-
 - API HTTP local;
 - endpoint MCP compatível com Vídeos Secrets;
 - contrato de job validável;
@@ -110,10 +117,4 @@ Veja:
 
 O Forge Midjourney está disponível em `/studio` após autenticação no painel. Ele permite criar briefings, três ganchos, storyboard de cinco cenas, prévia ilustrativa e exportação JSON/TXT. O botão Gerar pacote HyperFrames envia o briefing e os arquivos de áudio opcionais (locução e trilha) ao endpoint autenticado `POST /api/studio/compose` e baixa um pacote editável, sem criar jobs. A locução pode ser exportada do VoiceStudio; o VoiceStudio continua independente.
 
-A importação do JSON v1 legado é compatível com os rascunhos exportados manualmente de `video.salevo.site/studio/`. O armazenamento local novo usa uma chave separada para não sobrescrever dados do domínio antigo.
-
-**Limite atual:** gera uma composição editorial tipográfica HyperFrames de protótipo, com cinco cenas, uma faixa de legendas e quatro transições; pode empacotar locução/trilha fornecidas pelo usuário, mas ainda não inclui mídia específica do assunto nem efeitos sonoros por cena. O pacote é marcado `renderReady=false` e não pode ser enviado diretamente à fila. A geração de mídia só será ativada depois da validação de áudio e QA no Worker Windows. Consulte `docs/CREATOR_STUDIO.md` e `docs/MIGRATION_SALEVO_CREATOR.md`.
-
-## Limpeza final da migração
-
-A remoção do hub antigo e de integrações do Secrets só poderá acontecer depois dos testes e backups definidos em `docs/FINAL_CLEANUP_GATE.md`. O Browser MCP, o domínio pai `salevo.site` e o portal `secretssystem.online` são recursos independentes e ficam fora da limpeza do Creator Video.
+A importação do JSON v1 legado é compatível com os rascunhos exportados manualmente de `video.salevo.site/studio/`. O armazenamento local novo usa uma chave independente e preserva os dados legados até a conclusão da migração.
