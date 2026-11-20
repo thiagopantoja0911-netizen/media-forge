@@ -8,7 +8,10 @@ export function buildCinematicCaptionTrack(plan){
   const captions=Array.isArray(plan?.captions)?plan.captions:[];
   if(!captions.length)return {html:"",css:"",timeline:"",count:0};
   const fps=Number(String(plan.fps).split("/")[0])/Number(String(plan.fps).split("/")[1]||1);
-  const fontSize=Math.round(plan.width*.040);
+  const style=plan.captionStyle||{};
+  const safe=style.safeZone||{left:.09,right:.09,bottom:.18};
+  const fontSize=Math.max(Math.round(plan.width*.040),Number(style.minFontSize)||36);
+  const maxLines=Math.max(1,Math.min(3,Number(style.maxLines)||2));
   const html=captions.map((c,i)=>{
     const start=asFrames(c.startFrame,fps),duration=asFrames(c.endFrame-c.startFrame,fps);
     const escaped=escapeHtml(c.text);
@@ -21,8 +24,8 @@ export function buildCinematicCaptionTrack(plan){
     return '<div id="mf-caption-'+(i+1)+'" class="clip mf-caption" data-start="'+start+'" data-duration="'+duration+
       '" data-track-index="80" data-track-kind="captions" data-layout-allow-overlap><span class="mf-caption-text">'+content+'</span></div>';
   }).join("\n");
-  const css='.mf-caption{position:absolute;left:9%;right:9%;bottom:18%;height:auto;min-height:3em;display:flex;justify-content:center;align-items:center;text-align:center;z-index:80;pointer-events:none;color:#fffdf8;}'+
-    '.mf-caption-text{display:inline-block;max-width:100%;font-size:'+fontSize+'px;line-height:1.25;font-weight:800;letter-spacing:-.018em;overflow-wrap:anywhere;text-shadow:0 2px 8px #000,0 5px 22px #000d;padding:.23em .36em;border-radius:.25em;background:#080b16be;box-shadow:0 8px 35px #0006}'+
+  const css='.mf-caption{position:absolute;left:'+(safe.left*100)+'%;right:'+(safe.right*100)+'%;bottom:'+(safe.bottom*100)+'%;height:auto;min-height:3em;max-height:'+(maxLines*1.25)+'em;overflow:hidden;display:flex;justify-content:center;align-items:center;text-align:center;z-index:80;pointer-events:none;color:#fffdf8;}'+
+    '.mf-caption-text{display:inline-block;max-width:100%;font-size:'+fontSize+'px;line-height:1.25;max-height:'+(maxLines*1.25)+'em;overflow:hidden;font-weight:800;letter-spacing:-.018em;overflow-wrap:anywhere;text-shadow:0 2px 8px #000,0 5px 22px #000d;padding:.23em .36em;border-radius:.25em;background:#080b16be;box-shadow:0 8px 35px #0006}'+
     '.mf-caption-emphasis{color:#f4c18d;font-weight:900;text-shadow:0 0 12px #f3c78c88,0 4px 9px #0008}'+
     '.mf-caption-word{display:inline-block;will-change:transform,opacity,filter}';
   const timeline=captions.map((c,i)=>{
