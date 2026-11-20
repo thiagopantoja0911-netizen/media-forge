@@ -45,7 +45,7 @@ test("the final delivery gate stays closed until render, audio, frame and human 
   technicalQA:{status:"passed",width:1080,height:1920,fps:30,durationSeconds:45},
   audioQA:{status:"passed",integratedLufs:-15.1,truePeakDb:-1.2,silenceSegments:[],clippedSamples:0},
   frameQA:{status:"passed",frameSamples:450,blackFrameCount:0,freezeSegments:[],duplicateScenePairs:[]},
-  artisticQA:"pending-user-review"
+  artisticQA:"pending-user-review",motionBlurApplied:true,renderComplete:true
  };
  const afterTechnical=reviewCinematicPolicyV2(plan,evidence);
  assert.equal(afterTechnical.controls.find(c=>c.id==="artistic-review").status,"review_required");
