@@ -47,7 +47,7 @@ export function buildOnePromptBlueprint(input={}){
  for(let i=0;i<4;i++)assets.push({id:"sfx-"+String(i+1),kind:"sfx",purpose:"caused by a visible action; validate sound via FFprobe",path:null,generated:false,rightsVerified:false});
  if(!verified.logo)assets.push({id:"brand-logo",kind:"identity",purpose:"verified brand identity; never fabricate an official logo",path:null,generated:false,rightsVerified:false});
  return {
-  version:"mediaforge-chat-one-prompt-v1",status:"production-plan-ready-not-rendered",
+  version:"mediaforge-chat-one-prompt-v2",status:"production-plan-ready-not-rendered",
   cinematicPolicy:{version:CINEMATIC_POLICY_VERSION,controlCount:CINEMATIC_PRODUCTION_POLICY.controls.length,
     controls:original.cinematicPolicy.controls,
     minimumRealMediaShare:CINEMATIC_PRODUCTION_POLICY.limits.minRealMediaShare,
