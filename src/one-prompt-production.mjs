@@ -1,6 +1,7 @@
 // Converts a two-field request into a reproducible creative-production contract.
 // This does not fabricate logos, testimonials, media bytes, or conversion measurements.
 import {planFromShortBrief} from "./creative-director.mjs";
+import { CINEMATIC_POLICY_VERSION, CINEMATIC_PRODUCTION_POLICY } from "./cinematic-production-policy.mjs";
 
 const GOALS={
  sales:{mechanics:["relevant pain","observable mechanism","measurable consequence only if verified","risk reduction","clear invitation"],cta:"Conheça a solução",hook:"Show the observable problem and what changes"},
@@ -44,6 +45,10 @@ export function buildOnePromptBlueprint(input={}){
  if(!verified.logo)assets.push({id:"brand-logo",kind:"identity",purpose:"verified brand identity; never fabricate an official logo",path:null,generated:false,rightsVerified:false});
  return {
   version:"mediaforge-chat-one-prompt-v1",status:"production-plan-ready-not-rendered",
+  cinematicPolicy:{version:CINEMATIC_POLICY_VERSION,
+    minimumRealMediaShare:CINEMATIC_PRODUCTION_POLICY.limits.minRealMediaShare,
+    minimumMovingFootageShare:CINEMATIC_PRODUCTION_POLICY.limits.minMovingFootageShare,
+    flatVectorsAsPrimaryScene:false,mandatoryArtisticReview:true},
   brief:original.brief,
   creative:{goal,hook:goalSpec.hook,chosenApproach:original.decision.chosen,psychology:goalSpec.mechanics,
     cta:goalSpec.cta,conversionOrEngagementIsNotGuaranteed:true},
@@ -53,12 +58,14 @@ export function buildOnePromptBlueprint(input={}){
   audio:{voice,wordTimestampsRequired:voice!=="off",music:true,causalSfx:true,
     targets:{integratedLufs:[-16,-14],truePeakDbtp:-1,wordSyncMs:100}},
   direction:{motionProfile:"dynamic-motion-v1",previewSeconds:3,depthLayers:3,fullFilmAfterPreview:true,
+    visualConstruction:"on-screen actions enact each narration beat",
+    timedCaptionAndMovementSfx:true,filmGradingAndShadows:true,bloomAndMotionBlurWhenMotivated:true,
     requirements:["camera with a clear target","three depth layers with independent movement","object-caused scene transitions",
       "no generic cards or placeholders","no long static holds without narrative reason","CTA unobstructed",
       "no invented statistics, testimonials, pricing or scarcity"]},
   readiness:{storyboard:true,mediaAssetsReady:false,soundAssetsReady:false,hyperframesProjectReady:false,
     technicalQA:false,artisticQA:false,verifiedCompanyAssets:!!verified.url&&!!verified.logo},
-  delivery:{expected:["MP4","editable project","media manifest","QA report"],performed:false},
+  delivery:{expected:["MP4","editable project","media manifest","technical QA","audio QA","human artistic approval"],performed:false,finalBlockedUntilHumanReview:true},
   nextActions:["verify brand and factual claims","source/generate real specific visual and audio files",
     "build editable HyperFrames composition","run 3-second visual preview","check motion and sound",
     "render on Windows","review complete MP4","deliver only after approval"]
