@@ -5,6 +5,7 @@ import {VIDEOS_SECRETS_TOOLS} from '../src/videos-secrets-mcp.mjs';
 
 test('one sentence produces actionable sales storyline without inventing brand proof',()=>{
  const plan=buildOnePromptBlueprint({brand:'Empresa Exemplo',idea:'Quero vender um serviço que ajuda lojas a organizar as entregas'});
+ assert.equal(plan.version,'mediaforge-chat-one-prompt-v2');
  assert.equal(plan.creative.goal,'sales');
  assert.equal(plan.storyboard.length,5);
  assert.equal(plan.storyboard[0].start,0);
