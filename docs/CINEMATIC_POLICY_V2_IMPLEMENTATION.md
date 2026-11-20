@@ -1,84 +1,114 @@
-# MediaForge — Implantação da política cinematográfica V2
+# MediaForge — implementação cinematográfica V2
 
-Data: 2026-11-19. Branch isolada: `feat/mediaforge-cinematic-policy-v2-20261119`.
+**Branch:** `feat/mediaforge-cinematic-policy-v2-20261119`  
+**PR:** #73 — alvo de homologação `feature/unific-media-20261116`.  
+**Objetivo:** implementar os 40 controles executáveis, validar o render final e manter a aprovação artística separada do sucesso técnico.
 
-## Objetivo do projeto
+## Fonte única dos 40 controles
 
-Não aceitar como vídeo cinematográfico final uma composição apenas com slides, vetores, texto animado e música de fundo. O plano e o vídeo precisam ser construídos com mídia narrativa, ação visual, desenho de som e revisão separada da validação técnica.
+`src/cinematic-production-policy.mjs` contém os 40 requisitos e a função `reviewCinematicPolicyV2`. O relatório de cada produção retorna estado explícito por controle: `passed`, `blocked`, `warning`, `pending_render` ou `review_required`.
 
-A lista formal de **40 requisitos** fica em `src/cinematic-production-policy.mjs`, disponível no MCP `get_cinematic_production_policy`. Ela reúne os requisitos de narrativa, imagem, edição, áudio e controle de qualidade.
+A política é consultável no MCP `get_cinematic_production_policy`. O modo V2 é aplicado no limite de `create_motion_video` e no caminho de render do Studio. O modo `study` continua disponível somente com finalidade explícita e nunca é uma entrega final.
 
-## Terreno preparado e limpeza segura
+## Implementação por requisito
 
-- A implementação foi isolada em uma branch com PR, evitando qualquer modificação imediata no MediaForge de produção.
-- Não foi excluído nenhum MP4, trabalho de cliente, projeto, asset, segredo, token, tarefa do Windows, pasta V2 ou componente legado.
-- Os requisitos duplicados da documentação foram consolidados em uma política única, consumida pelos caminhos de criação e validação.
-- O caminho `study` permanece disponível para testes ou protótipos **somente mediante `study_purpose` explícito**; não concede aprovação final.
-- Ferramentas de edição manual (vetores/3D/efeitos) não são apagadas: o bloqueio é específico à geração de vídeo narrativo vendido como cinematográfico.
-- Projetos anteriores continuam legíveis; a exigência de novos metadados se aplica às novas solicitações cinematográficas submetidas à produção.
+| Nº | Controle | Mecanismo executável |
+|---:|---|---|
+| 1 | Arco narrativo | `storyArc` com hook, conflito, escalada, resolução e payoff |
+| 2 | Storyboard ligado à voz | `voiceStartFrame/voiceEndFrame` por cena |
+| 3 | Ação visual semântica | `narrativeAction` com fala, sujeito, ação, mudança e estados antes/depois |
+| 4 | Variedade de planos | `shotSize` e escala aplicados ao enquadramento |
+| 5 | Continuidade | `subjectId`, props e direção de tela verificados entre cenas |
+| 6 | Ritmo | `pace` e variação de duração |
+| 7 | Gancho visual | primeira cena marcada e iniciada nos primeiros 1,5s |
+| 8 | Media-first | mínimo 70% mídia real e 50% footage em movimento |
+| 9 | Diversidade de assets | quatro ou mais mídias visuais distintas |
+| 10 | Repetição limitada | nenhum asset domina mais de 25% da timeline |
+| 11 | Color grade | contraste e saturação aplicados aos elementos de mídia |
+| 12 | Luz e sombras | overlays de profundidade e sombras aplicados às cenas |
+| 13 | Profundidade de campo | três camadas com foco seletivo e blur por layer |
+| 14 | Motion blur | shutter temporal do fork validado HyperFrames; não é CSS blur |
+| 15 | Bloom/glow | overlay de luz controlado e compositado |
+| 16 | Parallax | deslocamento independente das camadas de profundidade |
+| 17 | Câmera motivada | movimentos GSAP ligados a eventos e planos |
+| 18 | Transições motivadas | transição por cena e razão editorial obrigatória |
+| 19 | Legendas temporizadas | segmentos por frames no compositor |
+| 20 | Tipografia cinética | animação por palavra com timestamps explícitos |
+| 21 | Grafismos contextuais | limite de 15% e propósito narrativo por cena gráfica |
+| 22 | Reenquadramento | keyframes `reframe.from/to` aplicados no stage |
+| 23 | Eventos visuais | entradas, câmera/foco e microefeitos ligados à timeline |
+| 24 | Variação de pacing | ritmos `fast/medium/hold` verificados |
+| 25 | Camadas compositadas | background/midground/foreground empilhados no compositor |
+| 26 | Trilha narrativa | score cobre a timeline e declara opening/build/payoff |
+| 27 | Sound design por cena | cue de áudio local vinculado a cada cena |
+| 28 | Micro-SFX de movimento | SFX ligado a evento e pico de movimento |
+| 29 | Transições sonoras | SFX ancorado no frame de transição |
+| 30 | Prioridade da voz | mixagem FFmpeg com sidechain compressor da música pela voz |
+| 31 | Loudness | análise real de LUFS e true peak pós-render |
+| 32 | Silêncio/clipping | `silencedetect`, `astats` e `volumedetect` pós-render |
+| 33 | Planos duplicados | hashes SHA-256 de assets e comparação de frames entre cenas |
+| 34 | Planos estáticos | `freezedetect` e exceção somente para hold declarado |
+| 35 | Sincronia palavra/imagem | palavras temporizadas dentro das âncoras de voz |
+| 36 | Legibilidade | safe zone, duas linhas, limite de caracteres e fonte mínima |
+| 37 | Inspeção de frames | decodificação amostrada a 10 fps, quadros pretos, freezes e repetição |
+| 38 | Probe técnico | FFprobe exige resolução, FPS, duração e stream de áudio |
+| 39 | Revisão artística | aprovação humana obrigatória |
+| 40 | Gate de entrega | arquivo renderizado permanece prévia até revisão artística |
 
-## Implementações de código
+## Módulos principais
 
-| Área | Arquivo | O que é realizado |
-| --- | --- | --- |
-| Fonte central de verdade | `src/cinematic-production-policy.mjs` | 40 controles, limites, regras de mídia, avaliação de planos V2, autorização do modo study |
-| Storyboard | `src/creative-director.mjs` | Default Media First; ação e transformação a partir da fala |
-| Presets | `src/editing-style-presets.mjs` | Estilo Cinematográfico V2 como padrão do planejador |
-| Planejamento por briefing | `src/one-prompt-production.mjs` | Propaga regras de mídia real, legendas/SFX, final bloqueado sem revisão artística |
-| Premium Motion | `src/premium-motion-baseline.mjs` | Não aprova sequências apenas com ícones/vetores; exige clips reais temporizados |
-| Porta cinematográfica | `src/motion/cinematic-quality.mjs` | Executa regras adicionais V2 em planos novos, preservando leitura dos planos legados |
-| Compositor | `src/motion/composer.mjs` | Integra legendas, efeitos de luz, sombra, cor e microeventos |
-| Legendas | `src/motion/captions.mjs` | Trilhas no tempo, animação GSAP determinística, ênfase e área segura |
-| Acabamento | `src/motion/cinematic-effects.mjs` | Bloom controlado, sombras, color grading e microefeitos |
-| API MCP | `src/videos-secrets-mcp.mjs` | Política legível; V2 obrigatória para `create_motion_video`; estudo explícito |
-| API Studio | `src/studio-api.mjs` | V2 no render cinematográfico; envia `productionMode` para ativar QA sonoro no Worker |
-| Editor | `src/editor-studio-core.mjs` | Novos projetos marcados como prévia com política V2, sem aprovação fictícia |
-| Audio QA | `src/video-qa.mjs` | Loudness + pico verdadeiro + sinalização de pausas silenciosas longas |
+- `src/cinematic-production-policy.mjs`: contrato dos 40 controles e relatório de evidências.
+- `src/creative-director.mjs`: storyboard, arco narrativo e prompts específicos de assets reais.
+- `src/one-prompt-production.mjs`: transporta o contrato completo para o fluxo de briefing.
+- `src/editing-style-presets.mjs`: preset Media First V2 como padrão.
+- `src/motion/plan.mjs`: valida continuidade, layers, reenquadramento, voz e sincronismo de SFX.
+- `src/motion/assets-validation.mjs`: exige assets locais válidos, PNG/WEBP para layers e detecta arquivos visuais duplicados.
+- `src/motion/cinematic-depth.mjs`: composição real de layers, DOF simulado por profundidade e parallax.
+- `src/motion/cinematic-effects.mjs`: bloom, sombras, color grade, microefeitos e reenquadramento.
+- `src/motion/captions.mjs`: legendas seguras, palavras temporizadas e animação GSAP.
+- `src/motion/composer.mjs`: une os elementos em projeto HyperFrames e inclui a política no metadata.
+- `src/cinematic-audio-mix.mjs`: constrói stems e master WAV, com sidechain da música pela voz, limiter e loudnorm; remuxa o master no MP4 preservando o vídeo.
+- `src/video-qa.mjs`: FFprobe, loudness, clipping, silêncio, amostragem de frames, black frames, freeze e comparação de planos.
+- `src/renderers/hyperframes.mjs`: reporta se o shutter temporal foi realmente executado pelo fork validado.
+- `src/remote-worker-client.mjs`: exige QA técnico, de áudio e de frames no V2 antes de concluir o job; entrega relatório de 40 controles.
+- `src/videos-secrets-mcp.mjs`: força `productionMode=cinematic` e V2 na fronteira MCP.
 
-## Requisitos quantitativos de produção
+## Regras de mídia e limites
 
-- Mínimo de 70% de cobertura temporal por mídia real ou CGI rasterizado.
-- Mínimo de 50% de vídeos com movimento real na timeline.
-- Máximo de 15% de tomadas apenas gráficas/tipográficas.
-- Máximo de 25% da duração sustentada por uma única mídia-base.
-- Narração por trechos e ações visuais específicas para cada plano.
-- Legendas temporizadas obrigatórias quando `audioMode=voice-led`.
-- Efeitos sonoros reais e empacotados: pelo menos um na entrada de tipografia e um em movimento de câmera/objeto, associados a eventos.
-- O compositor não baixa imagens/vídeos por conta própria: assets precisam estar disponíveis e ser inspecionados antes do envio.
-- Revisão artística permanece humana e **não é substituída pelo FFprobe ou por um teste de presença de AAC**.
+- A geração do storyboard produz prompts e manifestos de cenas; **não gera bytes de footage por si só**. O render exige arquivos locais próprios, licenciados ou gerados e com procedência declarada.
+- Não há integração de API de geração de vídeo paga nesta etapa. Não serão inventados footage, licenças, palavras sincronizadas ou aprovações.
+- DOF é aplicado em layers com PNG/WEBP de transparência; cenas sem depth maps/layers não podem alegar DOF real.
+- Motion blur temporal depende do fork HyperFrames validado. Sem o binário customizado `hyperframes.cmd`, o render V2 falha em vez de simular motion blur com CSS.
+- A verificação automática de frames não prova que a imagem representa semanticamente a fala. Isso continua no controle artístico humano.
 
-## Natureza dos efeitos
+## Integridade da entrega
 
-**Implementado na composição:** glow/bloom em overlay de luz, sombra de contato, contraste/saturação, microflash/light sweep/impacto visual e transição por CSS/GSAP, sem dependência de rede durante o render.
+- `job.status=completed` significa que o arquivo foi renderizado; não significa que o vídeo foi aprovado artisticamente.
+- `technicalQA`, `audioQA` e `frameQA` precisam passar para um job V2 ser concluído.
+- `artisticQA` permanece `pending-user-review`; `finalDeliveryApproved=false` até aprovação humana.
+- O Worker Windows instalado localmente precisa receber a versão atualizada do cliente remoto antes do teste V2. A publicação do servidor, sozinha, não substitui a atualização do worker.
 
-**Limitação técnica declarada:** a transição com CSS blur não equivale ao motion blur óptico por amostragem subframe. DOF, reflexos fisicamente corretos, flare, máscara 3D e outros tratamentos dependem do editor/cenário/renderer e não podem ser marcados automaticamente como presentes em todos os vídeos.
+## Testes e homologação
 
-**Limitação semântica:** metadados de cena permitem validar que há uma intenção concreta de ação e uma mudança de estado; o software ainda não consegue provar que a filmagem realmente mostra o significado exato da narração. Esta verificação permanece no storyboard e na revisão de frames por pessoa.
+- `npm test`: política, compositor, áudio, efeitos, editor e regressões.
+- `npm run validate`: schema e contratos.
+- `scripts/check-cinematic-v2-ffmpeg.mjs`: gera fixture sintética de QA, faz sidechain mix, mede áudio e inspeciona frames com FFmpeg.
+- `test/cinematic-shutter-renderer.test.mjs`: garante que o V2 use `--cinematic-motion-blur` e bloqueie renderer sem o fork validado.
+- CI deve passar integralmente antes do merge.
+- Após merge, o deploy automático é feito na Hostinger para `unificmedia.salevo.site`, ambiente de homologação. O domínio antigo de produção permanece intocado.
 
-## Proibição de falsos positivos
+## Teste controlado depois da publicação
 
-- `job.status=completed` significa arquivo renderizado e entregue, **não** uma produção artística aprovada.
-- `technicalQA.status=passed` não prova sincronização fina, boa interpretação, trilha agradável, licenciamento de assets ou edição cinematográfica.
-- `artisticQA` deve permanecer `pending-user-review` até a análise do vídeo completo por pessoa.
-- `study` e `controlled-test` são prévias técnicas, não entregas comerciais.
+1. Confirmar CI completo e deploy Hostinger concluído.
+2. Atualizar o Worker Windows V2 com o cliente remoto desta branch, preservando backup e um único worker.
+3. Confirmar `renderer_status=online` e que o binário HyperFrames é o fork com shutter temporal.
+4. Criar um vídeo narrado de **15–25 segundos**, com 5–8 cenas reais, locução, score, ambiências, SFX, captions word-timed, DOF/parallax, bloom, sombras e motion blur.
+5. Renderizar primeiro em resolução moderada, inspecionar MP4, ouvir o áudio e revisar as cenas.
+6. Registrar o resultado técnico e artístico; corrigir falhas antes de promover qualquer coisa a produção.
 
-## Testes do código
+## Segurança de deploy
 
-- `npm test` e CI de GitHub Actions antes do merge.
-- Novos testes de política, fontes reais, cenas que mudam de estado, legendas e efeitos, regressões do modo study e do QA sonoro.
-- `test/cinematic-motion.test.mjs`: o compositor realmente recebe os metadados de legenda e acabamento na saída HyperFrames.
-- Não declarar a etapa de homologação concluída sem teste com assets reais/legítimos e vídeo gerado pelo Worker V2.
-
-## Próxima fase: homologação controlada
-
-1. Inspecionar CI e resolver regressões.
-2. Reproduzir um plano narrativo V2 com vídeos reais de pelo menos oito tomadas, captions e stems distintos, usando mídia própria/licenciada.
-3. Renderizar primeiro uma prévia curta no Windows, com somente um worker e resolução moderada.
-4. Comparar a saída com o Reel vetorial anterior; avaliar ação por fala, sombras, iluminação, movimento, áudio e fluidez.
-5. Revisar a compatibilidade com projetos do Editor e Studio, em particular o download dos MP4s.
-6. Somente depois de homologar e aprovar a branch, mesclar e publicar o backend MCP/Studio e atualizar a V2 se necessário.
-7. Guardar SHA de deployment e plano de rollback antes do rollout.
-
-## Limites de responsabilidade
-
-A implementação da política **não inclui** uma assinatura de provedor de geração de filmagens, serviço automático de transcrição de voz nem a autorização para comprar footage. Sem os arquivos de fonte, a renderização cinematográfica deve ser bloqueada ou classificada como estudo — não substituída por vetores.
+- A branch e o PR #73 não alteram o domínio de produção.
+- A Hostinger está configurada para auto-deploy da branch `feature/unific-media-20261116` no subdomínio `unificmedia.salevo.site`.
+- Não alterar domínio oficial, secrets, variáveis de ambiente, arquivos persistentes, projetos ou assets durante esta publicação.
+- Manter o sistema antigo como rollback até o teste do MP4 ser aprovado.
