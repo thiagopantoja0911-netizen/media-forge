@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 // Defensive media headers for the cinematic path.
 // Full decoding and synchronization are verified by HyperFrames/FFmpeg later.
 const imageTypes=new Set(["jpg","jpeg","png","webp"]);
@@ -9,8 +10,10 @@ export function validateCinematicMediaAssets(plan,files){
   const media=new Map((files||[]).map(f=>[f.path,f]));
   const sources=[
     ...plan.scenes.filter(s=>s?.media).map(s=>({path:s.media,role:"visual"})),
+    ...plan.scenes.flatMap(s=>(s?.depthLayers||[]).map(layer=>({path:layer.src,role:"depth-layer"}))),
     ...(plan.audioCues||[]).filter(c=>c?.src).map(c=>({path:c.src,role:"audio"}))
   ];
+  const hashes=new Map(),duplicateAssets=[];
   for(const {path,role} of sources){
     const file=media.get(path);
     if(!file||typeof file.contentBase64!=="string")throw new Error("Cinematic asset must be packaged in base64: "+path);
@@ -18,6 +21,7 @@ export function validateCinematicMediaAssets(plan,files){
     if(buf.length<16)throw new Error("Cinematic asset too small: "+path);
     const ext=String(path).toLowerCase().split(".").pop();
     if(role==="visual"&&!imageTypes.has(ext)&&!videoTypes.has(ext))throw new Error("Cinematic visual must use photo or video, not vector/HTML: "+path);
+    if(role==="depth-layer"&&!["png","webp"].includes(ext))throw new Error("Depth layers must be transparent PNG/WEBP assets: "+path);
     if(role==="audio"&&!audioTypes.has(ext))throw new Error("Cinematic soundtrack must be an audio file: "+path);
     const signatures={
       jpg:b=>bytes(b,0xff,0xd8,0xff),
@@ -34,5 +38,12 @@ export function validateCinematicMediaAssets(plan,files){
       opus:b=>b.toString("ascii",0,4)==="OggS"
     };
     if(!signatures[ext]?.(buf))throw new Error("Invalid cinematic media header: "+path);
+    if(role==="visual"||role==="depth-layer"){
+      const digest=createHash("sha256").update(buf).digest("hex");
+      const prior=hashes.get(digest);
+      if(prior&&prior!==path)duplicateAssets.push(prior+" = "+path);
+      else hashes.set(digest,path);
+    }
   }
+  return {checked:true,assetCount:sources.length,uniqueVisualHashes:hashes.size,duplicateAssets};
 }
