@@ -96,6 +96,11 @@ Job `933a73ed0b7442a5997fc4863c9d5501`:
 
 Conclusão: o perfil Draft/balanced conseguiu concluir o smoke test 3D. Isso não homologa a produção cinematográfica nem comprova os 40 requisitos em conjunto. Não usar o cubo como demonstração artística ou como vídeo piloto.
 
+### O que a CI de mídia comprovou — e o que não comprovou
+- Os testes `check-cinematic-v2-ffmpeg.mjs` e `check-creator-media-composition.mjs` validam a cadeia de composição, áudio, FFmpeg/FFprobe e snapshots.
+- O teste de composição de mídia cria cinco PNGs localmente para verificar o transporte e a renderização de arquivos; esses PNGs são fixtures sintéticas, não filmagens reais nem prova de aquisição/licenciamento de footage.
+- Portanto, CI verde comprova a infraestrutura de teste e a composição com arquivos locais, mas o piloto ainda precisa usar footage específico da narrativa, com procedência/licença real e revisão humana.
+
 ### Integração de filmagens reais
 - O código `src/motion/stock-footage-source.mjs` contém aquisição opcional de stock via Pexels, com validação de host, limite de tamanho, arquivo MP4 local e registro de procedência/licença.
 - O fluxo MCP em `src/videos-secrets-mcp.mjs` chama essa integração quando `auto_source_stock=true`.
