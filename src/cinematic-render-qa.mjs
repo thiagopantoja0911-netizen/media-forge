@@ -77,6 +77,18 @@ export async function runCinematicV2RenderQa({
     motionBlurApplied: motionBlurApplied === true,
     cinematicPolicy,
     artisticQA: "pending-user-review",
+    artisticReview: {
+      status: "pending-frame-lab-and-human-review",
+      frameEvidence: "post-render-frame-qa-passed-frame-lab-analysis-pending",
+      composition: "not-assessed",
+      narrative: "not-assessed",
+      typography: "not-assessed",
+      sound: "technical-audio-check-passed-listening-review-pending",
+      brandAndClaims: "source-verification-required",
+      humanApproval: "required",
+      automaticApproval: false,
+      nextStep: "Analyze the rendered MP4 in Frame Lab, watch the complete film, listen to the mix and complete the artistic rubric."
+    },
     finalDeliveryApproved: false
   };
 }
