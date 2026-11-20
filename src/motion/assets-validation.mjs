@@ -10,7 +10,7 @@ export function validateCinematicMediaAssets(plan,files){
   const media=new Map((files||[]).map(f=>[f.path,f]));
   const sources=[
     ...plan.scenes.filter(s=>s?.media).map(s=>({path:s.media,role:"visual"})),
-    ...plan.scenes.flatMap(s=>(s?.depthLayers||[]).map(layer=>({path:layer.src,role:"depth-layer"}))),
+    ...plan.scenes.flatMap(s=>(s?.depthLayers||[]).map(layer=>({path:layer.src,role:"depth-layer",layerRole:layer.role}))),
     ...(plan.audioCues||[]).filter(c=>c?.src).map(c=>({path:c.src,role:"audio"}))
   ];
   const hashes=new Map(),duplicateAssets=[];
@@ -21,7 +21,13 @@ export function validateCinematicMediaAssets(plan,files){
     if(buf.length<16)throw new Error("Cinematic asset too small: "+path);
     const ext=String(path).toLowerCase().split(".").pop();
     if(role==="visual"&&!imageTypes.has(ext)&&!videoTypes.has(ext))throw new Error("Cinematic visual must use photo or video, not vector/HTML: "+path);
-    if(role==="depth-layer"&&!["png","webp"].includes(ext))throw new Error("Depth layers must be transparent PNG/WEBP assets: "+path);
+    if(role==="depth-layer"&&layerRole!=="background"&&!["png","webp"].includes(ext))
+      throw new Error("Midground/foreground depth layers must use transparent PNG/WEBP assets: "+path);
+    if(role==="depth-layer"&&layerRole!=="background"){
+      const hasAlpha=ext==="png" ? [4,6].includes(buf[25])
+        : buf.toString("ascii",0,4)==="RIFF"&&(buf.toString("ascii",12,16)==="VP8X"?(buf[20]&0x10)!==0:buf.toString("ascii",12,16)==="ALPH");
+      if(!hasAlpha)throw new Error("Depth cutout must contain an alpha channel: "+path);
+    }
     if(role==="audio"&&!audioTypes.has(ext))throw new Error("Cinematic soundtrack must be an audio file: "+path);
     const signatures={
       jpg:b=>bytes(b,0xff,0xd8,0xff),
