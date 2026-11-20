@@ -121,3 +121,19 @@ test("real media receive cinema-grade effects and deterministic micro accents",(
   const legacy={...plan,cinematicPolicyVersion:null};
   assert.equal(buildCinematicSceneEffects(plan.scenes[0],legacy).enabled,false);
 });
+
+test("word-level subtitles animate only from supplied timestamps, without invented alignment",()=>{
+  const p=v2Fixture();
+  p.captions[0].text="Fala sincronizada 1";
+  p.captions[0].words=[
+    {text:"Fala",startFrame:0,endFrame:24},
+    {text:"sincronizada",startFrame:24,endFrame:70},
+    {text:"1",startFrame:70,endFrame:90},
+  ];
+  const track=buildCinematicCaptionTrack(p);
+  assert.match(track.html,/mf-caption-word-1-1/);
+  assert.match(track.timeline,/mf-caption-word-1-2/);
+  assert.equal(reviewCinematicPolicyV2(p).ok,true);
+  p.captions[0].words[1].startFrame=10;
+  assert.match(reviewCinematicPolicyV2(p).errors.join(" "),/timestamps inválidos/);
+});
