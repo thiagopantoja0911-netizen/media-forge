@@ -3,6 +3,7 @@ import { requireMotionPlan, frameSeconds } from "./plan.mjs";
 import { validateProjectFiles } from "../job-schema.mjs";
 import { validateCinematicMediaAssets } from "./assets-validation.mjs";
 import { buildCinematicCaptionTrack } from "./captions.mjs";
+import { buildCinematicSceneEffects } from "./cinematic-effects.mjs";
 
 const html = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const js = value => JSON.stringify(value).replace(/</g, "\\u003c");
@@ -24,6 +25,7 @@ function sceneFile(plan, scene, index) {
   const duration = sceneDuration(plan,scene,index);
   const p = { ground: "#efeee8", ink: "#191b1a", accent: "#91cc35", paper: "#ffffff", ...plan.palette };
   const sid = scene.id;
+  const effects=buildCinematicSceneEffects(scene,plan);
   const q = suffix => `#${sid}-${suffix}`;
   const headline = scene.headline.split(/\s+/).map((word, i, list) => `<span class="word ${i === list.length - 1 ? "accent" : ""}" data-var-text="word${i}">${html(word)}</span>`).join(" ");
   let visual = `<div id="${sid}-motif" class="motif"></div>`;
@@ -36,9 +38,9 @@ function sceneFile(plan, scene, index) {
   if (scene.type === "collage") visual = `<div id="${sid}-visual" class="collage">${[0,1,2].map(i=>`<div id="${sid}-tile-${i}" class="tile"><img src="${html(scene.media)}" alt=""></div>`).join("")}</div>`;
   if (scene.type === "footage" || scene.type === "photo") {
     const mediaElement = scene.type === "footage"
-      ? `<video id="${sid}-source" class="clip" data-start="0" data-duration="${duration}" data-track-index="0" src="${html(scene.media)}" muted playsinline preload="auto"></video>`
-      : `<img id="${sid}-source" src="${html(scene.media)}" alt="${html(scene.headline)}" loading="eager">`;
-    visual = `<div id="${sid}-visual" class="media-stage" data-layout-allow-overflow><div id="${sid}-camera-rig" class="media-rig" data-layout-allow-overflow>${mediaElement}</div><div class="veil"></div></div>`;
+      ? `<video id="${sid}-source" class="clip" data-start="0" data-duration="${duration}" data-track-index="0" src="${html(scene.media)}" muted playsinline preload="auto" style="${effects.mediaStyle}"></video>`
+      : `<img id="${sid}-source" src="${html(scene.media)}" alt="${html(scene.headline)}" loading="eager" style="${effects.mediaStyle}">`;
+    visual = `<div id="${sid}-visual" class="media-stage" data-layout-allow-overflow><div id="${sid}-camera-rig" class="media-rig" data-layout-allow-overflow>${mediaElement}</div><div class="veil"></div>${effects.overlay}</div>`;
   }
   if (scene.type === "end-card") visual = `<div id="${sid}-rule" class="rule"></div><div id="${sid}-pill" class="pill" data-var-text="detail">${html(scene.detail ?? "Crie o próximo movimento.")}</div>`;
   const tweens = [];
@@ -92,13 +94,13 @@ function sceneFile(plan, scene, index) {
   if (index > 0 && scene.transition === "iris") tweens.unshift(`tl.fromTo(${js(q("stage"))},{clipPath:"circle(0% at 65% 65%)"},{clipPath:"circle(150% at 65% 65%)",duration:.5,ease:"power3.inOut"},0);`);
   const variables = [...scene.headline.split(/\s+/).map((word,i)=>({id:"word"+i,type:"string",label:"Palavra "+(i+1),default:word})),{id:"detail",type:"string",label:"Detalhe",default:scene.detail??""}];
   if(scene.media) variables.push({id:"productImage",type:"image",label:"Imagem",default:scene.media});
-  return `<template><style>${css}</style>
+  return `<template><style>${css}${effects.css}</style>
 <div id="root" data-composition-id="${sid}" data-width="${plan.width}" data-height="${plan.height}" data-duration="${duration}" data-composition-variables='${html(JSON.stringify(variables))}' style="container-type:size;--ground:${p.ground};--ink:${p.ink};--accent:${p.accent};--paper:${p.paper}">
 <div id="${sid}-clip" ${["photo","footage"].includes(scene.type) ? 'class="media-wrapper" data-layout-allow-overflow' : `class="clip" data-start="0" data-duration="${duration}" data-track-index="1"`}><div id="${sid}-stage" class="stage ${["photo","footage"].includes(scene.type) ? "media-first" : ""}" data-layout-allow-overlap>
-<div class="eyebrow">${html(scene.eyebrow ?? plan.title)}</div><h1 id="${sid}-headline" class="headline ${scene.type === "end-card" ? "end-title" : ""}">${headline}</h1>${visual}
+<div class="eyebrow">${html(scene.eyebrow ?? plan.title)}</div><h1 id="${sid}-headline" class="headline ${scene.type === "end-card" ? "end-title" : ""}">${headline}</h1>${visual}${effects.overlay && !["footage","photo"].includes(scene.type) ? effects.overlay : ""}
 ${scene.type !== "end-card" ? `<div class="detail" data-var-text="detail">${html(scene.detail ?? "")}</div>` : ""}
 </div></div></div>
-<script>{const counter={value:0};const tl=gsap.timeline({paused:true});${tweens.join("\n")}
+<script>{const counter={value:0};const tl=gsap.timeline({paused:true});${tweens.join("\n")}${effects.timeline}
 window.__timelines=window.__timelines||{};window.__timelines[${js(sid)}]=tl;}</script></template>`;
 }
 
