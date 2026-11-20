@@ -97,3 +97,32 @@ test("cinematic compiler rejects external or missing media and SFX assets",async
   p.scenes[0].media="https://example.com/movie.mp4";
   assert.equal(validateMotionPlan(p).ok,false);
 });
+
+test("v2 composer actually embeds timed captions, grading, shadows and micro-effect animation",async()=>{
+  const p=cinematicFixture();
+  p.visualMode="media-first";p.cinematicPolicyVersion="v2";
+  p.scenes.forEach((s,i)=>{
+    s.narrativeAction={voiceCue:"Fala "+i,subject:"Pessoa "+i,action:"Gesto visível "+i,
+      visibleChange:"Consequência na imagem "+i,stateBefore:"Antes "+i,stateAfter:"Depois "+i};
+    s.effects={shadow:true,colorGrade:.5,bloom:i===0?.42:0,
+      motionBlur:i===0?.65:0,microEffect:i===0?"impact":i===3?"light-sweep":undefined};
+  });
+  p.captions=Array.from({length:15},(_,i)=>({
+    startFrame:i*90,endFrame:(i+1)*90,text:"Frase narrada "+i,emphasis:i===0?"narrada":undefined
+  }));
+  p.audioCues.find(c=>c.id==="sweep").eventId="enter-1";
+  p.audioCues.find(c=>c.id==="sweep").startFrame=12;
+  const result=await buildMotionComposition(p,filesFor(p));
+  assert.equal(result.metadata.cinematicPolicyVersion,"v2");
+  assert.equal(result.metadata.captionCount,15);
+  const root=result.projectFiles.find(f=>f.path==="index.html").content;
+  const first=result.projectFiles.find(f=>f.path==="compositions/shot-1.html").content;
+  assert.match(root,/id="mf-caption-1"/);
+  assert.match(root,/data-track-kind="captions"/);
+  assert.match(root,/window\.__timelines\.main=timeline/);
+  assert.match(first,/class="mf-fx-bloom"/);
+  assert.match(first,/class="mf-fx-shadow"/);
+  assert.match(first,/id="shot-1-micro"/);
+  assert.match(first,/tl\.fromTo\("#shot-1-camera-rig"/);
+  assert.match(first,/filter:contrast/);
+});
