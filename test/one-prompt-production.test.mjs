@@ -60,5 +60,8 @@ test('original MCP tool remains compatible and exposes voice preference',()=>{
  assert.ok(tool);
  assert.deepEqual(tool.inputSchema.required,['brand','idea']);
  assert.deepEqual(tool.inputSchema.properties.voice_mode.enum,['auto','off','pt-BR-female','pt-BR-male']);
+ assert.deepEqual(tool.inputSchema.properties.concept_id.enum,['result-first','object-journey','before-after']);
+ assert.ok(tool.inputSchema.properties.brand_colors);
+ assert.ok(tool.inputSchema.properties.reference_urls);
  assert.ok(VIDEOS_SECRETS_TOOLS.some(x=>x.name==='create_motion_video'));
 });
