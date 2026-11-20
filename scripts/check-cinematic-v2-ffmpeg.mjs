@@ -35,9 +35,20 @@ try{
   await run(ffmpeg,args);
  }
  const videoPath=join(root,"synthetic-cinematic.mp4");
+ // A true multi-shot fixture: each shot has a unique luminance mask as well
+ // as continuously animated background footage. This tests duplicate-shot
+ // detection without disabling it or accepting identical synthetic shots.
+ let shotOffset=0;
+ const shotFilters=plan.scenes.map((scene,index)=>{
+   const duration=(scene.endFrame-scene.startFrame)/30;
+   const start=shotOffset;shotOffset+=duration;
+   const x=10+(index%2)*160,y=8+Math.floor(index/2)*138;
+   return "drawbox=x="+x+":y="+y+":w=140:h=130:color=white:t=fill:enable=between(t\\,"+
+     start.toFixed(2)+"\\,"+(shotOffset-.02).toFixed(2)+")";
+ });
  await run(ffmpeg,["-y","-hide_banner","-loglevel","error","-f","lavfi","-i",
   "testsrc2=s=320x568:r=10:d=45","-vf",
-  "format=yuv420p",
+  shotFilters.join(",")+",format=yuv420p",
   "-an","-c:v","libx264","-preset","ultrafast","-crf","34","-t","45",videoPath]);
  const mix=await mixCinematicAudio({videoPath,projectDir,plan,ffmpegBin:ffmpeg});
  const tech=await inspectRenderedVideo(videoPath,{width:320,height:568,fps:10,durationSeconds:45},true);
