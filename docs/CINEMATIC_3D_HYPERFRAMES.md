@@ -29,8 +29,8 @@ O projeto é empacotado com Three.js fixo em `0.180.0`, GSAP local, licenças e 
 - Luz principal quente, luz de contorno fria, preenchimento, sombras suaves e materiais PBR.
 - Tone mapping ACES Filmic para controlar altas luzes.
 - `data-motion-blur=on` e shutter 180° na composição; texto estático opt-out.
-- Perfil `balanced` padrão: 1080×1920 (vertical), 1920×1080 (horizontal), ou 1080×1080 (quadrado), 30 FPS, apenas um worker.
-- 4K60 é um perfil opcional, não ativado automaticamente por `high`/`delivery`. Qualidade de codificação não é uma garantia artística.
+- Perfil `balanced` padrão: MP4 1080×1920 (vertical), 1920×1080 (horizontal), ou 1080×1080 (quadrado), 30 FPS, apenas um worker. Para reduzir pressão no Chrome em computadores com pouca RAM, o WebGL interno usa 75% de escala em `standard` e 50% em `draft`/`looks`, com ampliação para a resolução do MP4. Motion blur cinematográfico por subframes fica desativado nesse perfil de teste.
+- 4K60 é um perfil opcional com escala WebGL integral e shutter de 180° ativado, não é ativado automaticamente por `high`/`delivery`. Exige recursos de hardware comprovados. Qualidade de codificação não é garantia artística.
 - A cena sinaliza readiness após o primeiro desenho real; não bloqueia o `buildReady` esperando `WebGLRenderer.compileAsync()` no Chrome sem aceleração gráfica.
 
 O blur de página e o motion blur sub-frame do produtor HyperFrames são mecanismos diferentes. **Não prometer sub-frame shutter integral pela CLI** sem validar suporte explícito na versão instalada.
