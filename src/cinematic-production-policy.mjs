@@ -217,7 +217,7 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
  if(!validSceneSound)fail("scene-sound-design","Cada cena precisa de soundDesign e ao menos um cue real vinculado");
  else pass("scene-sound-design","Cada cena tem intenção e áudio vinculado");
  const captions=Array.isArray(plan.captions)?plan.captions:[];
- let allWordTimed=captions.length>0,wordCount=0,lastCaption=0,wordSyncOk=true;
+ let allWordTimed=captions.length>0,wordCount=0,lastCaption=0,wordSyncOk=captions.length>0;
  for(const [i,c] of captions.entries()){
   if(!Number.isInteger(c.startFrame)||!Number.isInteger(c.endFrame)||c.startFrame<0||c.endFrame<=c.startFrame||c.endFrame>total||
     !say(c.text)||c.text.length>80){fail("timed-captions","Legenda "+(i+1)+": texto/tempo inválido");continue;}
@@ -241,6 +241,7 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
   if(!covered)wordSyncOk=false;
  }
  if(wordSyncOk)pass("word-picture-sync","Timestamps de palavras dentro das âncoras de narração");
+ else fail("word-picture-sync","Todas as palavras precisam de timestamps cobertos pelas âncoras da locução");
  const captionStyle=plan.captionStyle||{};
  const safe=captionStyle.safeZone||{};
  if(captions.some(c=>c.text.length>48)||captionStyle.maxLines!==2||
