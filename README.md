@@ -2,6 +2,14 @@
 
 Orquestrador local para criação de áudio e vídeo a partir de prompts enviados pelo ChatGPT.
 
+## Plano mestre — Cinematográfico V2
+
+O plano oficial do projeto está em [MediaForge V2 — Plano Mestre](docs/MEDIAFORGE_V2_MASTER_PLAN.md). Ele organiza as cinco etapas, os 40 requisitos, os critérios de homologação, a limpeza segura do repositório e os gates de publicação.
+
+**Regra de aceitação:** um render técnico concluído ou um smoke test 3D isolado não equivale a um filme cinematográfico aprovado. O piloto de aceitação deve ter 15–25 segundos, narrativa completa, footage real/licenciado, narração, trilha, sound design, legendas e revisão humana.
+
+O padrão visual obrigatório está em [Padrão de produção cinematográfica](docs/MEDIAFORGE_CINEMATIC_PRODUCTION_STANDARD.md); os 40 controles executáveis estão em [Implementação da política V2](docs/CINEMATIC_POLICY_V2_IMPLEMENTATION.md).
+
 ## Visão
 
 ChatGPT transforma o prompt em um job estruturado. O MediaForge recebe o prompt e os arquivos HyperFrames, valida o projeto, coloca na fila e entrega a execução ao worker local.
