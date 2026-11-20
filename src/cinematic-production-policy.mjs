@@ -141,6 +141,18 @@ export function reviewCinematicPolicyV2(plan) {
           !say(c.text)||c.text.length>captionLimit)
         errors.push("Legenda "+(index+1)+": tempo ou texto inválido");
       if(c.startFrame<last)errors.push("Legenda "+(index+1)+": trechos fora de ordem/sobrepostos");
+      if(c.words!==undefined){
+        if(!Array.isArray(c.words)||!c.words.length||c.words.length>30)errors.push("Legenda "+(index+1)+": palavras temporizadas inválidas");
+        else {
+          let previousWordFrame=c.startFrame;
+          for(const [j,w] of c.words.entries()){
+            if(!say(w?.text)||!Number.isInteger(w.startFrame)||!Number.isInteger(w.endFrame)||w.startFrame<previousWordFrame||
+                w.endFrame<=w.startFrame||w.endFrame>c.endFrame)
+              errors.push("Legenda "+(index+1)+" palavra "+(j+1)+": timestamps inválidos");
+            if(Number.isInteger(w.endFrame))previousWordFrame=w.endFrame;
+          }
+        }
+      }
       if(c.startFrame-last>l.maxCaptionGapSeconds*fps)warnings.push("Legenda "+(index+1)+": intervalo sem fala/legenda superior a 3s; revise");
       if(Number.isInteger(c.endFrame))last=c.endFrame;
     }
