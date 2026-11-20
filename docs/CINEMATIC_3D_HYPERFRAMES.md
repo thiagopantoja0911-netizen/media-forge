@@ -16,7 +16,8 @@ Adicionar uma camada autoral de cenas 3D verdadeiras ao MediaForge **sem alterar
 - `model_glb_base64`: opcional, glTF 2.0 binário autocontido até 8 MiB, sem Draco/Meshopt nem texturas remotas
 - `accent_color`: `#RRGGBB`
 - `camera`: dolly, orbit ou reveal
-- `quality`: draft, looks, standard, high ou delivery
+- `quality`: draft, looks, standard, high ou delivery (padrão: standard)
+- `render_profile`: `balanced` (padrão: 1080p/30 FPS, um Worker) ou `4k60` (produção final explícita, somente após validar GPU/RAM)
 - `browser_gpu`: opcional; hardware deve ser validado no Windows antes de depender de GPU
 - `preflight`: opcional, padrão true
 
@@ -28,7 +29,9 @@ O projeto é empacotado com Three.js fixo em `0.180.0`, GSAP local, licenças e 
 - Luz principal quente, luz de contorno fria, preenchimento, sombras suaves e materiais PBR.
 - Tone mapping ACES Filmic para controlar altas luzes.
 - `data-motion-blur=on` e shutter 180° na composição; texto estático opt-out.
-- 4K60 como perfil final; `high` e `delivery` são presets de codificação, não garantias artísticas.
+- Perfil `balanced` padrão: 1080×1920 (vertical), 1920×1080 (horizontal), ou 1080×1080 (quadrado), 30 FPS, apenas um worker.
+- 4K60 é um perfil opcional, não ativado automaticamente por `high`/`delivery`. Qualidade de codificação não é uma garantia artística.
+- A cena sinaliza readiness após o primeiro desenho real; não bloqueia o `buildReady` esperando `WebGLRenderer.compileAsync()` no Chrome sem aceleração gráfica.
 
 O blur de página e o motion blur sub-frame do produtor HyperFrames são mecanismos diferentes. **Não prometer sub-frame shutter integral pela CLI** sem validar suporte explícito na versão instalada.
 
@@ -43,7 +46,7 @@ O blur de página e o motion blur sub-frame do produtor HyperFrames são mecanis
 
 1. Unitários verificam formato, validação, dependências locais e retorno MCP.
 2. Workflow `MediaForge Cinematic 3D Browser Smoke` executa o HyperFrames com WebGL em 540×960, capturando o mesmo timestamp duas vezes para verificar determinismo.
-3. Job real no Worker Windows confirma captura, performance, codecs e áudio. A renderização por si só não demonstra suavidade ou direção artística.
+3. Job real no Worker Windows em `balanced` confirma captura, performance, codecs e áudio antes de tentar `4k60`. A renderização por si só não demonstra suavidade ou direção artística.
 4. Revisão humana do MP4 final valida ritmos, frames, movimentos de câmera, materialidade e legibilidade em celular antes de classificar como produção aprovada.
 
 Mantenha o Worker existente; não instale bibliotecas ou atualize HyperFrames automaticamente no Windows sem validação e backup.
