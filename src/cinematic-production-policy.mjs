@@ -295,10 +295,13 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
  if(frameQA?.status==="passed")pass("render-frame-inspection",frameQA);
  else if(frameQA?.status==="failed")fail("render-frame-inspection","Frame QA falhou: "+(frameQA.issues||[]).join("; "));
  else pending("render-frame-inspection","Inspeção do MP4 após o render é obrigatória");
- if(frameQA?.freezeSegments?.some(s=>s.durationSeconds>limits.maxUnmotivatedStaticSeconds))
-  fail("static-shot-check","Foram detectados congelamentos acima de 5s");
- else if(frameQA)pass("static-shot-check",frameQA.freezeSegments||[]);
- else pending("static-shot-check","Detecção de freezes no MP4 após render");
+ if(frameQA){
+  const unmotivated=(frameQA.freezeSegments||[]).filter(freeze=>freeze.durationSeconds>limits.maxUnmotivatedStaticSeconds&&
+   !scenes.some(scene=>scene.intentionalHold===true&&scene.pace==="hold"&&
+    scene.startFrame/fps<=freeze.endSeconds&&scene.endFrame/fps>=freeze.startSeconds));
+  if(unmotivated.length)fail("static-shot-check","Foram detectados congelamentos não planejados acima de 5s: "+unmotivated.length);
+  else pass("static-shot-check",frameQA.freezeSegments||[]);
+ }else pending("static-shot-check","Detecção de freezes no MP4 após render");
  if(frameQA?.duplicateScenePairs?.length)fail("duplicate-shot-check","Cenas renderizadas repetidas: "+frameQA.duplicateScenePairs.length);
  const audioQA=evidence.audioQA;
  if(audioQA?.status==="passed"){
