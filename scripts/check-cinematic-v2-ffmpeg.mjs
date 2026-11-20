@@ -21,7 +21,7 @@ try{
  const projectDir=join(root,"project"),assets=join(projectDir,"assets");
  await mkdir(assets,{recursive:true});
  const plan=makeCinematicV2Fixture();
- plan.width=320;plan.height=568;plan.fps=10;plan.totalFrames=450;
+ plan.width=320;plan.height=568;
  let index=0;
  for(const cue of plan.audioCues){
   const path=join(projectDir,cue.src);
