@@ -1,11 +1,10 @@
 import {spawn} from "node:child_process";
-import {mkdtemp,mkdir,rm} from "node:fs/promises";
+import {mkdtemp,mkdir,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join,dirname} from "node:path";
 import assert from "node:assert/strict";
 import {makeCinematicV2Fixture} from "../test/fixtures/cinematic-v2-fixture.mjs";
-import {mixCinematicAudio} from "../src/cinematic-audio-mix.mjs";
-import {inspectRenderedAudio,inspectRenderedFrames,inspectRenderedVideo} from "../src/video-qa.mjs";
+import {runCinematicV2RenderQa} from "../src/cinematic-render-qa.mjs";
 
 function run(command,args){
  return new Promise((resolve,reject)=>{
@@ -50,19 +49,27 @@ try{
   "testsrc2=s=320x568:r=10:d=45","-vf",
   shotFilters.join(",")+",format=yuv420p",
   "-an","-c:v","libx264","-preset","ultrafast","-crf","34","-t","45",videoPath]);
- const mix=await mixCinematicAudio({videoPath,projectDir,plan,ffmpegBin:ffmpeg});
- const tech=await inspectRenderedVideo(videoPath,{width:320,height:568,fps:10,durationSeconds:45},true);
- const audio=await inspectRenderedAudio(videoPath,{durationSeconds:45});
- const frames=await inspectRenderedFrames(videoPath,{plan,durationSeconds:45});
+ await writeFile(join(projectDir,"motion-plan.json"),JSON.stringify(plan,null,2)+"\\n");
+ const qa=await runCinematicV2RenderQa({
+  outputPath:videoPath,project:{width:320,height:568,fps:10,durationSeconds:45},
+  projectDir,metadata:{productionMode:"cinematic",cinematicPolicyVersion:"v2",
+   assetValidation:{checked:true,assetCount:plan.audioCues.length,duplicateAssets:[]},expectsAudio:true},
+  motionReview:{width:320,height:568,expectsAudio:true},motionBlurApplied:true
+ });
+ const {technicalQA:tech,audioQA:audio,frameQA:frames,audioMix:mix,cinematicPolicy}=qa;
  assert.equal(tech.status,"passed",JSON.stringify(tech));
  assert.equal(audio.status,"passed",JSON.stringify(audio));
  assert.equal(frames.status,"passed",JSON.stringify(frames));
+ assert.equal(cinematicPolicy.ok,true,cinematicPolicy.errors.join("; "));
+ assert.equal(cinematicPolicy.controls.length,40);
+ assert.equal(qa.finalDeliveryApproved,false,"render completion must not imply human artistic approval");
  assert.ok(frames.frameSamples>=400,"expected full timeline frame samples");
  assert.equal(frames.blackFrameCount,0);
  assert.ok(mix.voiceDucking);
  process.stdout.write(JSON.stringify({ok:true,video:tech,audio,frames:{status:frames.status,sampleFps:frames.sampleFps,
   frameSamples:frames.frameSamples,blackFrameCount:frames.blackFrameCount,freezeSegments:frames.freezeSegments},
-  audioMix:mix},null,2)+"\n");
+  cinematicPolicy:{ok:cinematicPolicy.ok,controls:cinematicPolicy.controls.length,controlSummary:cinematicPolicy.controlSummary},
+  audioMix:mix,finalDeliveryApproved:qa.finalDeliveryApproved},null,2)+"\\n");
 }finally{
  await rm(root,{recursive:true,force:true});
 }
