@@ -3,6 +3,7 @@
  * Generates a reproducible storyboard, NOT media bytes or measured conversions.
  */
 import { getEditingStylePreset, applyEditingStyleToStoryboard } from "./editing-style-presets.mjs";
+import { CINEMATIC_POLICY_VERSION } from "./cinematic-production-policy.mjs";
 const goals=new Set(["sales","likes","shares","awareness"]);
 const cleaned=(v,n)=>String(v??"").trim().replace(/[\u0000-\u001f]/g," ").slice(0,n);
 const messages={
@@ -43,7 +44,7 @@ export function planFromShortBrief(input={}){
  const fps=[24,25,30,50,60].includes(input.fps)?input.fps:60;
  const aspect=["9:16","16:9","1:1"].includes(input.aspect_ratio)?input.aspect_ratio:"9:16";
  const claimList=safeClaims(input.claims);
- const editingStyle=getEditingStylePreset(input.editing_style);
+ const editingStyle=getEditingStylePreset(input.editing_style??"cinematic-media-first-v2");
  const concepts=forms.map(form=>({
   id:form.id,title:form.title,device:form.device,
   shots:form.movement.map((movement,i)=>{
@@ -52,7 +53,12 @@ export function planFromShortBrief(input={}){
    return {id:"shot-"+(i+1),start,end,movement,copy:i===3?idea.slice(0,80):messages[goal][i],
     camera:["macro → reveal","tracking, independent depth layers","motivated match cut","close-up of observable change","settle, readable CTA"][i],
     sound:i===0?"music-enter":i===2?"causal-effect":i===4?"music-resolve":"music-bed",
-    visualSource:"Prefer verified product/brand assets. Illustrative reconstruction must be labeled."};
+    visualSource:"Exigir footage, fotografia real ou CGI material; nunca substituir a ação por figura vetorial.",
+    visualConstruction:{voiceCue:i===3?idea.slice(0,80):messages[goal][i],
+      action:"Representar fisicamente: "+form.movement[i],stateBefore:"Situação antes do evento "+(i+1),
+      stateAfter:"Consequência perceptível do evento "+(i+1),
+      realSceneAssetRequired:true,captionIsSupportingOnly:true},
+    shotSound:{captionSfx:i===0?"short-pop":"on-keyword-only",movementSfx:i===2?"motivated-whoosh":"when-motion-occurs",music:"story-arc"} };
   })
  }));
  const chosen=goal==="sales"?concepts[2]:goal==="shares"?concepts[1]:concepts[0];
@@ -62,6 +68,7 @@ export function planFromShortBrief(input={}){
  if(!brandUrl)blockers.push("Identidade, produto e promessas da empresa ainda não foram verificados em fonte oficial.");
  if(!logo)blockers.push("Logo real não fornecido; não fingir que uma marca ilustrativa é oficial.");
  if(!claimList.some(x=>x.eligible))blockers.push("Sem prova verificada; não inserir depoimentos, métricas nem garantias fictícias.");
+ blockers.push("Pré-produção: anexar cenas reais/CGI e stems de narração, música e SFX antes de renderizar o filme final.");
  return {
   version:"chat-creative-director-v1",
   brief:{brand,idea,goal,audience:cleaned(input.audience,140)||"Público relevante, não segmentado nesta etapa",
@@ -73,7 +80,10 @@ export function planFromShortBrief(input={}){
   claims:claimList,
   persuasion:{goal,desireOrProblem:idea,motivation:goal==="sales"?"clareza de benefício, confiança e redução de risco":goal==="shares"?"valor social, surpresa e utilidade":goal==="likes"?"identificação e recompensa visual":"curiosidade relevante e lembrança de marca",
    integrity:["não inventar prova social","não usar métricas não verificadas","não criar urgência/escassez falsas","não imitar logo como se fosse verdadeiro"]},
-  production:{threeSecondPrototype:true,motionProfile:"dynamic-motion-v1",
+  production:{threeSecondPrototype:true,motionProfile:"dynamic-motion-v1",cinematicPolicyVersion:CINEMATIC_POLICY_VERSION,
+   mediaFirst:true,flatVectorsAsPrimaryShots:false,requiredMediaCoverage:.70,requiredFootageCoverage:.50,
+   requireNarrationAnchors:true,requireCaptionAndMovementSfx:true,
+   reviewGate:"technical-and-artistic-review",
    ...(editingStyle?{editingStylePreset:editingStyle.id,editableGraphics:true,animationEngine:editingStyle.production.animationEngine,
      referenceReusePolicy:editingStyle.production.reusePolicy}:{}),
    depthLayers:["background","midground","foreground"],noStaticCardSequence:true,
