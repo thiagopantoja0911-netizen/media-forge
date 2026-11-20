@@ -23,3 +23,17 @@ test("silence inspection flags long gaps without treating deliberate pauses as c
   assert.equal(x.silenceSegments.length,1);
   assert.match(x.warnings.join("; "),/Silêncios maiores que 2s/);
 });
+
+test("audio QA blocks clipped samples and near-zero sample peaks",()=>{
+ const clipped=evaluateAudioLoudness({integratedLufs:-15,truePeakDb:-1.2,clippedSamples:12});
+ assert.equal(clipped.status,"failed");
+ assert.match(clipped.issues.join(" "),/amostras clipadas/);
+ const hot=evaluateAudioLoudness({integratedLufs:-15,truePeakDb:-1.2,maxVolumeDb:-.01});
+ assert.equal(hot.status,"failed");
+ assert.match(hot.issues.join(" "),/clipping/);
+});
+test("audio QA warns when the integrated loudness misses the social delivery target",()=>{
+ const result=evaluateAudioLoudness({integratedLufs:-18,truePeakDb:-1.5});
+ assert.equal(result.status,"passed");
+ assert.match(result.warnings.join(" "),/meta de publicação/);
+});
