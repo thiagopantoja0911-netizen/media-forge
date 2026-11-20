@@ -43,6 +43,26 @@ export function validatePremiumMotionSubmission(args) {
   if (visualClips.length < 4) {
     errors.push("Premium Motion: at least four timed visual elements are required for a deliberate sequence.");
   }
+  // Prevent vector-only slide decks from being accepted as finished Premium Motion.
+  // This is an inspectable media requirement, not a perceptual/aesthetic classifier.
+  const mediaTags=[...html.matchAll(/<(?:video|img)\\b[^>]*>/gi)].map(v=>v[0]);
+  const source=(tag)=>attr(tag,"src");
+  let mediaSec=0,footageSec=0;
+  for(const tag of mediaTags){
+    const src=source(tag);
+    if(!src || !src.startsWith("assets/") || /\\.svg(?:[?#]|$)/i.test(src)){
+      errors.push("Premium Motion: scene media must be a packaged photographic/video asset, not remote/vector: "+String(src||"missing"));
+      continue;
+    }
+    if(!files.some(f=>f?.path===src))errors.push("Premium Motion: missing packaged scene media: "+src);
+    const secs=Number(attr(tag,"data-duration")||0);
+    if(/<video\\b/i.test(tag)&&secs>0)footageSec+=secs;
+    if(secs>0)mediaSec+=secs;
+  }
+  const needed=Number(args?.duration_seconds||0);
+  if(needed>0 && (mediaSec/needed<.70 || footageSec/needed<.50)){
+    errors.push("Premium Motion: require >=70% timed photographic/video media and >=50% actual footage; vector-only/typographic scenes cannot be final.");
+  }
   if (!/\bgsap\s*\./.test(html) && !/<video\b/i.test(html)) {
     errors.push("Premium Motion: include meaningful GSAP motion or real moving video.");
   }
