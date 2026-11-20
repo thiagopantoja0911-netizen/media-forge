@@ -62,7 +62,7 @@ const say=v=>typeof v==="string"?v.trim():"";
 const finite=v=>typeof v==="number"&&Number.isFinite(v);
 const graphicTypes=new Set(["kinetic","widget","end-card"]);
 const realTypes=new Set(["footage","photo","product","collage"]);
-const shotSizes=new Set(["extreme-wide","wide","medium","close-up","extreme-close-up","over-shoulder","low-angle","top-down","detail"]);
+const shotSizeTypes=new Set(["extreme-wide","wide","medium","close-up","extreme-close-up","over-shoulder","low-angle","top-down","detail"]);
 const paceTypes=new Set(["fast","medium","hold"]);
 const rightsTypes=new Set(["owned","licensed","ai-generated","public-domain","stock-licensed"]);
 const microTypes=new Set(["flash","light-sweep","impact","dust","light-leak"]);
@@ -108,7 +108,7 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
   if(!Number.isInteger(scene.voiceStartFrame)||!Number.isInteger(scene.voiceEndFrame)||
      scene.voiceStartFrame<scene.startFrame||scene.voiceEndFrame<=scene.voiceStartFrame||scene.voiceEndFrame>scene.endFrame||
      !say(n.voiceCue))validVoiceAnchors=false;
-  if(shotSizes.has(scene.shotSize))shotSizes.add(scene.shotSize);
+  if(shotSizeTypes.has(scene.shotSize))shotSizes.add(scene.shotSize);
   if(scene.camera)cameras.add(scene.camera);
   if(scene.transition)transitions.add(scene.transition);
   if(scene.pace)paces.add(scene.pace);
@@ -131,7 +131,7 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
   if(!say(scene.mediaDescription)||!say(scene.mediaProvenance)||!rightsTypes.has(scene.mediaRights))
    fail("asset-diversity",scene.id+": informe descrição, procedência e direitos do asset visual");
   if(scene.hook!==true&&index===0)fail("visual-hook","A primeira cena precisa declarar hook=true");
-  if(!shotSizes.has(scene.shotSize))fail("shot-variety",scene.id+": shotSize inválido ou ausente");
+  if(!shotSizeTypes.has(scene.shotSize))fail("shot-variety",scene.id+": shotSize inválido ou ausente");
   if(!scene.camera||scene.camera==="locked")fail("motivated-camera",scene.id+": cada plano precisa de movimento de câmera motivado");
   if(!say(scene.transitionReason)&&index>0)fail("motivated-transitions",scene.id+": explique a motivação do corte/transição");
   if(!Array.isArray(scene.events)||!scene.events.some(e=>e?.action==="enter")||
