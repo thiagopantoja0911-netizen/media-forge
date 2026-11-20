@@ -84,8 +84,8 @@ jobs:
       - name: Check generated Forge Midjourney composition with HyperFrames
         timeout-minutes: 6
         run: node scripts/check-creator-composition.mjs
-      - name: Check real-media HyperFrames composition and snapshots
-        timeout-minutes: 6
+      - name: Check local scene-media fixture composition and snapshots
+        timeout-minutes: 10
         run: node scripts/check-creator-media-composition.mjs
       - name: Upload Forge Midjourney review snapshots
         if: always()
