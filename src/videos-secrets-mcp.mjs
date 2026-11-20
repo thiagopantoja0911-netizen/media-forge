@@ -352,7 +352,7 @@ export const VIDEOS_SECRETS_TOOLS = [
   },
   {
     name:"plan_video_from_brief",
-    description:"Direção completa via chat: diga apenas empresa e ideia. Entrega estratégia de compra/curtidas/compartilhamento, cinco cenas, roteiro, mapa de assets e sons, câmera, transições e critérios de QA. Planejamento não cria MP4 nem inventa marca, produtos ou métricas.",
+    description:"Direção criativa e artística via chat: recebe empresa e ideia, entrega três conceitos, hooks, linguagem visual, storyboard plano a plano, câmera, luz, tipografia, áudio, assets e rubrica de revisão. Não cria MP4 nem inventa marca, provas ou métricas.",
     inputSchema:{
       type:"object",additionalProperties:false,
       properties:{
@@ -360,6 +360,14 @@ export const VIDEOS_SECRETS_TOOLS = [
         idea:{type:"string",minLength:8,maxLength:400},
         goal:{type:"string",enum:["sales","likes","shares","awareness"]},
         editing_style:{type:"string",enum:["minimal-outline-explainer-v1"],description:"Preset reutilizável de direção de arte e animação: Motion Minimalista P&B, inspirado na referência enviada em 17/11/2026."},
+        platform:{type:"string",maxLength:50},
+        visual_style:{type:"string",maxLength:90},
+        tone:{type:"string",maxLength:80},
+        cta:{type:"string",maxLength:120},
+        concept_id:{type:"string",enum:["result-first","object-journey","before-after"]},
+        brand_colors:{type:"array",maxItems:6,items:{type:"string",pattern:"^#[0-9a-fA-F]{6}$"}},
+        reference_urls:{type:"array",maxItems:5,items:{type:"string",maxLength:350,pattern:"^https://"}},
+        restrictions:{type:"array",maxItems:10,items:{type:"string",maxLength:120}},
         voice_mode:{type:"string",enum:["auto","off","pt-BR-female","pt-BR-male"]},
         audience:{type:"string",maxLength:140},
         brand_url:{type:"string",maxLength:350},
