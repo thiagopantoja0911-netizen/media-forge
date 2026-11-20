@@ -68,7 +68,12 @@ const rightsTypes=new Set(["owned","licensed","ai-generated","public-domain","st
 const microTypes=new Set(["flash","light-sweep","impact","dust","light-leak"]);
 const asFrame=(seconds,fps)=>Math.round(seconds*fps);
 function isAsset(path){return typeof path==="string"&&/^assets\/[A-Za-z0-9_./-]+$/.test(path)&&!path.split("/").includes("..");}
-function setStatus(map,id,status,evidence){map.set(id,{status,evidence});}
+function setStatus(map,id,status,evidence){
+ const rank={blocked:7,review_required:6,pending_render:5,pending:4,warning:3,passed:1};
+ const current=map.get(id);
+ if(current&&(rank[current.status]??0)>(rank[status]??0))return;
+ map.set(id,{status,evidence});
+}
 export function reviewCinematicPolicyV2(plan,evidence={}) {
  const enabled=plan?.productionMode==="cinematic"&&plan?.cinematicPolicyVersion==="v2";
  const errors=[],warnings=[],results=new Map();
@@ -91,29 +96,27 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
  const ids=new Set(),mediaUsage=new Map(),shotSizes=new Set(),cameras=new Set(),transitions=new Set(),paces=new Set();
  const continuity=new Map(),effects={motionBlur:0,bloom:0,shadow:0,colorGrade:0,depthOfField:0,parallax:0,microEffect:0};
  let realFrames=0,movingFrames=0,graphicFrames=0,captionAnchors=0,motionEvents=0,transitionEvents=0;
- let validVoiceAnchors=true,validSceneSound=true,validReframes=0,validEvents=0;
+ let validVoiceAnchors=true,validSceneSound=true,validReframes=0,validEvents=0,validNarrative=true,validContinuity=true;
  for(const [index,scene] of scenes.entries()){
   const length=Number(scene.endFrame)-Number(scene.startFrame);
   if(!finite(length)||length<=0){fail("semantic-visual-direction","Cena "+(index+1)+": duração inválida");continue;}
   const n=scene.narrativeAction||{};
   if(!say(n.voiceCue)||!say(n.subject)||!say(n.action)||!say(n.visibleChange)||!say(n.stateBefore)||!say(n.stateAfter)||
-     n.stateBefore===n.stateAfter||n.visibleChange===scene.headline)
-   fail("semantic-visual-direction",scene.id+": descreva fala, ação física, mudança visível e estados antes/depois");
+     n.stateBefore===n.stateAfter||n.visibleChange===scene.headline){
+   validNarrative=false;fail("semantic-visual-direction",scene.id+": descreva fala, ação física, mudança visível e estados antes/depois");
+  }
   if(!Number.isInteger(scene.voiceStartFrame)||!Number.isInteger(scene.voiceEndFrame)||
      scene.voiceStartFrame<scene.startFrame||scene.voiceEndFrame<=scene.voiceStartFrame||scene.voiceEndFrame>scene.endFrame||
      !say(n.voiceCue))validVoiceAnchors=false;
-  if(!shotSizes.has(scene.shotSize)&&shotSizes.has(undefined)){}
-  if(shotSizes.has(scene.shotSize)===false&&shotSizes.size<100)shotSizes.add(scene.shotSize);
-  if(!shotSizes.has(scene.shotSize)||!shotSizes.has(undefined)){}
-  if(scene.shotSize&&!shotSizes.has(scene.shotSize))shotSizes.add(scene.shotSize);
+  if(scene.shotSize)shotSizes.add(scene.shotSize);
   if(scene.camera)cameras.add(scene.camera);
   if(scene.transition)transitions.add(scene.transition);
   if(scene.pace)paces.add(scene.pace);
   if(!scene.continuity||!say(scene.continuity.subjectId)||!["left-to-right","right-to-left","static"].includes(scene.continuity.screenDirection)||
-     !Array.isArray(scene.continuity.propIds))fail("continuity",scene.id+": continuity precisa de subjectId, propIds e screenDirection");
+     !Array.isArray(scene.continuity.propIds)){validContinuity=false;fail("continuity",scene.id+": continuity precisa de subjectId, propIds e screenDirection");}
   else{
    const prev=continuity.get(scene.continuity.subjectId);
-   if(prev&&prev!==scene.continuity.screenDirection)fail("continuity",scene.id+": direção de tela inconsistente para o mesmo sujeito");
+   if(prev&&prev!==scene.continuity.screenDirection){validContinuity=false;fail("continuity",scene.id+": direção de tela inconsistente para o mesmo sujeito");}
    continuity.set(scene.continuity.subjectId,scene.continuity.screenDirection);
   }
   if(!paceTypes.has(scene.pace))fail("rhythm",scene.id+": pace deve ser fast, medium ou hold");
@@ -164,6 +167,8 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
  }
  if(!validVoiceAnchors)fail("voice-anchored-storyboard","Cada cena precisa de voiceStartFrame/voiceEndFrame alinhados à fala");
  else pass("voice-anchored-storyboard","Todas as cenas possuem âncoras de narração");
+ if(validNarrative)pass("semantic-visual-direction","Cada cena contém fala, ação e transformação visual");
+ if(validContinuity)pass("continuity","Sujeitos e direções de tela consistentes");
  if(shotSizes.size<3)fail("shot-variety","Use ao menos três tamanhos de plano distintos");
  else pass("shot-variety",[...shotSizes]);
  if(cameras.size<2)fail("motivated-camera","Use pelo menos dois movimentos de câmera distintos");
@@ -171,9 +176,10 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
  if(transitions.size<2)fail("motivated-transitions","Use pelo menos duas transições diferentes e motivadas");
  else if(scenes.slice(1).every(s=>say(s.transitionReason)))pass("motivated-transitions",[...transitions]);
  if(paces.size<2)fail("rhythm","Alterne ao menos dois ritmos: fast, medium ou hold");
- else pass("rhythm",[...paces]);
+ else {pass("rhythm",[...paces]);pass("pacing-variation",[...paces]);}
  if(!scenes.length||scenes.length<5)fail("shot-variety","Cinematográfico V2 exige pelo menos cinco planos narrativos");
- if(!scenes.length||scenes[0]?.startFrame>fps*1.5)fail("visual-hook","O gancho precisa começar nos primeiros 1,5s");
+ if(!scenes.length||scenes[0]?.startFrame>fps*1.5||scenes[0]?.hook!==true)fail("visual-hook","O gancho precisa começar nos primeiros 1,5s e declarar hook=true");
+ else pass("visual-hook","Gancho visual marcado no primeiro plano");
  const pct=n=>Math.round(100*n/total);
  const realPct=pct(realFrames),movingPct=pct(movingFrames),graphicsPct=pct(graphicFrames);
  if(realFrames/total<limits.minRealMediaShare||movingFrames/total<limits.minMovingFootageShare||plan.visualMode!=="media-first")
@@ -192,6 +198,8 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
  else pass("lighting-shadows",{scenes:effects.shadow});
  if(!effects.depthOfField)fail("depth-of-field","Inclua ao menos uma cena em camadas com foco seletivo real");
  else pass("depth-of-field",{scenes:effects.depthOfField});
+ if(!effects.depthOfField)fail("composited-layers","Inclua camadas foreground/midground/background");
+ else pass("composited-layers",{scenes:effects.depthOfField});
  if(!effects.motionBlur)fail("motion-blur","Motion blur temporal precisa ser declarado em pelo menos uma cena");
  else pass("motion-blur",{scenes:effects.motionBlur,renderer:"HyperFrames cinematic shutter"});
  if(!effects.bloom)fail("bloom-glow","Inclua bloom/glow em ao menos uma cena");
