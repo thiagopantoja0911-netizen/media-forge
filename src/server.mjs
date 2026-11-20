@@ -17,6 +17,7 @@ import { handleStudioApi } from "./studio-api.mjs";
 import { handleEditorStudioHttp, handleEditorJobStatus, handleEditorQueueManagementHttp } from "./editor-studio-http.mjs";
 import { handleRemoteWorker, requestCancelJob } from "./remote-worker-server.mjs";
 import {handleSignedVideoDownload,signedVideoDownload} from "./video-artifact-delivery.mjs";
+import { validateCinematicV2JobPayload } from "./cinematic-v2-gates.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
