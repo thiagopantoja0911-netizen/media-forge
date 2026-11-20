@@ -4,10 +4,13 @@ import { randomUUID } from "node:crypto";
 import { renderWithHyperFrames } from "./renderers/hyperframes.mjs";
 import { renderWithRemotion } from "./renderers/remotion.mjs";
 import { inspectRenderedVideo, inspectRenderedAudio } from "./video-qa.mjs";
+import { isCinematicV2Job } from "./cinematic-v2-gates.mjs";
+import { runCinematicV2RenderQa } from "./cinematic-render-qa.mjs";
 
 const dataDir = process.env.MEDIAFORGE_DATA_DIR ?? ".mediaforge";
 const jobsDir = join(dataDir, "jobs");
 const plansDir = join(dataDir, "plans");
+const projectsRoot = process.env.MEDIAFORGE_PROJECTS_DIR ?? join(dataDir, "projects");
 const workerStatusFile = join(dataDir, "worker-status.json");
 const workerId = process.env.MEDIAFORGE_WORKER_ID ?? randomUUID();
 const once = process.argv.includes("--once");
@@ -45,6 +48,12 @@ async function nextQueuedJob() {
 }
 
 async function processJob(job) {
+  const cinematicV2 = isCinematicV2Job(job.metadata);
+  if (cinematicV2 && (rendererMode !== "hyperframes" || job.project.renderer !== "hyperframes")) {
+    throw Object.assign(new Error("Cinematic V2 requires the real HyperFrames renderer; dry-run/Remotion cannot complete this job."), {
+      code: "CINEMATIC_RENDERER_REQUIRED", retryable: false
+    });
+  }
   job.status = "processing";
   job.attempts = (job.attempts ?? 0) + 1;
   job.progress = 10;
@@ -53,15 +62,27 @@ async function processJob(job) {
 
   if (rendererMode === "hyperframes" && ["hyperframes","remotion"].includes(job.project.renderer)) {
     const result = job.project.renderer === "remotion" ? await renderWithRemotion(job) : await renderWithHyperFrames(job);
-    const technicalQA = await inspectRenderedVideo(result.outputPath,
-      { ...job.project, width: result.motionReview?.width, height: result.motionReview?.height },
-      job.metadata?.expectsAudio === true || result.motionReview?.expectsAudio === true);
-    if (technicalQA.status === "failed") throw Object.assign(new Error(technicalQA.issues.join("; ")), { code: "VIDEO_TECHNICAL_QA_FAILED", retryable: false });
-    const audioQA = job.metadata?.productionMode === "cinematic" ? await inspectRenderedAudio(result.outputPath) : null;
-    if(audioQA && audioQA.status !== "passed") throw Object.assign(
-      new Error("Cinematic audio QA failed: " + audioQA.issues.join("; ")),
-      {code:"AUDIO_MIX_QA_FAILED",retryable:false});
-    result.report = { technicalQA, audioQA, motionReview: result.motionReview, artisticQA: "pending-user-review" };
+    if (cinematicV2) {
+      const cinematicQa = await runCinematicV2RenderQa({
+        outputPath: result.outputPath,
+        project: job.project,
+        projectDir: join(projectsRoot, job.project.sourceDir ?? job.id),
+        metadata: job.metadata,
+        motionReview: result.motionReview,
+        motionBlurApplied: result.motionBlurApplied === true
+      });
+      result.report = { ...cinematicQa, motionReview: result.motionReview ?? null };
+    } else {
+      const technicalQA = await inspectRenderedVideo(result.outputPath,
+        { ...job.project, width: result.motionReview?.width, height: result.motionReview?.height },
+        job.metadata?.expectsAudio === true || result.motionReview?.expectsAudio === true);
+      if (technicalQA.status === "failed") throw Object.assign(new Error(technicalQA.issues.join("; ")), { code: "VIDEO_TECHNICAL_QA_FAILED", retryable: false });
+      const audioQA = job.metadata?.productionMode === "cinematic" ? await inspectRenderedAudio(result.outputPath) : null;
+      if(audioQA && audioQA.status !== "passed") throw Object.assign(
+        new Error("Cinematic audio QA failed: " + audioQA.issues.join("; ")),
+        {code:"AUDIO_MIX_QA_FAILED",retryable:false});
+      result.report = { technicalQA, audioQA, motionReview: result.motionReview, artisticQA: "pending-user-review" };
+    }
     job.status = "completed";
     job.progress = 100;
     job.result = result;

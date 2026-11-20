@@ -5,6 +5,7 @@ import {VIDEOS_SECRETS_TOOLS} from '../src/videos-secrets-mcp.mjs';
 
 test('one sentence produces actionable sales storyline without inventing brand proof',()=>{
  const plan=buildOnePromptBlueprint({brand:'Empresa Exemplo',idea:'Quero vender um serviço que ajuda lojas a organizar as entregas'});
+ assert.equal(plan.version,'mediaforge-chat-one-prompt-v2');
  assert.equal(plan.creative.goal,'sales');
  assert.equal(plan.storyboard.length,5);
  assert.equal(plan.storyboard[0].start,0);
@@ -14,6 +15,12 @@ test('one sentence produces actionable sales storyline without inventing brand p
  assert.equal(plan.readiness.artisticQA,false);
  assert.equal(plan.cinematicPolicy.controlCount,40);
  assert.equal(plan.cinematicPolicy.controls.length,40);
+ assert.equal(plan.artisticDirection.version,"mediaforge-art-direction-v1");
+ assert.equal(plan.artisticDirection.concepts.length,3);
+ assert.equal(plan.storyboard[0].beat,"Gancho");
+ assert.equal(plan.storyboard.every(shot=>Boolean(shot.visualAction&&shot.transitionCause)),true);
+ assert.equal(plan.direction.qualityRubric.totalWeight,100);
+ assert.equal(plan.direction.qualityRubric.automaticScore,false);
  assert.equal(plan.assetManifest.length,5);
  assert.equal(plan.audio.voiceDucking,true);
  assert.ok(plan.assets.some(x=>x.kind==="ambience"));
@@ -54,5 +61,8 @@ test('original MCP tool remains compatible and exposes voice preference',()=>{
  assert.ok(tool);
  assert.deepEqual(tool.inputSchema.required,['brand','idea']);
  assert.deepEqual(tool.inputSchema.properties.voice_mode.enum,['auto','off','pt-BR-female','pt-BR-male']);
+ assert.deepEqual(tool.inputSchema.properties.concept_id.enum,['result-first','object-journey','before-after']);
+ assert.ok(tool.inputSchema.properties.brand_colors);
+ assert.ok(tool.inputSchema.properties.reference_urls);
  assert.ok(VIDEOS_SECRETS_TOOLS.some(x=>x.name==='create_motion_video'));
 });

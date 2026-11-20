@@ -17,6 +17,7 @@ import { handleStudioApi } from "./studio-api.mjs";
 import { handleEditorStudioHttp, handleEditorJobStatus, handleEditorQueueManagementHttp } from "./editor-studio-http.mjs";
 import { handleRemoteWorker, requestCancelJob } from "./remote-worker-server.mjs";
 import {handleSignedVideoDownload,signedVideoDownload} from "./video-artifact-delivery.mjs";
+import { validateCinematicV2JobPayload } from "./cinematic-v2-gates.mjs";
 
 const host = process.env.MEDIAFORGE_HOST ?? (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 const port = Number(process.env.MEDIAFORGE_PORT ?? process.env.PORT ?? 8787);
@@ -127,6 +128,24 @@ async function createJob(rawPayload) {
     const error = new Error(fileValidation.errors.join("; "));
     error.code = "INVALID_PROJECT";
     throw error;
+  }
+
+  const cinematicGate = validateCinematicV2JobPayload({
+    project: payload.project,
+    projectFiles: payload.projectFiles,
+    metadata: payload.metadata ?? {}
+  });
+  if (!cinematicGate.ok) {
+    const error = new Error(cinematicGate.errors.join("; "));
+    error.code = "INVALID_CINEMATIC_POLICY";
+    throw error;
+  }
+  if (cinematicGate.enabled) {
+    payload.metadata = {
+      ...(payload.metadata ?? {}),
+      assetValidation: cinematicGate.assetValidation,
+      cinematicPolicy: cinematicGate.policy
+    };
   }
 
   const id = randomUUID().replaceAll("-", "");

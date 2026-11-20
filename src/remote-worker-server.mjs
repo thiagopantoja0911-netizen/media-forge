@@ -10,6 +10,7 @@ import { join, resolve, relative, sep } from "node:path";
 import { readState, updateState, verifySecret } from "./state-store.mjs";
 import {deliveredVideoRoot,deliveredVideoPath,MAX_DELIVERED_VIDEO_BYTES} from "./video-artifact-delivery.mjs";
 import { createMotionV2Comparison } from "./editor-frame-lab-bridge.mjs";
+import { validateCinematicV2CompletionReport } from "./cinematic-v2-gates.mjs";
 
 const HEX_ID = /^[a-f0-9]{32}$/;
 const LEASE_MS = 120_000;
@@ -341,6 +342,19 @@ export async function handleRemoteWorker({request,response,url,jobsDir,projectsR
           if(acknowledgeCancellation(job)){
             await saveJob(jobsDir,job);
             return job;
+          }
+          if(body.success===true){
+            const cinematicCompletion=validateCinematicV2CompletionReport({
+              metadata:job.metadata,
+              report:body.report,
+              artifactUploaded:body.artifactUploaded===true
+            });
+            if(!cinematicCompletion.ok){
+              throw Object.assign(
+                new Error("CINEMATIC_V2_COMPLETION_REJECTED: "+cinematicCompletion.errors.join("; ")),
+                {status:422,code:"CINEMATIC_V2_COMPLETION_REJECTED"}
+              );
+            }
           }
           job.status=body.success===true?"completed":"failed";
           job.progress=body.success===true?100:0;

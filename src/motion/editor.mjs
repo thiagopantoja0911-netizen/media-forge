@@ -1,6 +1,7 @@
 // Stateless, non-destructive motion-plan editing. The renderer consumes the
 // returned plan in a NEW job; editing never mutates an existing queued job.
 import { validateMotionPlan, TRANSITIONS } from "./plan.mjs";
+import { reviewCinematicPolicyV2 } from "../cinematic-production-policy.mjs";
 
 const textFields = new Set(["headline","eyebrow","detail","metricLabel","controlLabel"]);
 const cameras = new Set(["dolly-in","pull-back","truck-left","truck-right","arc-reveal","locked"]);
@@ -160,6 +161,9 @@ export function editMotionPlan({motion_plan,edits,expected_revision}={}){
   const changes=edits.map(edit=>applyOne(next,edit));
   const review=validateMotionPlan(next);
   if(!review.ok)fail("EDITOR_RESULT_INVALID","Edição rejeitada pelo validador: "+review.errors.slice(0,4).join("; "));
+  const cinematicPolicy=next.cinematicPolicyVersion==="v2"?reviewCinematicPolicyV2(next):null;
+  if(cinematicPolicy&&!cinematicPolicy.ok)
+    fail("EDITOR_CINEMATIC_POLICY_FAILED","Edição rejeitada pela política Cinematic V2: "+cinematicPolicy.errors.slice(0,5).join("; "));
   next.editorRevision=revision+1;
   return {
     status:"edited-not-rendered",
@@ -167,7 +171,7 @@ export function editMotionPlan({motion_plan,edits,expected_revision}={}){
     previousRevision:revision,
     plan:next,
     changes,
-    validation:{ok:true,warnings:review.warnings},
+    validation:{ok:true,warnings:review.warnings,cinematicPolicy},
     nextStep:"Use create_motion_video com este plano e os assets originais para gerar uma prévia ou nova renderização. Nenhum job foi modificado.",
     requiresNewRender:true
   };

@@ -8,9 +8,8 @@ import { renderWithRemotion } from "./renderers/remotion.mjs";
 import { inspectRenderedVideo, inspectRenderedAudio } from "./video-qa.mjs";
 import { collectRenderResources } from "./render-recovery.mjs";
 import { readFile } from "node:fs/promises";
-import { mixCinematicAudio } from "./cinematic-audio-mix.mjs";
-import { inspectRenderedFrames } from "./video-qa.mjs";
-import { reviewCinematicPolicyV2 } from "./cinematic-production-policy.mjs";
+import { runCinematicV2RenderQa } from "./cinematic-render-qa.mjs";
+
 
 const url=String(process.env.MEDIAFORGE_REMOTE_URL||"").replace(/\/$/,"");
 const token=process.env.MEDIAFORGE_WORKER_TOKEN||"";
@@ -149,45 +148,35 @@ async function processRemote(job,leaseId) {
     if(!info.isFile()||info.size===0)throw new Error("Video artifact missing or empty");
     const isCinematicV2=configured.metadata?.productionMode==="cinematic"&&configured.metadata?.cinematicPolicyVersion==="v2";
     const projectDir=resolve(projectsRoot,job.id);
-    let cinematicPlan=null,audioMix=null;
-    if(isCinematicV2){
-      cinematicPlan=JSON.parse(await readFile(join(projectDir,"motion-plan.json"),"utf8"));
-      audioMix=await mixCinematicAudio({videoPath:rendered.outputPath,projectDir,plan:cinematicPlan});
-      info=await stat(rendered.outputPath);
-    }
-    const technicalQA=await inspectRenderedVideo(rendered.outputPath,{...configured.project,width:rendered.motionReview?.width,height:rendered.motionReview?.height}, 
-      configured.metadata?.expectsAudio===true || rendered.motionReview?.expectsAudio===true);
-    if(technicalQA.status==="failed") {
+    const cinematicQa=isCinematicV2?await runCinematicV2RenderQa({
+      outputPath:rendered.outputPath,
+      project:configured.project,
+      projectDir,
+      metadata:configured.metadata,
+      motionReview:rendered.motionReview,
+      motionBlurApplied:rendered.motionBlurApplied===true
+    }):null;
+    if(cinematicQa)info=await stat(rendered.outputPath);
+    const technicalQA=cinematicQa?.technicalQA??await inspectRenderedVideo(rendered.outputPath,{
+      ...configured.project,width:rendered.motionReview?.width,height:rendered.motionReview?.height
+    },configured.metadata?.expectsAudio===true||rendered.motionReview?.expectsAudio===true);
+    if(!cinematicQa&&technicalQA.status==="failed"){
       const error=new Error("O MP4 falhou no QA técnico: "+technicalQA.issues.join("; "));
       error.code="VIDEO_TECHNICAL_QA_FAILED";
       throw error;
     }
-    if(technicalQA.status==="unverified") {
+    if(!cinematicQa&&technicalQA.status==="unverified"){
       console.warn("QA técnico não verificado:",technicalQA.issues.join("; "));
     }
-    if(isCinematicV2&&technicalQA.status!=="passed"){
-      const error=new Error("Cinematic V2 exige FFprobe aprovado: "+(technicalQA.issues||[]).join("; "));
-      error.code="CINEMATIC_TECHNICAL_QA_REQUIRED";error.retryable=false;throw error;
-    }
-    const durationSeconds=cinematicPlan?cinematicPlan.totalFrames/(Number(String(cinematicPlan.fps).split("/")[0])/Number(String(cinematicPlan.fps).split("/")[1]||1)):undefined;
-    const audioQA=configured.metadata?.productionMode==="cinematic"
-      ?await inspectRenderedAudio(rendered.outputPath,{durationSeconds}):null;
-    if(audioQA&&audioQA.status!=="passed"){
+    const audioQA=cinematicQa?.audioQA??(configured.metadata?.productionMode==="cinematic"
+      ?await inspectRenderedAudio(rendered.outputPath):null);
+    if(!cinematicQa&&audioQA&&audioQA.status!=="passed"){
       const error=new Error("Cinematic audio QA failed: "+(audioQA.issues||[]).join("; "));
       error.code="AUDIO_MIX_QA_FAILED";error.retryable=false;throw error;
     }
-    const frameQA=isCinematicV2?await inspectRenderedFrames(rendered.outputPath,{plan:cinematicPlan,durationSeconds}):null;
-    if(isCinematicV2&&frameQA?.status!=="passed"){
-      const error=new Error("Cinematic V2 frame inspection failed: "+(frameQA?.issues||[]).join("; "));
-      error.code="CINEMATIC_FRAME_QA_FAILED";error.retryable=false;throw error;
-    }
-    const cinematicPolicy=isCinematicV2?reviewCinematicPolicyV2(cinematicPlan,{
-      assetValidation:configured.metadata?.assetValidation,technicalQA,audioQA,frameQA,renderComplete:true,motionBlurApplied:rendered.motionBlurApplied===true,artisticQA:"pending-user-review"
-    }):null;
-    if(isCinematicV2&&!cinematicPolicy?.ok){
-      const error=new Error("Cinematic V2 final structural QA failed: "+(cinematicPolicy?.errors||[]).join("; "));
-      error.code="CINEMATIC_POLICY_QA_FAILED";error.retryable=false;throw error;
-    }
+    const frameQA=cinematicQa?.frameQA??null;
+    const audioMix=cinematicQa?.audioMix??null;
+    const cinematicPolicy=cinematicQa?.cinematicPolicy??null;
     // Full Frame Lab workflow: the output must return to the web service for real comparison.
     // A failed upload fails the job instead of falsely marking the pipeline completed.
     // Every completed video must be retrievable in ChatGPT, not stranded on Windows.
@@ -198,7 +187,7 @@ async function processRemote(job,leaseId) {
     await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
       leaseId,success:true,artifactUploaded,fileName:basename(rendered.outputPath),size:info.size,
       sha256:await hashFile(rendered.outputPath),outputPath:rendered.outputPath,
-      report:{outputName:basename(rendered.outputPath),technicalQA,audioQA,frameQA,audioMix,motionBlurApplied:rendered.motionBlurApplied===true,motionBlurShutterAngle:rendered.motionBlurShutterAngle,cinematicPolicy,motionReview:rendered.motionReview??null,diagnosticsDir:rendered.diagnosticsDir,artisticQA:"pending-user-review",finalDeliveryApproved:false}
+      report:{outputName:basename(rendered.outputPath),technicalQA,audioQA,frameQA,audioMix,motionBlurApplied:rendered.motionBlurApplied===true,motionBlurShutterAngle:rendered.motionBlurShutterAngle,cinematicPolicy,motionReview:rendered.motionReview??null,diagnosticsDir:rendered.diagnosticsDir,artisticQA:cinematicQa?.artisticQA??"pending-user-review",artisticReview:cinematicQa?.artisticReview??null,finalDeliveryApproved:cinematicQa?.finalDeliveryApproved??false}
     });
     console.log("Remote job completed:",job.id);
   }catch(error){
