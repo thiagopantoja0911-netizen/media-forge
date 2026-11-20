@@ -9,7 +9,7 @@ export async function inspectMotionProject(projectDir, project) {
   catch(error) { if(error.code==="ENOENT") return null; throw Object.assign(error,{retryable:false,code:"INVALID_MOTION_PLAN"}); }
   const review=requireMotionPlan(plan);
   if(Math.abs(frameSeconds(plan.totalFrames,plan.fps)-project.durationSeconds)>1/fpsValue(plan.fps) || Math.abs(fpsValue(plan.fps)-fpsValue(project.fps))>.001) throw Object.assign(new Error("Motion plan duration/FPS differs from job"),{code:"INVALID_MOTION_PLAN",retryable:false});
-  for(const source of [...plan.scenes.map(s=>s.media),...(plan.audioCues??[]).map(c=>c.src)].filter(Boolean)) {
+  for(const source of [...plan.scenes.map(s=>s.media),...plan.scenes.flatMap(s=>(s.depthLayers||[]).map(x=>x.src)),...(plan.audioCues??[]).map(c=>c.src)].filter(Boolean)) {
     try { await access(join(projectDir,source)); }
     catch { throw Object.assign(new Error("Missing motion asset: "+source),{code:"INVALID_MOTION_PLAN",retryable:false}); }
   }
