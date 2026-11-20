@@ -14,7 +14,7 @@ export function validateCinematicMediaAssets(plan,files){
     ...(plan.audioCues||[]).filter(c=>c?.src).map(c=>({path:c.src,role:"audio"}))
   ];
   const hashes=new Map(),duplicateAssets=[];
-  for(const {path,role} of sources){
+  for(const {path,role,layerRole} of sources){
     const file=media.get(path);
     if(!file||typeof file.contentBase64!=="string")throw new Error("Cinematic asset must be packaged in base64: "+path);
     const buf=Buffer.from(file.contentBase64,"base64");
