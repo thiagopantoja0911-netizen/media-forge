@@ -118,6 +118,9 @@ export function validateCinematicV2CompletionReport({ metadata = {}, report = nu
   if (!artisticApproved && report?.artisticQA !== "pending-user-review") {
     errors.push("Cinematic V2 artisticQA must remain pending human review or be explicitly approved.");
   }
+  if (report?.artisticReview?.humanApproval !== "required" || report?.artisticReview?.automaticApproval !== false) {
+    errors.push("Cinematic V2 must preserve an explicit human artistic-review gate; automatic approval is forbidden.");
+  }
   const expectedFinalApproval = artisticApproved && policy?.finalDeliveryApproved === true;
   if (report?.finalDeliveryApproved !== expectedFinalApproval || policy?.finalDeliveryApproved !== expectedFinalApproval) {
     errors.push("Cinematic V2 final-delivery status does not match the human artistic-review evidence.");
