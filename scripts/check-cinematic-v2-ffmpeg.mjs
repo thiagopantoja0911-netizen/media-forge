@@ -49,7 +49,7 @@ try{
   "testsrc2=s=320x568:r=10:d=45","-vf",
   shotFilters.join(",")+",format=yuv420p",
   "-an","-c:v","libx264","-preset","ultrafast","-crf","34","-t","45",videoPath]);
- await writeFile(join(projectDir,"motion-plan.json"),JSON.stringify(plan,null,2)+"\\n");
+ await writeFile(join(projectDir,"motion-plan.json"),JSON.stringify(plan,null,2)+"\n");
  const qa=await runCinematicV2RenderQa({
   outputPath:videoPath,project:{width:320,height:568,fps:10,durationSeconds:45},
   projectDir,metadata:{productionMode:"cinematic",cinematicPolicyVersion:"v2",
@@ -69,7 +69,7 @@ try{
  process.stdout.write(JSON.stringify({ok:true,video:tech,audio,frames:{status:frames.status,sampleFps:frames.sampleFps,
   frameSamples:frames.frameSamples,blackFrameCount:frames.blackFrameCount,freezeSegments:frames.freezeSegments},
   cinematicPolicy:{ok:cinematicPolicy.ok,controls:cinematicPolicy.controls.length,controlSummary:cinematicPolicy.controlSummary},
-  audioMix:mix,finalDeliveryApproved:qa.finalDeliveryApproved},null,2)+"\\n");
+  audioMix:mix,finalDeliveryApproved:qa.finalDeliveryApproved},null,2)+"\n");
 }finally{
  await rm(root,{recursive:true,force:true});
 }
