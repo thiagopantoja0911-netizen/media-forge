@@ -412,7 +412,7 @@ export const VIDEOS_SECRETS_TOOLS = [
   },
   {
     name: "create_motion_video",
-    description: "Produção cinematográfica V2 estrita por padrão no Worker: exige cenas com ações que desenvolvem a fala, footage real, legendas, trilha, efeitos de texto e movimento e iluminação com sombras. Render não é aprovação artística. Exige motion_plan e assets locais." ,
+    description: "Produção cinematográfica V2 estrita: exige narração com timestamps por palavra, ações visuais por fala, footage real, três camadas de profundidade quando aplicável, legendas cinéticas, trilha com sidechain, ambiências e SFX sincronizados. Motion blur temporal usa o fork validado do HyperFrames. Render e QA técnico não equivalem a aprovação artística. Exige motion_plan completo e assets locais." ,
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -923,7 +923,7 @@ export async function handleVideosSecretsMcp({
         ? {path:file.path,contentBase64:file.content}
         : {path:file.path,content:file.content});
       // Apply V2 by default at the authoritative MCP boundary; legacy saved projects remain untouched.
-      const productionPlan={...args.motion_plan,cinematicPolicyVersion:"v2"};
+      const productionPlan={...args.motion_plan,productionMode:"cinematic",cinematicPolicyVersion:"v2"};
       const composition = await buildMotionComposition(productionPlan, assets);
       // The cinematic gate is mandatory; the tool never bypasses preflight or creative asset checks.
       if (!composition.readiness.testRenderReady) {
