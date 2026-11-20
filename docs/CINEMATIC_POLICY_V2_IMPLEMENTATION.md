@@ -71,6 +71,7 @@ A política é consultável no MCP `get_cinematic_production_policy`. O modo V2 
 - `src/video-qa.mjs`: FFprobe, loudness, clipping, silêncio, amostragem de frames, black frames, freeze e comparação de planos.
 - `src/renderers/hyperframes.mjs`: reporta se o shutter temporal foi realmente executado pelo fork validado.
 - `src/remote-worker-client.mjs`: exige QA técnico, de áudio e de frames no V2 antes de concluir o job; entrega relatório de 40 controles.
+- `desktop/update-worker-safe.ps1`: antes de reiniciar o worker, verifica sintaxe dos módulos V2 e executa os testes críticos de política, áudio, compositor e shutter.
 - `src/videos-secrets-mcp.mjs`: força `productionMode=cinematic` e V2 na fronteira MCP.
 
 ## Regras de mídia e limites
