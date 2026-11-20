@@ -18,13 +18,14 @@ test("cinematic 3D exports a complete, locally bundled Three.js HyperFrames proj
   });
   assert.equal(project.title,"Teste de profundidade real");
   assert.equal(project.durationSeconds,12);
-  assert.equal(project.resolution,"portrait-4k");
-  assert.equal(project.fps,60);
+  assert.equal(project.resolution,"portrait");
+  assert.equal(project.fps,30);
+  assert.equal(project.productionMetadata.renderProfile,"balanced");
   assert.equal(project.productionMetadata.artisticQA,"pending-user-review");
   const files=new Map(project.projectFiles.map(f=>[f.path,f.content]));
   assert.equal(files.size,8);
   const index=files.get("index.html");
-  assert.match(index,/data-width="2160" data-height="3840"/);
+  assert.match(index,/data-width="1080" data-height="1920"/);
   assert.match(index,/data-motion-blur="on"/);
   assert.match(index,/data-motion-blur-shutter="180"/);
   assert.match(index,/data-duration="12"/);
@@ -39,6 +40,8 @@ test("cinematic 3D exports a complete, locally bundled Three.js HyperFrames proj
   assert.match(scene,/window\.addEventListener\("hf-seek"/);
   assert.match(scene,/\.waitUntil\(queue\)/);
   assert.match(scene,/buildReady\["mediaforge-cinematic-3d"\]=ready/);
+  assert.doesNotMatch(scene,/renderer\.compileAsync\(/);
+  assert.match(scene,/draw\(0\)/);
   assert.doesNotMatch(scene,/requestAnimationFrame|setInterval|Date\.now|Math\.random|https?:\/\//);
   assert.match(files.get("assets/three/build/three.module.js"),/from '\.\/three\.core\.js'/);
   assert.ok(files.get("assets/three/build/three.core.js").length>1_000_000);
@@ -49,12 +52,34 @@ test("cinematic 3D exports a complete, locally bundled Three.js HyperFrames proj
   assert.ok(validation.bytes<24*1024*1024);
 });
 
+test("cinematic 3D offers explicit 4K60 only when requested",async()=>{
+  const project=await buildCinematic3dProject({
+    title:"4K only by request", duration_seconds:10,aspect_ratio:"9:16",
+    render_profile:"4k60"
+  });
+  assert.equal(project.resolution,"portrait-4k");
+  assert.equal(project.fps,60);
+  assert.equal(project.productionMetadata.renderProfile,"4k60");
+  const html=project.projectFiles.find(f=>f.path==="index.html").content;
+  assert.match(html,/data-width="2160" data-height="3840"/);
+});
+
+test("balanced dimensions preserve 16:9 and square orientation",async()=>{
+  const landscape=await buildCinematic3dProject({title:"Landscape",aspect_ratio:"16:9"});
+  const square=await buildCinematic3dProject({title:"Square",aspect_ratio:"1:1"});
+  assert.equal(landscape.resolution,"1080p");
+  assert.equal(square.resolution,"square");
+  assert.match(landscape.projectFiles.find(f=>f.path==="index.html").content,/data-width="1920" data-height="1080"/);
+  assert.match(square.projectFiles.find(f=>f.path==="index.html").content,/data-width="1080" data-height="1080"/);
+});
+
 test("cinematic options validate input before loading or queueing",async()=>{
   const base={title:"Valid",duration_seconds:10};
   for(const invalid of [
     {duration_seconds:9},{duration_seconds:31},{shape:"unsafe"},
     {camera:"unsafe"},{aspect_ratio:"3:2"},{accent_color:"url(https://example.com)"},
-    {headline:"X".repeat(122)},{model_glb_base64:"notbase64"}
+    {headline:"X".repeat(122)},{model_glb_base64:"notbase64"},
+    {render_profile:"ultra"}
   ]){
     await assert.rejects(()=>buildCinematic3dProject({...base,...invalid}));
   }
@@ -97,4 +122,5 @@ test("MCP advertises cinematic 3D creator alongside existing tools",()=>{
   assert.ok(cinematic);
   assert.ok(cinematic.inputSchema.required.includes("title"));
   assert.ok(cinematic.inputSchema.properties.model_glb_base64);
+  assert.deepEqual(cinematic.inputSchema.properties.render_profile.enum,["balanced","4k60"]);
 });
