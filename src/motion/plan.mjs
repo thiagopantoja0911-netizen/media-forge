@@ -57,11 +57,13 @@ export function validateMotionPlan(plan) {
         for(const layer of scene.depthLayers){
           if(!layer||!identifier.test(layer.id)||layerIds.has(layer.id)||!["background","midground","foreground"].includes(layer.role)||
             !isAsset(layer.src)||!Number.isFinite(layer.parallax)||layer.parallax<0||layer.parallax>1||
-            !Number.isFinite(layer.blurPx)||layer.blurPx<0||layer.blurPx>16||typeof layer.focus!=="boolean")
+            !Number.isFinite(layer.blurPx)||layer.blurPx<0||layer.blurPx>16||!Number.isFinite(layer.depth)||layer.depth<0||layer.depth>1||typeof layer.focus!=="boolean")
             fail(`${scene.id}: invalid depth layer`);
           if(layer?.id)layerIds.add(layer.id);if(layer?.role)roles.add(layer.role);
         }
         if(roles.size!==3)fail(`${scene.id}: depth layers require background/midground/foreground`);
+        if(scene.depthLayers.find(x=>x?.role==="background")?.src!==scene.media)fail(`${scene.id}: background depth layer must be the scene media asset`);
+        if(new Set(scene.depthLayers.map(x=>x.depth)).size!==3)fail(`${scene.id}: depth layers require distinct depth values`);
         if(scene.depthLayers.filter(x=>x?.focus===true).length!==1)fail(`${scene.id}: exactly one depth layer must be in focus`);
       }
     }
