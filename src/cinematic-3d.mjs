@@ -232,8 +232,13 @@ async function loadModel(){
 }
 async function initialize(){
  await loadModel();
- await renderer.compileAsync(scene,camera);
+ // A real first draw compiles the necessary shaders synchronously.
+ // compileAsync() can remain pending indefinitely on software WebGL,
+ // leaving HyperFrames waiting for the page-ready signal.
  draw(0);
+ if (renderer.getContext().isContextLost()) {
+   throw new Error("WebGL context lost during initial scene render");
+ }
 }
 window.__hf=window.__hf||{};
 window.__hf.buildReady=window.__hf.buildReady||{};
@@ -255,7 +260,18 @@ export async function buildCinematic3dProject(input) {
   if (!Number.isInteger(seconds) || seconds < 10 || seconds > 30) throw new TypeError("duration_seconds: escolha de 10 a 30");
   const ratio=input.aspect_ratio ?? "9:16";
   if (!["9:16","16:9","1:1"].includes(ratio)) throw new TypeError("aspect_ratio inválido");
-  const dimensions=ratio==="9:16" ? [2160,3840] : ratio==="16:9" ? [3840,2160] : [2160,2160];
+  // Balanced is safe for smaller Windows workers; 4K60 is explicit opt-in.
+  const renderProfile=input.render_profile ?? "balanced";
+  if (!["balanced","4k60"].includes(renderProfile)) throw new TypeError("render_profile inválido");
+  const presets=renderProfile==="4k60"
+    ? {"9:16":{dimensions:[2160,3840],resolution:"portrait-4k"},
+       "16:9":{dimensions:[3840,2160],resolution:"landscape-4k"},
+       "1:1":{dimensions:[2160,2160],resolution:"square-4k"}}
+    : {"9:16":{dimensions:[1080,1920],resolution:"portrait"},
+       "16:9":{dimensions:[1920,1080],resolution:"1080p"},
+       "1:1":{dimensions:[1080,1080],resolution:"square"}};
+  const {dimensions,resolution}=presets[ratio];
+  const fps=renderProfile==="4k60" ? 60 : 30;
   const accent=String(input.accent_color ?? "#a9edcf");
   if (!/^#[0-9a-fA-F]{6}$/.test(accent)) throw new TypeError("accent_color deve ser hexadecimal #RRGGBB");
   const shape=String(input.shape ?? "torus-knot");
@@ -288,10 +304,10 @@ export async function buildCinematic3dProject(input) {
     title,
     durationSeconds:seconds,
     aspectRatio:ratio,
-    resolution:ratio==="9:16" ? "portrait-4k" : ratio==="16:9" ? "landscape-4k" : "square-4k",
-    fps:60,
+    resolution,
+    fps,
     projectFiles:files,
-    productionMetadata:{kind:"cinematic-3d",version:1,shape:model?"glb":shape,camera,accent,threeVersion:THREE_RELEASE,
+    productionMetadata:{kind:"cinematic-3d",version:1,renderProfile,shape:model?"glb":shape,camera,accent,threeVersion:THREE_RELEASE,
       motionBlur:{enabled:true,shutterAngle:180},artisticQA:"pending-user-review"}
   };
 }
