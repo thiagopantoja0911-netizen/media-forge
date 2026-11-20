@@ -17,6 +17,25 @@ const token=process.env.MEDIAFORGE_WORKER_TOKEN||"";
 const workerId=process.env.MEDIAFORGE_WORKER_ID||hostname();
 const projectsRoot=resolve(process.env.MEDIAFORGE_PROJECTS_DIR||".mediaforge/projects");
 const pollMs=Number(process.env.MEDIAFORGE_POLL_MS||4000);
+
+async function readJsonResponse(response, context) {
+  const contentType = response.headers.get("content-type") || "unknown content type";
+  const raw = await response.text();
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    const preview = raw.replace(/\\s+/g, " ").slice(0, 180);
+    throw new Error(
+      context + ": expected JSON, received HTTP " + response.status +
+      " (" + contentType + ")" + (preview ? "; body preview: " + preview : "")
+    );
+  }
+  if (!response.ok || data?.ok !== true) {
+    throw new Error(context + ": HTTP " + response.status + ": " + (data?.error || "invalid response"));
+  }
+  return data;
+}
 if(!/^https:\/\//.test(url) && !/^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/.test(url))
   throw new Error("MEDIAFORGE_REMOTE_URL must use HTTPS (or localhost for testing)");
 if(token.length<32)throw new Error("MEDIAFORGE_WORKER_TOKEN must be configured");
@@ -39,9 +58,7 @@ async function call(path, method="GET", body, leaseId) {
       ...(body?{"content-type":"application/json"}:{}),
       ...(leaseId?{"x-mediaforge-lease":leaseId}:{})
     },body:body?JSON.stringify(body):undefined,signal:controller.signal});
-    const data=await res.json();
-    if(!res.ok||data.ok!==true)throw new Error("Remote "+res.status+": "+(data.error||"invalid response"));
-    return data;
+    return await readJsonResponse(res, "Remote API " + path);
   }finally{clearTimeout(timeout);}
 }
 async function uploadDeliveredArtifact(jobId,leaseId,outputPath){
@@ -59,9 +76,9 @@ async function uploadDeliveredArtifact(jobId,leaseId,outputPath){
         "content-type":"video/mp4"},
       signal:controller.signal
     });
-    const data=await response.json();
-    if(!response.ok||data.ok!==true||data.sha256!==sha)
-      throw new Error("MediaForge MP4 delivery failed: "+(data.error||response.status));
+    const data=await readJsonResponse(response, "MediaForge MP4 delivery");
+    if(data.sha256!==sha)
+      throw new Error("MediaForge MP4 delivery: returned SHA-256 does not match uploaded artifact");
     return data;
   }finally{clearTimeout(timer);}
 }
