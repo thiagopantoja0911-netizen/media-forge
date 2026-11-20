@@ -11,7 +11,7 @@ export function buildCinematicDepthLayers(scene,plan){
   const blur=layer.focus?0:layer.blurPx;
   return '<img id="'+scene.id+'-depth-'+layer.id+'" class="mf-depth-layer mf-depth-'+layer.role+
    '" src="'+html(layer.src)+'" alt="" draggable="false" data-depth="'+layer.depth+
-   '"'+(motionBlur?' data-motion-blur="on" data-motion-blur-shutter="180"':'')+
+   '"'+(motionBlur?' data-motion-blur="on" data-motion-blur-shutter="180" data-motion-blur-strength="'+Number(scene.effects.motionBlur).toFixed(2)+'"':'')+
    ' style="z-index:'+z+';filter:blur('+blur+'px)">';
  }).join("");
  const css=[
