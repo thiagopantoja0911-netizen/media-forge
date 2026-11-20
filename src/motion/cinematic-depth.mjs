@@ -17,7 +17,7 @@ export function buildCinematicDepthLayers(scene,plan){
  const css=[
   '.mf-depth-stage{position:absolute;inset:0;z-index:0;overflow:hidden;background:#030710}',
   '.mf-depth-rig{position:absolute;inset:-8%;width:116%;height:116%;transform-origin:50% 50%;will-change:transform}',
-  '.mf-depth-layer{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;will-change:transform,filter}',
+  '.mf-depth-layer{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;will-change:transform,filter;filter:blur(0px)}',
   '.mf-depth-background{z-index:10}.mf-depth-midground{z-index:20}.mf-depth-foreground{z-index:30}'
  ].join("");
  const timeline=[...layers].sort((a,b)=>order[a.role]-order[b.role]).map(layer=>{
