@@ -5,7 +5,7 @@ import { FRAME_LAB_MCP_TOOLS, FRAME_LAB_MCP_NAMES, FRAME_LAB_MCP_READ_TOOLS } fr
 import { buildCinematic3dProject } from "./cinematic-3d.mjs";
 import { buildMotionComposition } from "./motion/composer.mjs";
 import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./premium-motion-baseline.mjs";
-import { CINEMATIC_POLICY_VERSION, validateStudyUsage } from "./cinematic-production-policy.mjs";
+import { CINEMATIC_POLICY_VERSION, CINEMATIC_PRODUCTION_POLICY, validateStudyUsage } from "./cinematic-production-policy.mjs";
 import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
 import { planFromShortBrief } from "./creative-director.mjs";
 import { listEditingStyles } from "./editing-style-presets.mjs";
@@ -369,6 +369,11 @@ export const VIDEOS_SECRETS_TOOLS = [
         claims:{type:"array",maxItems:12,items:{type:"object",additionalProperties:false,properties:{text:{type:"string",maxLength:160},source:{type:"string",maxLength:300}},required:["text"]}}
       },required:["brand","idea"]
     }
+  },
+  {
+    name:"get_cinematic_production_policy",
+    description:"Retorna os 40 controles de produção cinematográfica, cobertura de mídia, regras de áudio, limites, bloqueios e revisão artística do MediaForge.",
+    inputSchema:{type:"object",additionalProperties:false}
   },
   {
     name: "create_video",
@@ -862,6 +867,11 @@ export async function handleVideosSecretsMcp({
       const plan = planFromShortBrief(args);
       const blueprint = buildOnePromptBlueprint(args);
       return writeResult(response, id, textResult({ ...plan, productionBlueprint:blueprint }, false, version), version);
+    }
+
+    if (name === "get_cinematic_production_policy") {
+      if (!auth.scopes.includes("videos:read")) return writeError(response,id,-32003,"Insufficient scope",403,version);
+      return writeResult(response,id,textResult({policy:CINEMATIC_PRODUCTION_POLICY,version:CINEMATIC_POLICY_VERSION},false,version),version);
     }
 
     if (name === "create_video") {
