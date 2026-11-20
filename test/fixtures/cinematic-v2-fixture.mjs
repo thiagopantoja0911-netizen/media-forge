@@ -79,7 +79,7 @@ export function cinematicV2FilesFor(plan){
   const ext=path.split(".").pop().toLowerCase();
   const header=ext==="mp4"?Buffer.from([0,0,0,24,102,116,121,112])
    :ext==="jpg"?Buffer.from([255,216,255,224])
-   :ext==="png"?Buffer.from([137,80,78,71,13,10,26,10])
+   :ext==="png"?Buffer.from([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,64,0,0,0,64,8,6,0,0,0,0,0,0,0])
    :ext==="mp3"?Buffer.from("ID3")
    :ext==="wav"?Buffer.from("RIFF1234WAVE"):Buffer.from("NOT_MEDIA");
   return {path,contentBase64:Buffer.concat([header,Buffer.from(path),Buffer.alloc(128)]).toString("base64")};
