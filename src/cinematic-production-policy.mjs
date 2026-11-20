@@ -94,7 +94,7 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
  if(arcFields.every(k=>say(story[k])))pass("written-story-arc","5 beats de história definidos");
  else fail("written-story-arc","Política V2: storyArc precisa definir hook, conflict, escalation, resolution e payoff");
  const ids=new Set(),mediaUsage=new Map(),shotSizes=new Set(),cameras=new Set(),transitions=new Set(),paces=new Set();
- const continuity=new Map(),effects={motionBlur:0,bloom:0,shadow:0,colorGrade:0,depthOfField:0,parallax:0,microEffect:0};
+ const continuity=new Map(),subjectOccurrences=new Map(),effects={motionBlur:0,bloom:0,shadow:0,colorGrade:0,depthOfField:0,parallax:0,microEffect:0};
  let realFrames=0,movingFrames=0,graphicFrames=0,captionAnchors=0,motionEvents=0,transitionEvents=0;
  let validVoiceAnchors=true,validSceneSound=true,validReframes=0,validEvents=0,validNarrative=true,validContinuity=true;
  for(const [index,scene] of scenes.entries()){
@@ -115,9 +115,13 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
   if(!scene.continuity||!say(scene.continuity.subjectId)||!["left-to-right","right-to-left","static"].includes(scene.continuity.screenDirection)||
      !Array.isArray(scene.continuity.propIds)){validContinuity=false;fail("continuity",scene.id+": continuity precisa de subjectId, propIds e screenDirection");}
   else{
+   const propKey=[...scene.continuity.propIds].sort().join("|");
    const prev=continuity.get(scene.continuity.subjectId);
-   if(prev&&prev!==scene.continuity.screenDirection){validContinuity=false;fail("continuity",scene.id+": direção de tela inconsistente para o mesmo sujeito");}
-   continuity.set(scene.continuity.subjectId,scene.continuity.screenDirection);
+   if(prev&&(prev.direction!==scene.continuity.screenDirection||prev.props!==propKey)){
+    validContinuity=false;fail("continuity",scene.id+": direção de tela ou props mudaram sem continuidade declarada");
+   }
+   continuity.set(scene.continuity.subjectId,{direction:scene.continuity.screenDirection,props:propKey});
+   subjectOccurrences.set(scene.continuity.subjectId,(subjectOccurrences.get(scene.continuity.subjectId)||0)+1);
   }
   if(!paceTypes.has(scene.pace))fail("rhythm",scene.id+": pace deve ser fast, medium ou hold");
   if(scene.type==="footage"||scene.type==="photo"||scene.type==="product"||scene.type==="collage")realFrames+=length;
@@ -168,7 +172,8 @@ export function reviewCinematicPolicyV2(plan,evidence={}) {
  if(!validVoiceAnchors)fail("voice-anchored-storyboard","Cada cena precisa de voiceStartFrame/voiceEndFrame alinhados à fala");
  else pass("voice-anchored-storyboard","Todas as cenas possuem âncoras de narração");
  if(validNarrative)pass("semantic-visual-direction","Cada cena contém fala, ação e transformação visual");
- if(validContinuity)pass("continuity","Sujeitos e direções de tela consistentes");
+ if(![...subjectOccurrences.values()].some(count=>count>=2)){validContinuity=false;fail("continuity","Ao menos um sujeito deve continuar em duas ou mais cenas");}
+ if(validContinuity)pass("continuity","Sujeitos, props e direção de tela consistentes");
  if(shotSizes.size<3)fail("shot-variety","Use ao menos três tamanhos de plano distintos");
  else pass("shot-variety",[...shotSizes]);
  if(cameras.size<2)fail("motivated-camera","Use pelo menos dois movimentos de câmera distintos");
