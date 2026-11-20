@@ -164,7 +164,7 @@ async function processRemote(job,leaseId) {
       error.code="CINEMATIC_FRAME_QA_FAILED";error.retryable=false;throw error;
     }
     const cinematicPolicy=isCinematicV2?reviewCinematicPolicyV2(cinematicPlan,{
-      assetValidation:configured.metadata?.assetValidation,technicalQA,audioQA,frameQA,artisticQA:"pending-user-review"
+      assetValidation:configured.metadata?.assetValidation,technicalQA,audioQA,frameQA,renderComplete:true,motionBlurApplied:rendered.motionBlurApplied===true,artisticQA:"pending-user-review"
     }):null;
     if(isCinematicV2&&!cinematicPolicy?.ok){
       const error=new Error("Cinematic V2 final structural QA failed: "+(cinematicPolicy?.errors||[]).join("; "));
