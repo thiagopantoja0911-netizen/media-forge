@@ -73,7 +73,7 @@ export function validateMotionPlan(plan) {
         fail(`${scene.id}: invalid reframe`);
     }
     if(scene.continuity!==undefined&&(!scene.continuity||typeof scene.continuity.subjectId!=="string"||
-      !["left-to-right","right-to-left","static"].includes(scene.continuity.screenDirection)||!Array.isArray(scene.continuity.propIds)))
+      !["left-to-right","right-to-left","static"].includes(scene.continuity.screenDirection)||!Array.isArray(scene.continuity.propIds)||scene.continuity.propIds.some(x=>typeof x!=="string"||!identifier.test(x))))
       fail(`${scene.id}: invalid continuity contract`);
     if(scene.soundDesign!==undefined&&(!scene.soundDesign||typeof scene.soundDesign.intent!=="string"||
       !Array.isArray(scene.soundDesign.cueIds)||scene.soundDesign.cueIds.some(x=>typeof x!=="string")))
