@@ -151,7 +151,7 @@ function averageHash(frame){
  return hash;
 }
 function bitCount(value){let n=0;while(value){value&=value-1n;n++;}return n;}
-export async function inspectRenderedFrames(path,{plan=null,timeoutMs=120000,sampleFps=10}={}) {
+export async function inspectRenderedFrames(path,{plan=null,timeoutMs=120000,sampleFps=10,durationSeconds=null}={}) {
  const executable=process.env.FFMPEG_BIN||"ffmpeg",frameBytes=64*64;
  return new Promise(resolve=>{
   const chunks=[];let totalBytes=0,stderr="",settled=false;
@@ -179,10 +179,14 @@ export async function inspectRenderedFrames(path,{plan=null,timeoutMs=120000,sam
     .map(m=>({end:Number(m[1]),durationSeconds:Number(m[2])}));
    const freezeSegments=freezeEnds.map((x,i)=>({startSeconds:freezeStarts[i]??Math.max(0,x.end-x.durationSeconds),
     endSeconds:x.end,durationSeconds:x.durationSeconds}));
+   if(freezeStarts.length>freezeEnds.length&&Number.isFinite(durationSeconds)){
+    const start=freezeStarts.at(-1);if(durationSeconds>start)freezeSegments.push({startSeconds:start,endSeconds:durationSeconds,durationSeconds:durationSeconds-start});
+   }
    const duplicateScenePairs=[];
    if(Array.isArray(plan?.scenes)){
+    const planFps=Number(String(plan.fps).split("/")[0])/Number(String(plan.fps).split("/")[1]||1);
     const samples=plan.scenes.map(scene=>{
-     const mid=(scene.startFrame+scene.endFrame)/2/(Number(plan.fps)||30);
+     const mid=(scene.startFrame+scene.endFrame)/2/planFps;
      const idx=Math.min(frames.length-1,Math.max(0,Math.round(mid*sampleFps)));
      return {sceneId:scene.id,media:scene.media,hash:frames[idx]?.hash};
     }).filter(x=>x.hash!==undefined);
@@ -192,6 +196,7 @@ export async function inspectRenderedFrames(path,{plan=null,timeoutMs=120000,sam
     }
    }
    const issues=[],warnings=[];
+   if(count===0)issues.push("Nenhum quadro foi decodificado para inspeção");
    if(maxBlackRun>=Math.ceil(sampleFps*.5))issues.push("Quadros pretos consecutivos por "+(maxBlackRun/sampleFps).toFixed(1)+"s");
    if(duplicateScenePairs.length)issues.push("Cenas com frames praticamente idênticos: "+duplicateScenePairs.length);
    if(freezeSegments.some(s=>s.durationSeconds>5))warnings.push("Planos congelados acima de 5s: "+freezeSegments.filter(s=>s.durationSeconds>5).length);
