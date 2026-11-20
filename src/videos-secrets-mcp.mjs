@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { FRAME_LAB_MCP_TOOLS, FRAME_LAB_MCP_NAMES, FRAME_LAB_MCP_READ_TOOLS } from "../frame-lab/mcp-schemas.mjs";
 import { buildCinematic3dProject } from "./cinematic-3d.mjs";
 import { buildMotionComposition } from "./motion/composer.mjs";
+import { fillMissingCinematicFootage } from "./motion/stock-footage-source.mjs";
 import { PREMIUM_MOTION_BASELINE, validatePremiumMotionSubmission } from "./premium-motion-baseline.mjs";
 import { CINEMATIC_POLICY_VERSION, CINEMATIC_PRODUCTION_POLICY, validateStudyUsage } from "./cinematic-production-policy.mjs";
 import { validateWindowsRenderSubmission } from "./motion/submission-gate.mjs";
@@ -419,7 +420,8 @@ export const VIDEOS_SECRETS_TOOLS = [
       properties: {
         motion_plan: { type: "object", description: "Frame-based plan: format=mediaforge-motion-v1, productionMode=cinematic, audioMode=voice-led or sound-design, scenes, events and audioCues" },
         asset_files: { type: "array", minItems: 1, maxItems: 72, items: { type: "object", additionalProperties: false, properties: { path: {type:"string"}, content: {type:"string"}, encoding: {type:"string",enum:["base64","utf8"]} }, required:["path","content","encoding"] } },
-        quality: {type:"string",enum:["draft","looks","standard","high","delivery"]}
+        quality: {type:"string",enum:["draft","looks","standard","high","delivery"]},
+        auto_source_stock: {type:"boolean",description:"Opt-in: search Pexels for missing footage via configured PEXELS_API_KEY; no vector fallback. Requires scene.stockQuery, footage license and visual review."}
       },
       required: ["motion_plan","asset_files"]
     }
@@ -924,7 +926,8 @@ export async function handleVideosSecretsMcp({
         : {path:file.path,content:file.content});
       // Apply V2 by default at the authoritative MCP boundary; legacy saved projects remain untouched.
       const productionPlan={...args.motion_plan,productionMode:"cinematic",cinematicPolicyVersion:"v2"};
-      const composition = await buildMotionComposition(productionPlan, assets);
+      const stock = await fillMissingCinematicFootage(productionPlan,assets,{enabled:args.auto_source_stock===true});
+      const composition = await buildMotionComposition(stock.plan, stock.assets);
       // The cinematic gate is mandatory; the tool never bypasses preflight or creative asset checks.
       if (!composition.readiness.testRenderReady) {
         return writeError(response, id, -32602, "Motion assets or cinematic quality gate not ready", 422, version);
@@ -943,7 +946,7 @@ export async function handleVideosSecretsMcp({
         prompt: "Cinematic motion from validated timed plan: " + project.title,
         project,
         projectFiles: composition.projectFiles,
-        metadata: { ...composition.metadata, source:"cinematic-motion-v2", qaStatus:"pending-technical-and-artistic-review" }
+        metadata: { ...composition.metadata, source:"cinematic-motion-v2",stockAssets:stock.provenance,artisticQA:"pending-user-review", qaStatus:"pending-technical-and-artistic-review" }
       });
       return writeResult(response, id, textResult({
         id:job.id,status:job.status,worker:"windows-local",renderer:"hyperframes",
