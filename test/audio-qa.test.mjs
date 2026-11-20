@@ -15,3 +15,11 @@ test("audio QA never approves unmeasurable sound",()=>{
   assert.equal(evaluateAudioLoudness({integratedLufs:NaN,truePeakDb:NaN}).status,"failed");
   assert.equal(evaluateAudioLoudness().status,"failed");
 });
+
+test("silence inspection flags long gaps without treating deliberate pauses as codec failures",()=>{
+  const x=evaluateAudioLoudness({integratedLufs:-16,truePeakDb:-1.8,
+    silenceSegments:[{startSeconds:9,endSeconds:12,durationSeconds:3}]});
+  assert.equal(x.status,"passed");
+  assert.equal(x.silenceSegments.length,1);
+  assert.match(x.warnings.join("; "),/Silêncios maiores que 2s/);
+});
