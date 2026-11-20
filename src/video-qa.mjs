@@ -87,7 +87,7 @@ export async function inspectRenderedVideo(path, project, expectsAudio = false) 
  * Audio QA checks the actual rendered mix, not just the existence of an AAC track.
  * It cannot prove the narration's words or SFX are audible; artistic listening remains separate.
  */
-export function evaluateAudioLoudness({integratedLufs,truePeakDb}={}) {
+export function evaluateAudioLoudness({integratedLufs,truePeakDb,silenceSegments=[]}={}) {
   const i=Number(integratedLufs), tp=Number(truePeakDb);
   if(!Number.isFinite(i)||!Number.isFinite(tp)) return {
     status:"failed",kind:"ffmpeg-loudnorm-analysis",integratedLufs:null,truePeakDb:null,
@@ -99,8 +99,10 @@ export function evaluateAudioLoudness({integratedLufs,truePeakDb}={}) {
   if(i > -10) issues.push("Mix excessivamente alta ("+i.toFixed(1)+" LUFS).");
   else if(i > -13) warnings.push("Mix alta para social; conferir inteligibilidade.");
   if(tp > -1) issues.push("Pico verdadeiro acima de -1 dBTP ("+tp.toFixed(1)+" dBTP).");
+  const longSilences=Array.isArray(silenceSegments)?silenceSegments.filter(s=>Number.isFinite(s.durationSeconds)&&s.durationSeconds>=2):[];
+  if(longSilences.length)warnings.push("Silêncios maiores que 2s detectados: "+longSilences.length+"; conferir pausas, voz e trilha por escuta.");
   return {status:issues.length?"failed":"passed",kind:"ffmpeg-loudnorm-analysis",
-    integratedLufs:i,truePeakDb:tp,issues,warnings,artisticReview:"pending"};
+    integratedLufs:i,truePeakDb:tp,issues,warnings,silenceSegments:Array.isArray(silenceSegments)?silenceSegments:[],artisticReview:"pending"};
 }
 
 export async function inspectRenderedAudio(path,{timeoutMs=90000}={}) {
@@ -109,7 +111,7 @@ export async function inspectRenderedAudio(path,{timeoutMs=90000}={}) {
     let output="",settled=false;
     const complete=result=>{if(!settled){settled=true;resolve(result);}};
     const child=spawn(executable,["-hide_banner","-nostats","-i",path,"-vn","-map","0:a:0",
-      "-af","loudnorm=I=-16:TP=-1:LRA=11:print_format=json","-f","null","-"],
+      "-af","loudnorm=I=-16:TP=-1:LRA=11:print_format=json,silencedetect=noise=-45dB:d=2","-f","null","-"],
       {windowsHide:true,shell:false});
     const timer=setTimeout(()=>{child.kill();complete({status:"unverified",kind:"ffmpeg-loudnorm-analysis",issues:["Audio QA timeout"],warnings:[]})},timeoutMs);
     child.on("error",error=>{clearTimeout(timer);complete({status:"unverified",kind:"ffmpeg-loudnorm-analysis",issues:["FFmpeg unavailable: "+error.message],warnings:[]})});
@@ -122,7 +124,12 @@ export async function inspectRenderedAudio(path,{timeoutMs=90000}={}) {
         const hits=[...output.matchAll(new RegExp('"'+key+'"\\s*:\\s*"([^"]+)"',"g"))];
         return hits.length?Number(hits.at(-1)[1]):NaN;
       };
-      complete(evaluateAudioLoudness({integratedLufs:field("input_i"),truePeakDb:field("input_tp")}));
+      const starts=[...output.matchAll(/silence_start:\\s*([0-9.]+)/g)].map(m=>Number(m[1]));
+      const ends=[...output.matchAll(/silence_end:\\s*([0-9.]+)\\s*\\|\\s*silence_duration:\\s*([0-9.]+)/g)]
+        .map(m=>({end:Number(m[1]),durationSeconds:Number(m[2])}));
+      const silenceSegments=ends.map((e,i)=>({startSeconds:starts[i]??Math.max(0,e.end-e.durationSeconds),
+        endSeconds:e.end,durationSeconds:e.durationSeconds}));
+      complete(evaluateAudioLoudness({integratedLufs:field("input_i"),truePeakDb:field("input_tp"),silenceSegments}));
     });
   });
 }
