@@ -180,7 +180,7 @@ async function processRemote(job,leaseId) {
     await call("/v1/worker/jobs/"+job.id+"/complete","POST",{
       leaseId,success:true,artifactUploaded,fileName:basename(rendered.outputPath),size:info.size,
       sha256:await hashFile(rendered.outputPath),outputPath:rendered.outputPath,
-      report:{outputName:basename(rendered.outputPath),technicalQA,audioQA,frameQA,audioMix,cinematicPolicy,motionReview:rendered.motionReview??null,diagnosticsDir:rendered.diagnosticsDir,artisticQA:"pending-user-review",finalDeliveryApproved:false}
+      report:{outputName:basename(rendered.outputPath),technicalQA,audioQA,frameQA,audioMix,motionBlurApplied:rendered.motionBlurApplied===true,motionBlurShutterAngle:rendered.motionBlurShutterAngle,cinematicPolicy,motionReview:rendered.motionReview??null,diagnosticsDir:rendered.diagnosticsDir,artisticQA:"pending-user-review",finalDeliveryApproved:false}
     });
     console.log("Remote job completed:",job.id);
   }catch(error){
