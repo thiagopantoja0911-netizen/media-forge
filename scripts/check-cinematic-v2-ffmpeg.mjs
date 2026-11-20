@@ -36,8 +36,8 @@ try{
  }
  const videoPath=join(root,"synthetic-cinematic.mp4");
  await run(ffmpeg,["-y","-hide_banner","-loglevel","error","-f","lavfi","-i",
-  "color=c=0x101821:s=320x568:r=10:d=45","-vf",
-  "drawbox=x='mod(t*17,180)':y='mod(t*13,420)':w=120:h=120:color=white:t=fill,format=yuv420p",
+  "testsrc2=s=320x568:r=10:d=45","-vf",
+  "format=yuv420p",
   "-an","-c:v","libx264","-preset","ultrafast","-crf","34","-t","45",videoPath]);
  const mix=await mixCinematicAudio({videoPath,projectDir,plan,ffmpegBin:ffmpeg});
  const tech=await inspectRenderedVideo(videoPath,{width:320,height:568,fps:10,durationSeconds:45},true);
