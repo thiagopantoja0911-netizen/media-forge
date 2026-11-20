@@ -29,7 +29,7 @@ export function buildCinematicSceneEffects(scene,plan) {
   const hit=keyEvent?keyEvent.peakFrame/fps:.25;
   const duration=(scene.endFrame-scene.startFrame)/fps;
   const reframe=scene.reframe
-    ? 'tl.fromTo("#'+id+'-camera-rig",'+JSON.stringify(scene.reframe.from)+',{...'+JSON.stringify(scene.reframe.to)+',duration:'+Math.max(.5,duration*.9).toFixed(3)+',ease:"power2.inOut"},0);'
+    ? 'tl.fromTo("#'+id+'-visual",'+JSON.stringify(scene.reframe.from)+',{...'+JSON.stringify(scene.reframe.to)+',duration:'+Math.max(.5,duration*.9).toFixed(3)+',ease:"power2.inOut"},0);'
     : "";
   const timeline=(micro?
     'tl.fromTo("#'+id+'-micro",{opacity:0},{opacity:.52,duration:.075,ease:"power2.out"},'+hit.toFixed(5)+');'+
