@@ -129,6 +129,24 @@ async function createJob(rawPayload) {
     throw error;
   }
 
+  const cinematicGate = validateCinematicV2JobPayload({
+    project: payload.project,
+    projectFiles: payload.projectFiles,
+    metadata: payload.metadata ?? {}
+  });
+  if (!cinematicGate.ok) {
+    const error = new Error(cinematicGate.errors.join("; "));
+    error.code = "INVALID_CINEMATIC_POLICY";
+    throw error;
+  }
+  if (cinematicGate.enabled) {
+    payload.metadata = {
+      ...(payload.metadata ?? {}),
+      assetValidation: cinematicGate.assetValidation,
+      cinematicPolicy: cinematicGate.policy
+    };
+  }
+
   const id = randomUUID().replaceAll("-", "");
   const inputProject = payload.project;
   const hasInlineFiles = Boolean(payload.projectFiles);
