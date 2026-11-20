@@ -11,8 +11,8 @@ test("cinematic master builds a real sidechain voice-ducked score with ambience 
  assert.match(graph.filterComplex,/sidechaincompress=threshold=0\.025:ratio=7:attack=20:release=260/);
  assert.match(graph.filterComplex,/amix=inputs=/);
  assert.match(graph.filterComplex,/adelay=/);
- assert.match(graph.filterComplex,/loudnorm=I=-15:TP=-1:LRA=11/);
- assert.match(graph.filterComplex,/alimiter=limit=0\.891/);
+ assert.match(graph.filterComplex,/loudnorm=I=-15:TP=-1\.5:LRA=11/);
+ assert.match(graph.filterComplex,/alimiter=limit=0\.841/);
 });
 
 test("cinematic audio mix refuses missing voice ducking, score, SFX and unsafe asset paths",()=>{
