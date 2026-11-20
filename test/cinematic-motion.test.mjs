@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { validateMotionPlan } from "../src/motion/plan.mjs";
 import { buildMotionComposition } from "../src/motion/composer.mjs";
+import {makeCinematicV2Fixture,cinematicV2FilesFor} from "./fixtures/cinematic-v2-fixture.mjs";
 
 function cinematicFixture() {
   const scenes=[];
@@ -98,31 +99,38 @@ test("cinematic compiler rejects external or missing media and SFX assets",async
   assert.equal(validateMotionPlan(p).ok,false);
 });
 
-test("v2 composer actually embeds timed captions, grading, shadows and micro-effect animation",async()=>{
-  const p=cinematicFixture();
-  p.visualMode="media-first";p.cinematicPolicyVersion="v2";
-  p.scenes.forEach((s,i)=>{
-    s.narrativeAction={voiceCue:"Fala "+i,subject:"Pessoa "+i,action:"Gesto visível "+i,
-      visibleChange:"Consequência na imagem "+i,stateBefore:"Antes "+i,stateAfter:"Depois "+i};
-    s.effects={shadow:true,colorGrade:.5,bloom:i===0?.42:0,
-      motionBlur:i===0?.65:0,microEffect:i===0?"impact":i===3?"light-sweep":undefined};
-  });
-  p.captions=Array.from({length:15},(_,i)=>({
-    startFrame:i*90,endFrame:(i+1)*90,text:"Frase narrada "+i,emphasis:i===0?"narrada":undefined
-  }));
-  p.audioCues.find(c=>c.id==="sweep").eventId="enter-1";
-  p.audioCues.find(c=>c.id==="sweep").startFrame=12;
-  const result=await buildMotionComposition(p,filesFor(p));
-  assert.equal(result.metadata.cinematicPolicyVersion,"v2");
-  assert.equal(result.metadata.captionCount,15);
-  const root=result.projectFiles.find(f=>f.path==="index.html").content;
-  const first=result.projectFiles.find(f=>f.path==="compositions/shot-1.html").content;
-  assert.match(root,/id="mf-caption-1"/);
-  assert.match(root,/data-track-kind="captions"/);
-  assert.match(root,/window\.__timelines\.main=timeline/);
-  assert.match(first,/class="mf-fx-bloom"/);
-  assert.match(first,/class="mf-fx-shadow"/);
-  assert.match(first,/id="shot-1-micro"/);
-  assert.match(first,/tl\.fromTo\("#shot-1-camera-rig"/);
-  assert.match(first,/filter:contrast/);
+test("V2 compositor builds real captions, depth, reframing, shutter blur and a 40-control report",async()=>{
+ const plan=makeCinematicV2Fixture();
+ const result=await buildMotionComposition(plan,cinematicV2FilesFor(plan));
+ assert.equal(result.readiness.testRenderReady,true);
+ assert.equal(result.readiness.renderReady,false);
+ assert.equal(result.readiness.finalDeliveryApproved,false);
+ assert.equal(result.metadata.cinematicPolicyVersion,"v2");
+ assert.equal(result.metadata.kind,"cinematic-3d");
+ assert.equal(result.metadata.motionBlur.enabled,true);
+ assert.equal(result.metadata.cinematicPolicy.controls.length,40);
+ const root=result.projectFiles.find(f=>f.path==="index.html").content;
+ const first=result.projectFiles.find(f=>f.path==="compositions/scene-1.html").content;
+ const depth=result.projectFiles.find(f=>f.path==="compositions/scene-3.html").content;
+ assert.match(root,/id="mf-caption-1"/);
+ assert.match(root,/mf-caption-word-1-1/);
+ assert.match(root,/data-track-kind="captions"/);
+ assert.match(root,/data-motion-blur="on"/);
+ assert.match(root,/window\.__timelines\.main=timeline/);
+ assert.match(first,/class="mf-fx-bloom"/);
+ assert.match(first,/class="mf-fx-shadow"/);
+ assert.match(first,/id="scene-1-micro"/);
+ assert.match(first,/data-motion-blur-strength="0.62"/);
+ assert.match(first,/data-shot-size="wide"/);
+ assert.match(first,/data-transition-reason=/);
+ assert.match(first,/tl\.fromTo\("#scene-1-camera-rig"/);
+ assert.match(first,/filter:contrast/);
+ assert.match(depth,/mf-depth-stage/);
+ assert.match(depth,/mf-depth-background/);
+ assert.match(depth,/mf-depth-midground/);
+ assert.match(depth,/mf-depth-foreground/);
+ const planFile=result.projectFiles.find(f=>f.path==="motion-plan.json").content;
+ assert.match(planFile,/storyArc/);
+ assert.match(root,/id="audio-narration"/);
+ assert.match(root,/id="audio-caption-pop"/);
 });
